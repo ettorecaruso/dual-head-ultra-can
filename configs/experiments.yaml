@@ -1,0 +1,42 @@
+channel:
+  carrier_hz: 2.4e9
+  sampling_hz: 1.0e7
+  sequence_length: 100
+  map_type: logistic
+  map_param: 3.9
+  rician_kappa_db: 10
+  alpha_min: 0.05
+  alpha_max: 0.3
+  max_delay: 33
+  max_doppler: 8e-05
+  doppler_direct_max: 1e-05
+
+scenarios:
+  k1_doppler_full: {echoes: 1, doppler: full}
+  k3_doppler_full: {echoes: 3, doppler: full}
+  k3_doppler_limited: {echoes: 3, doppler: limited}
+
+seeds:
+  conv1d: 5
+  qkv: 67
+  lstm: 63
+  mc_dlsk: 80
+
+training:
+  epochs: 30
+  batch_size: 128
+  learning_rate: 0.001
+  lambda_sensing: 2
+  early_stopping_patience: 10
+
+evaluation:
+  snr_grid: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 20]
+  pooled_min_snr_db: 5
+  ber_target: 1.0e-04
+  error_threshold: 100
+  max_symbols_per_snr: 2000000
+
+jamming:
+  jammer_pool: [cw, barrage, partial_band]
+  jsr_pool: [-6, -2, 2]
+  jsr_grid: [-10, -6, -2, 2, 6, 10]
