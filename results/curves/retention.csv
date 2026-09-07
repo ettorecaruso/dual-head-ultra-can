@@ -1,0 +1,15 @@
+arch,stage,cosine
+conv1d,conv1,0.9359661308924356
+conv1d,conv2,0.8121826603412629
+conv1d,attention_pooling,0.7714033125241597
+conv1d,sensing_position,0.9660541111628216
+qkv,conv1,0.939199507077535
+qkv,conv2,0.9025384306907652
+qkv,qkv_attention,0.0699308760141333
+qkv,sensing_position,0.9958919180234274
+lstm,lstm_state,0.174336011365056
+lstm,projection,0.3078773815631866
+lstm,sensing_position,0.9948756728172302
+mc_dlsk,bilstm,0.1339003562207023
+mc_dlsk,projection,0.187089000771443
+mc_dlsk,sensing_position,0.9934349706967672

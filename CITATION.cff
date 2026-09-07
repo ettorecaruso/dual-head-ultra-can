@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Dual-Head Ultra-CAN: Lightweight Edge AI Receiver for ISAC in Internet of Drones"
+version: "1.0.0"
+date-released: "2026-07-09"
+authors:
+  - given-names: Marco
+    family-names: Siino
+    affiliation: "University of Catania, Italy"
+  - given-names: Stefano
+    family-names: Mangione
+    affiliation: "University of Palermo, Italy"
+  - given-names: Ilenia
+    family-names: Tinnirello
+    affiliation: "University of Palermo, Italy"
+preferred-citation:
+  type: article
+  title: "Dual-Head Ultra-CAN: A Lightweight Edge AI Architecture for Integrated Sensing and Chaos-Based Communications in Internet of Drones"
+  authors:
+    - given-names: Marco
+      family-names: Siino
+    - given-names: Stefano
+      family-names: Mangione
+    - given-names: Ilenia
+      family-names: Tinnirello
+  journal: "IEEE Internet of Things Journal"
+  year: 2026
