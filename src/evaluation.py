@@ -9,6 +9,9 @@ def predict(model, x):
     out = model.predict(x, verbose=0)
     if isinstance(out, list):
         return out[0], out[1]
+    if isinstance(out, dict):
+        names = list(model.output_names)
+        return out[names[0]], out[names[1]]
     return out, None
 
 

@@ -149,7 +149,9 @@ def _conv_stack(received):
 def _attach_heads(pooled, features):
     comm_model = _communication_head()
     sensing_model = _sensing_head(int(features.shape[-1]))
-    return comm_model(pooled), sensing_model(features)
+    comm = layers.Activation("linear", name="comm_logits")(comm_model(pooled))
+    sensing = layers.Activation("linear", name="sensing_out")(sensing_model(features))
+    return comm, sensing
 
 
 def build_conv1d_ultra_can():

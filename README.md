@@ -45,13 +45,19 @@ Short CPU smoke run (one epoch on tiny sets):
 python scripts/run_experiments.py smoke --model conv1d --samples 2000 --epochs 1
 ```
 
-Regenerate the paper figures from the committed curves:
+Run the full self-check (architecture counts, committed tables and curves, jam-aware numbers, one-epoch smoke training):
+
+```
+python scripts/self_check.py
+```
+
+Regenerate the figures from the committed curves:
 
 ```
 python scripts/make_figures.py
 ```
 
-The committed figures in `results/figures/` are the exact figures of the paper.
+The committed figures in `results/figures/` are the exact figures of the paper. `make_figures.py` reproduces them from the committed curves with the repository plot style; commit the regenerated PDFs only if you want to replace the canonical set.
 
 ## Models
 

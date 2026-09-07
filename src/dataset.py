@@ -12,14 +12,14 @@ def snr_points(low=-5, high=20, step=2):
 
 def generate_batch(size, snr_db, n_echoes, base_seed, bit_rng=None):
     if bit_rng is None:
-        bit_rng = np.random.default_rng(base_seed)
+        bit_rng = np.random.default_rng(int(base_seed) & 0x7FFFFFFF)
     bits = bit_rng.integers(0, 2, size=size).astype(np.int32)
     x = np.empty((size, 100, 3), dtype=np.float32)
     delay = np.empty((size,), dtype=np.float32)
     for i, b in enumerate(bits):
+        seed = (int(base_seed) + i * 7919 + int(snr_db) * 104729) & 0x7FFFFFFF
         x[i], delay[i] = channel.generate_symbol(
-            int(b), seed=int(base_seed + i * 7919 + snr_db * 104729),
-            snr_db=float(snr_db), n_echoes=n_echoes)
+            int(b), seed=seed, snr_db=float(snr_db), n_echoes=n_echoes)
     return x, bits, delay
 
 
@@ -27,9 +27,10 @@ def generate_split(num_symbols, n_echoes, base_seed, snrs=None):
     snrs = snrs or snr_points()
     per_snr = max(1, num_symbols // len(snrs))
     x_parts, b_parts, d_parts = [], [], []
-    rng = np.random.default_rng(base_seed)
+    rng = np.random.default_rng(int(base_seed) & 0x7FFFFFFF)
     for snr in snrs:
-        x, b, d = generate_batch(per_snr, snr, n_echoes, base_seed + snr, bit_rng=rng)
+        seed = (int(base_seed) + int(snr) * 1000 + 12345) & 0x7FFFFFFF
+        x, b, d = generate_batch(per_snr, snr, n_echoes, seed, bit_rng=rng)
         x_parts.append(x)
         b_parts.append(b)
         d_parts.append(d)
