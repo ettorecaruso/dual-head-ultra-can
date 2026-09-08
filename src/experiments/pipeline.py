@@ -1,0 +1,520 @@
+#!/usr/bin/env python3
+
+"""Experiment pipelines: data preparation, training and evaluation helpers."""
+
+from __future__ import annotations
+
+import logging
+import random
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+
+from src.data.dataset_generator import generate_dataset
+from src.data.data_loader import (
+    build_reference_matrix,
+    load_npz_files,
+    verify_snr_balance,
+)
+from src.evaluation.compare_baselines import plot_ber_overlay
+from src.evaluation.evaluator import (
+    compute_ber_curve,
+    evaluate_model,
+    evaluate_model_online,
+    plot_ber_vs_snr,
+)
+from src.evaluation.weight_comparison import generate_weight_table as gen_weight_table
+from src.models.baselines import build_baseline
+from src.models.ultra_can import build_dual_head_ultra_can
+from src.models.ultra_can_qkv import build_dual_head_ultra_can_qkv
+from src.training.trainer import Trainer
+from src.utils.config_loader import save_config_snapshot, validate_config
+from src.utils.dataset_utils import get_dataset_dir
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+_REQUIRED_KEYS: Tuple[str, ...] = (
+    "general.experiment_name",
+    "general.seed",
+    "general.log_level",
+    "data.sequence_length",
+    "data.feature_mode",
+    "data.snr_range",
+    "data.snr_step",
+    "data.echoes",
+    "data.max_delay",
+    "data.max_doppler",
+    "data.num_symbols_train",
+    "data.num_symbols_val",
+    "data.num_symbols_test",
+    "training.batch_size",
+    "training.lambda_mse",
+    "training.loss_weights.comm",
+    "training.loss_weights.sensing",
+    "model.backbone_type",
+)
+
+def prepare_dataset(config: dict, no_regen: bool = False) -> Path:
+    from src.data.dataset_generator import generate_dataset
+    from src.utils.dataset_utils import get_dataset_dir
+
+    data_dir = get_dataset_dir(config)
+    if not no_regen:
+        splits = ["train", "val", "test"]
+        missing = False
+        for split in splits:
+            if not any(data_dir.glob(f"{split}_*.npz")):
+                missing = True
+                break
+        if missing:
+            logger.info("Dataset non trovato in %s, generazione...", data_dir)
+            for split in splits:
+                generate_dataset(config, split, data_dir)
+        else:
+            logger.info("Dataset già presente in %s", data_dir)
+    else:
+        logger.info("no_regen=True, utilizzo dataset esistente in %s", data_dir)
+    return data_dir
+
+def load_datasets(
+    config: Dict[str, Any],
+    data_dir: Path
+) -> Tuple[Dict[str, np.ndarray], tf.data.Dataset, tf.data.Dataset, Dict[str, np.ndarray]]:
+    
+    from src.data.dataset_generator import build_snr_grid
+    from src.data.data_loader import load_npz_files, verify_snr_balance, build_tf_dataset
+
+    data_cfg = config["data"]
+    snr_grid = build_snr_grid(data_cfg["snr_range"], data_cfg["snr_step"])
+    echoes = list(data_cfg["echoes"])
+
+    data_dicts = {}
+    for split in ("train", "val", "test"):
+        data = load_npz_files(data_dir, snr_grid, echoes, split, config)
+        verify_snr_balance(data, snr_grid, echoes)
+        data["x_ref"] = build_reference_matrix(data["bit"], data["seed"], config)
+        data_dicts[split] = data
+        logger.info("Split '%s': %d campioni", split, data["x"].shape[0])
+
+    batch_size = int(config["training"]["batch_size"])
+    seed = int(config["general"]["seed"])
+    train_ds = build_tf_dataset(
+        data_dicts["train"],
+        batch_size=batch_size,
+        config=config,
+        shuffle=True,
+        seed=seed,
+    )
+    val_ds = build_tf_dataset(
+        data_dicts["val"],
+        batch_size=batch_size,
+        config=config,
+        shuffle=False,
+        seed=seed,
+    )
+    return data_dicts["train"], train_ds, val_ds, data_dicts["test"]
+
+def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
+    
+
+    if model_type == "qkv":
+        config["model"]["backbone_type"] = "qkv_attention"
+    else:
+        config["model"]["backbone_type"] = model_type
+
+    general = config.get("general") or {}
+    model_cfg = config.get("model") or {}
+    _seed = int(
+        (model_cfg.get("seeds") or {}).get(
+            model_type, general.get("model_seed", general.get("seed", 42))
+        )
+    )
+    random.seed(_seed)
+    np.random.seed(_seed)
+    tf.random.set_seed(_seed)
+    logger.info(
+        "build_model '%s': seed MODELLO applicato = %d (da model.seeds.%s, "
+        "dataset seed resta %d)",
+        model_type, _seed, model_type, int(general.get("seed", 42)),
+    )
+
+    builders = {
+        "conv1d": build_dual_head_ultra_can,
+        "qkv": build_dual_head_ultra_can_qkv,
+        "lstm": lambda cfg: build_baseline(cfg, "lstm"),
+        "mc_dlsk": lambda cfg: build_baseline(cfg, "mc_dlsk"),
+    }
+    if model_type not in builders:
+        raise ValueError(
+            f"model_type non supportato: {model_type!r} (attesi: {list(builders.keys())})"
+        )
+
+    model = builders[model_type](config)
+
+    if model.input_shape is None:
+        data_cfg = config["data"]
+        seq_len = int(data_cfg["sequence_length"])
+        feature_mode = str(data_cfg.get("feature_mode", "real"))
+        num_features = 2 if feature_mode == "iq" else 1
+        model.build(input_shape=(None, seq_len, num_features))
+        logger.debug(
+            "Modello %s buildato con input_shape=(None,%d,%d)",
+            model_type, seq_len, num_features
+        )
+
+    dummy = tf.zeros((1,) + tuple(model.input_shape[1:]), dtype=model.inputs[0].dtype)
+    outputs = model(dummy, training=False)
+
+    tf.debugging.assert_shapes([
+        (outputs["comm"], ("B", "M")),
+        (outputs["sensing"], ("B", 2)),
+    ])
+
+    for name, tensor in outputs.items():
+        tf.debugging.assert_all_finite(tensor, f"Output '{name}' non finito nel build.")
+
+    logger.info(
+        "Modello '%s' costruito: %d parametri addestrabili.",
+        model.name, model.count_params(),
+    )
+    return model
+
+def train_and_evaluate(
+    config: Dict[str, Any],
+    model: tf.keras.Model,
+    train_ds: tf.data.Dataset,
+    val_ds: tf.data.Dataset,
+    test_data: Dict[str, np.ndarray],
+    output_dir: Path
+) -> Dict[str, Any]:
+    
+    epochs = int(config["training"]["epochs"])
+    lambda_mse = float(config["training"]["lambda_mse"])
+    logger.info("Training per %d epoche, lambda_mse=%.4f", epochs, lambda_mse)
+
+    trainer = Trainer(config, model, train_ds, val_ds)
+    history = trainer.train()
+
+    trainer.restore_best_weights()
+
+    if config.get("evaluation", {}).get("online_generation", False):
+        eval_results = evaluate_model_online(model, config)
+    else:
+        eval_results = evaluate_model(model, test_data, config)
+    df_ber = compute_ber_curve(eval_results)
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = output_dir / "metrics.csv"
+    df_ber.to_csv(csv_path, index=False)
+    logger.info("Metriche salvate in %s", csv_path)
+
+    plot_format = config["visualization"].get("plot_format", "pdf")
+    plot_dir = output_dir / "plots"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    ber_plot_path = plot_ber_vs_snr(df_ber, plot_dir, plot_format, model.name)
+    logger.info("Plot BER vs SNR salvato in %s", ber_plot_path)
+
+    best_model_path = output_dir / "best_model.keras"
+    model.save(best_model_path)
+    logger.info("Modello salvato in %s", best_model_path)
+
+    if "ber" in df_ber.columns:
+        ber_values = df_ber["ber"].values
+        if not np.all(np.isfinite(ber_values)):
+            raise ValueError("BER contiene NaN o Inf")
+        if np.any((ber_values < 0) | (ber_values > 1)):
+            raise ValueError("BER fuori range [0,1]")
+
+    return {
+        "history": history,
+        "metrics": df_ber,
+        "plots": {"ber_vs_snr": ber_plot_path},
+        "model": model
+    }
+
+def run_single_experiment(
+    config: Dict[str, Any],
+    model_type: str,
+    output_dir: Path,
+    no_regen: bool = False
+) -> Dict[str, Any]:
+    
+    data_dir = prepare_dataset(config, no_regen)
+
+    train_data, train_ds, val_ds, test_data = load_datasets(config, data_dir)
+
+    model = build_model(config, model_type)
+
+    config.setdefault("general", {})["run_output_dir"] = str(output_dir)
+
+    result = train_and_evaluate(
+        config, model, train_ds, val_ds, test_data, output_dir
+    )
+
+    logs_dir = output_dir / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    save_config_snapshot(config, logs_dir)
+
+    return result
+
+
+def _build_jsr_values(jamming_cfg: Dict[str, Any]) -> List[float]:
+    
+    jamming_cfg = jamming_cfg or {}
+    if jamming_cfg.get("jsr_values"):
+        return [float(v) for v in jamming_cfg["jsr_values"]]
+    jsr_range = jamming_cfg.get("jsr_range") or [0, 10]
+    jsr_step = float(jamming_cfg.get("jsr_step", 2.0))
+    jsr_lo, jsr_hi = float(jsr_range[0]), float(jsr_range[1])
+    if jsr_step <= 0.0:
+        raise ValueError(f"jamming.jsr_step deve essere > 0, ricevuto: {jsr_step}")
+    return [round(float(v), 6) for v in np.arange(jsr_lo, jsr_hi + jsr_step / 2.0, jsr_step)]
+
+def evaluate_with_jamming(
+    config: Dict[str, Any],
+    model: tf.keras.Model,
+    test_data: Dict[str, np.ndarray],
+    output_dir: Path,
+    model_name: str = "model",
+) -> Dict[str, Any]:
+    
+    from src.experiments.run_jamming import evaluate_jamming
+
+    jamming_cfg = config.get("jamming", {}) or {}
+    jammer_types = list(jamming_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
+    jsr_values = _build_jsr_values(jamming_cfg)
+    logger.info("Avvio valutazione jamming per JSR = %s, tipi = %s", jsr_values, jammer_types)
+
+    results = evaluate_jamming(
+        model=model,
+        test_data=test_data,
+        config=config,
+        jsr_values=jsr_values,
+        jammer_types=jammer_types,
+        output_dir=output_dir,
+        model_name=model_name,
+    )
+
+    logger.info("Jamming completato. Risultati salvati in %s", output_dir)
+    return results
+
+def generate_weight_table(
+    config: Dict[str, Any],
+    models: Dict[str, Optional[tf.keras.Model]],
+    output_path: Path
+) -> Path:
+    
+    table_cfg = config.get("experiments", {}).get("final_report", {})
+    include_classical = table_cfg.get("include_classical", True)
+
+    tex_path = gen_weight_table(
+        models=models,
+        output_path=output_path,
+        include_classical=include_classical
+    )
+
+    logger.info("Tabella pesi generata: %s", tex_path)
+    return tex_path
+
+def collect_and_plot_overlay(
+    curves: Dict[str, pd.DataFrame],
+    scenario: str,
+    output_dir: Path,
+    plot_format: str = "pdf"
+) -> Path:
+    
+    plot_path = plot_ber_overlay(
+        curves=curves,
+        scenario=scenario,
+        output_dir=output_dir,
+        plot_format=plot_format
+    )
+
+    logger.info("Overlay salvato in %s", plot_path)
+    return plot_path
+
+def plot_layer_activity(
+    config: Dict[str, Any],
+    model: tf.keras.Model,
+    test_data: Dict[str, np.ndarray],
+    output_dir: Path
+) -> None:
+    
+    from src.data.data_loader import _build_feature_matrix
+    from src.visualization.attention_visualizer import plot_attention_maps
+    from src.visualization.layer_activity_visualizer import (
+        layer_activation_variance,
+        layer_weight_norms,
+        plot_layer_activity as _plot_activity_bars,
+    )
+
+    vis_cfg = config.get("visualization") or {}
+    num_samples = int(vis_cfg.get("num_samples", 5))
+    feature_mode = str(config.get("data", {}).get("feature_mode", "real"))
+    plot_format = str(vis_cfg.get("plot_format", "pdf"))
+
+    attention_dir = output_dir / "attention"
+    try:
+        plot_attention_maps(
+            model=model,
+            test_data=test_data,
+            output_dir=attention_dir,
+            num_samples=num_samples,
+            config=config,
+            plot_format=plot_format,
+        )
+    except ValueError as exc:
+        logger.warning(
+            "Mappe di attenzione non generabili (nessun layer di attenzione nel "
+            "modello '%s'?): %s",
+            model.name, exc,
+        )
+    except Exception as exc:
+        logger.error("Generazione mappe di attenzione fallita: %s", exc)
+
+    activity_dir = output_dir / "activity"
+    activity_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        weight_norms = layer_weight_norms(model)
+        if weight_norms:
+            _plot_activity_bars(
+                weight_norms,
+                activity_dir / f"layer_activity_weights.{plot_format}",
+                title_prefix="Norma L2 dei pesi per layer",
+            )
+        else:
+            logger.warning("Nessun layer con pesi addestrabili: salto le norme L2")
+    except Exception as exc:
+        logger.error("Calcolo norme L2 dei pesi fallito: %s", exc)
+
+    try:
+        x_first = np.asarray(test_data["x"])[0:1]
+        sample = _build_feature_matrix(x_first, feature_mode)
+        activation_variance = layer_activation_variance(model, sample)
+        if activation_variance:
+            _plot_activity_bars(
+                activation_variance,
+                activity_dir / f"layer_activity_variance.{plot_format}",
+                title_prefix="Varianza delle attivazioni per layer",
+            )
+        else:
+            logger.warning("Nessuna varianza di attivazione calcolata")
+    except Exception as exc:
+        logger.error("Calcolo varianza delle attivazioni fallito: %s", exc)
+
+    logger.info("Layer activity plots generati in %s", output_dir)
+
+_EXP_BLOCKS: Tuple[str, ...] = ("ber_vs_snr", "classical_receivers", "jamming", "jamming_interpretability", "final_report")
+_EXP_MODES: Tuple[str, ...] = ("full", "fast")
+
+def _merge_data_config(base_config: Dict[str, Any], data_params: Dict[str, Any]) -> Dict[str, Any]:
+    
+    merged = base_config.copy()
+    merged["data"] = {**base_config.get("data", {}), **data_params}
+    return merged
+
+def _apply_scenario_config(config: Dict[str, Any], scenario: Dict[str, Any]) -> Dict[str, Any]:
+    
+    sc_cfg = config.copy()
+    data_overrides: Dict[str, Any] = {
+        "echoes": list(scenario["echoes"]),
+        "max_doppler": float(scenario["max_doppler"]),
+    }
+    scenario_data = scenario.get("data")
+    if scenario_data is not None:
+        if not isinstance(scenario_data, dict):
+            raise ValueError(
+                f"scenario '{scenario.get('name', '?')}': il campo 'data' deve "
+                f"essere un dict di override data.*, ricevuto: {type(scenario_data).__name__}"
+            )
+        data_overrides.update(scenario_data)
+    sc_cfg["data"] = {**config["data"], **data_overrides}
+    return sc_cfg
+
+def prepare_all_datasets(
+    config_path: Path,
+    split: Optional[str] = None,
+    no_regen: bool = False
+) -> None:
+    
+    from src.utils.config_loader import DEFAULT_BASE_CONFIG_PATH, load_config
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"File config non trovato: {config_path}")
+
+    base_config = load_config(config_path, DEFAULT_BASE_CONFIG_PATH)
+
+    all_configs: List[Dict[str, Any]] = []
+    for exp_name in _EXP_BLOCKS:
+        exp_cfg = base_config.get(exp_name)
+        if not isinstance(exp_cfg, dict):
+            continue
+        for mode in _EXP_MODES:
+            mode_cfg = exp_cfg.get(mode)
+            if not isinstance(mode_cfg, dict):
+                continue
+            data_params = mode_cfg.get("data")
+            if not isinstance(data_params, dict):
+                continue
+            merged = _merge_data_config(base_config, data_params)
+
+            exp_section = mode_cfg.get("experiments")
+            if not isinstance(exp_section, dict):
+                exp_section = {}
+
+            if exp_name == "ber_vs_snr":
+                scenarios = (
+                    (exp_section.get("ber_vs_snr") or {}).get("scenarios") or []
+                )
+                for scenario in scenarios:
+                    if not isinstance(scenario, dict) or "name" not in scenario:
+                        logger.warning(
+                            "ber_vs_snr.%s: scenario malformato in experiments.yaml, saltato: %s",
+                            mode, scenario,
+                        )
+                        continue
+                    all_configs.append(_apply_scenario_config(merged, scenario))
+                continue
+
+            if exp_name in ("jamming", "jamming_interpretability"):
+                all_configs.append(merged)
+
+    if not all_configs:
+        logger.warning("Nessuna configurazione di dataset trovata in %s", config_path)
+        return
+
+    seen_hashes: set[str] = set()
+    for cfg in all_configs:
+        try:
+            data_dir = get_dataset_dir(cfg)
+        except Exception as e:
+            logger.warning("Impossibile calcolare hash per configurazione: %s", e)
+            continue
+
+        if str(data_dir) in seen_hashes:
+            continue
+        seen_hashes.add(str(data_dir))
+
+        if split is None:
+            logger.info("Generazione dataset per %s", data_dir)
+            prepare_dataset(cfg, no_regen=no_regen)
+        else:
+            if split not in ("train", "val", "test"):
+                raise ValueError(
+                    f"split deve essere in ('train','val','test'), ricevuto: {split!r}"
+                )
+            logger.info("Generazione split '%s' per %s", split, data_dir)
+            data_dir.mkdir(parents=True, exist_ok=True)
+            generate_dataset(cfg, split, data_dir)
+
+    logger.info(
+        "Preparazione dataset completata. %d configurazioni uniche elaborate.",
+        len(seen_hashes)
+    )
