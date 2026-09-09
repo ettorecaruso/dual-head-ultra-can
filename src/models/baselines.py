@@ -55,52 +55,52 @@ def _validate_baseline_config(
 ) -> Tuple[Dict[str, Any], int, int]:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
 
     baselines_cfg = config.get("baselines")
     if not isinstance(baselines_cfg, dict):
-        raise ValueError("sezione 'baselines' mancante o non dict nella config")
+        raise ValueError("'baselines' section missing or not a dict in config")
 
     enabled = baselines_cfg.get("enabled")
     if not isinstance(enabled, bool):
-        raise ValueError(f"baselines.enabled deve essere bool, ricevuto: {enabled!r}")
+        raise ValueError(f"baselines.enabled must be a bool, got: {enabled!r}")
     if not enabled:
         logger.warning(
-            "baselines.enabled e' false: la build delle baseline e' disabilitata"
+            "baselines.enabled is false: baseline building is disabled"
         )
         raise ValueError(
-            "baselines.enabled e' false: la build delle baseline e' disabilitata"
+            "baselines.enabled is false: baseline building is disabled"
         )
 
     if name not in _VALID_BASELINE_NAMES:
         raise ValueError(
-            f"baseline non valida: {name!r} (attese: {sorted(_VALID_BASELINE_NAMES)})"
+            f"invalid baseline: {name!r} (expected: {sorted(_VALID_BASELINE_NAMES)})"
         )
 
     baseline_cfg = baselines_cfg.get(name)
     if not isinstance(baseline_cfg, dict):
-        raise ValueError(f"sezione 'baselines.{name}' mancante o non dict nella config")
+        raise ValueError(f"'baselines.{name}' section missing or not a dict in the config")
 
     _assert_config_finite(baseline_cfg)
 
     required = _LSTM_REQUIRED_KEYS if name == "lstm" else _MC_DLSK_REQUIRED_KEYS
     missing = [key for key in required if key not in baseline_cfg]
     if missing:
-        raise ValueError(f"chiavi mancanti in baselines.{name}: {missing}")
+        raise ValueError(f"missing keys in baselines.{name}: {missing}")
 
     size = baseline_cfg["size"]
     if not isinstance(size, str) or size not in _VALID_SIZES:
         raise ValueError(
-            f"baselines.{name}.size deve essere uno di {list(_VALID_SIZES)}, "
-            f"ricevuto: {size!r}"
+            f"baselines.{name}.size must be one of {list(_VALID_SIZES)}, "
+            f"got: {size!r}"
         )
 
     if name in ("lstm", "mc_dlsk"):
         units = baseline_cfg["units"]
         if not isinstance(units, (list, tuple)) or len(units) == 0:
             raise ValueError(
-                f"baselines.{name}.units deve essere una lista non vuota di "
-                "interi positivi (layer ricorrenti), ricevuto: %r" % (units,)
+                f"baselines.{name}.units must be a non-empty list of "
+                "positive integers (recurrent layers), got: %r" % (units,)
             )
         for index, unit in enumerate(units):
             _as_positive_int(unit, f"baselines.{name}.units[{index}]")
@@ -112,34 +112,34 @@ def _validate_baseline_config(
             or not (0.0 <= float(dropout) < 1.0)
         ):
             raise ValueError(
-                f"baselines.{name}.dropout deve essere in [0, 1), ricevuto: {dropout!r}"
+                f"baselines.{name}.dropout must be in [0, 1), got: {dropout!r}"
             )
 
     data_cfg = config.get("data")
     if not isinstance(data_cfg, dict):
-        raise ValueError("sezione 'data' mancante o non dict nella config")
+        raise ValueError("'data' section missing or not a dict in config")
     _assert_config_finite(data_cfg)
 
     seq_len = _as_positive_int(data_cfg.get("sequence_length"), "data.sequence_length")
     feature_mode = data_cfg.get("feature_mode", "real")
     if not isinstance(feature_mode, str) or feature_mode not in _VALID_FEATURE_MODES:
         raise ValueError(
-            f"data.feature_mode deve essere uno di {list(_VALID_FEATURE_MODES)}, "
-            f"ricevuto: {feature_mode!r}"
+            f"data.feature_mode must be one of {list(_VALID_FEATURE_MODES)}, "
+            f"got: {feature_mode!r}"
         )
     num_features = 1 if feature_mode == "real" else 2
 
     head_input_dim = _head_input_dim(config)
     if head_input_dim != _HEAD_INPUT_DIM:
         raise ValueError(
-            f"le teste condivise attendono v in R^{_HEAD_INPUT_DIM}, ma "
-            f"heads._head_input_dim deriva {head_input_dim} dal backbone "
-            "(model.conv_filters[1]/model.attention_dim): allineare la config "
-            "prima di buildare le baseline"
+            f"the shared heads expect v in R^{_HEAD_INPUT_DIM}, but "
+            f"heads._head_input_dim derives {head_input_dim} from the backbone "
+            "(model.conv_filters[1]/model.attention_dim): align the config "
+            "before building the baselines"
         )
 
     logger.debug(
-        "config baseline '%s' validata: size=%s, seq_len=%d, num_features=%d",
+        "baseline config '%s' validated: size=%s, seq_len=%d, num_features=%d",
         name,
         size,
         seq_len,
@@ -156,9 +156,9 @@ def build_lstm_baseline(config: Dict[str, Any]) -> tf.keras.Model:
 
     if size == "micro":
         logger.warning(
-            "baselines.lstm.size='micro' (~100 params, Exp 2): le teste condivise "
-            "da heads.py sono fisse a 10724 params -> il target NON e' "
-            "raggiungibile da questo modulo (ALERTA-3, decisione utente pendente)"
+            "baselines.lstm.size='micro': the shared heads "
+            "built by heads.py are fixed at 10724 params -> the target is not "
+            "reachable from this module"
         )
 
     model_input = tf.keras.layers.Input(
@@ -185,8 +185,8 @@ def build_lstm_baseline(config: Dict[str, Any]) -> tf.keras.Model:
     lstm_dim = int(units[-1])
     if lstm_dim != _HEAD_INPUT_DIM:
         logger.warning(
-            "baselines.lstm.units[-1]=%d != contratto v in R^%d (Eq. (gap_comm)): "
-            "aggiungo proiezione Dense(%d) prima delle teste condivise",
+            "baselines.lstm.units[-1]=%d != v contract in R^%d: "
+            "adding Dense(%d) projection before the shared heads",
             lstm_dim,
             _HEAD_INPUT_DIM,
             _HEAD_INPUT_DIM,
@@ -229,17 +229,17 @@ def build_lstm_baseline(config: Dict[str, Any]) -> tf.keras.Model:
 
     if tuple(v.shape) != (None, _HEAD_INPUT_DIM):
         raise ValueError(
-            f"v shape attesa (None, {_HEAD_INPUT_DIM}), ricevuta: {tuple(v.shape)}"
+            f"expected v shape (None, {_HEAD_INPUT_DIM}), got: {tuple(v.shape)}"
         )
     if tuple(comm.shape) != (None, modulation_order):
         raise ValueError(
-            f"comm shape attesa (None, {modulation_order}), "
-            f"ricevuta: {tuple(comm.shape)}"
+            f"expected comm shape (None, {modulation_order}), "
+            f"got: {tuple(comm.shape)}"
         )
     if tuple(sensing.shape) != (None, _SENSING_OUTPUT_UNITS):
         raise ValueError(
-            f"sensing shape attesa (None, {_SENSING_OUTPUT_UNITS}), "
-            f"ricevuta: {tuple(sensing.shape)}"
+            f"expected sensing shape (None, {_SENSING_OUTPUT_UNITS}), "
+            f"got: {tuple(sensing.shape)}"
         )
 
     model = tf.keras.Model(
@@ -259,8 +259,8 @@ def build_lstm_baseline(config: Dict[str, Any]) -> tf.keras.Model:
     sensing_params = count_trainable_params(sensing_head)
     total_params = count_trainable_params(model)
     logger.info(
-        "modello '%s' costruito: backbone=%d params, comm=%d params, "
-        "sensing=%d params, TOT=%d params",
+        "model '%s' built: backbone=%d params, comm=%d params, "
+        "sensing=%d params, TOTAL=%d params",
         _MODEL_LSTM_NAME,
         total_params - comm_params - sensing_params,
         comm_params,
@@ -278,9 +278,9 @@ def build_mc_dlsk_baseline(config: Dict[str, Any]) -> tf.keras.Model:
 
     if size == "micro":
         logger.warning(
-            "baselines.mc_dlsk.size='micro' (~100 params, Exp 2): le teste "
-            "condivise da heads.py sono fisse -> il target NON e' "
-            "raggiungibile da questo modulo (ALERTA-3, decisione utente pendente)"
+            "baselines.mc_dlsk.size='micro': the shared "
+            "heads built by heads.py are fixed -> the target is not "
+            "reachable from this module"
         )
 
     model_input = tf.keras.layers.Input(
@@ -306,8 +306,8 @@ def build_mc_dlsk_baseline(config: Dict[str, Any]) -> tf.keras.Model:
     mc_dim = int(2 * units[-1])
     if mc_dim != _HEAD_INPUT_DIM:
         logger.warning(
-            "baselines.mc_dlsk: 2*units[-1]=%d != contratto v in R^%d: "
-            "aggiungo proiezione Dense(%d) prima delle teste condivise",
+            "baselines.mc_dlsk: 2*units[-1]=%d != v contract in R^%d: "
+            "adding Dense(%d) projection before the shared heads",
             mc_dim,
             _HEAD_INPUT_DIM,
             _HEAD_INPUT_DIM,
@@ -350,17 +350,17 @@ def build_mc_dlsk_baseline(config: Dict[str, Any]) -> tf.keras.Model:
 
     if tuple(v.shape) != (None, _HEAD_INPUT_DIM):
         raise ValueError(
-            f"v shape attesa (None, {_HEAD_INPUT_DIM}), ricevuta: {tuple(v.shape)}"
+            f"expected v shape (None, {_HEAD_INPUT_DIM}), got: {tuple(v.shape)}"
         )
     if tuple(comm.shape) != (None, modulation_order):
         raise ValueError(
-            f"comm shape attesa (None, {modulation_order}), "
-            f"ricevuta: {tuple(comm.shape)}"
+            f"expected comm shape (None, {modulation_order}), "
+            f"got: {tuple(comm.shape)}"
         )
     if tuple(sensing.shape) != (None, _SENSING_OUTPUT_UNITS):
         raise ValueError(
-            f"sensing shape attesa (None, {_SENSING_OUTPUT_UNITS}), "
-            f"ricevuta: {tuple(sensing.shape)}"
+            f"expected sensing shape (None, {_SENSING_OUTPUT_UNITS}), "
+            f"got: {tuple(sensing.shape)}"
         )
 
     model = tf.keras.Model(
@@ -380,8 +380,8 @@ def build_mc_dlsk_baseline(config: Dict[str, Any]) -> tf.keras.Model:
     sensing_params = count_trainable_params(sensing_head)
     total_params = count_trainable_params(model)
     logger.info(
-        "modello '%s' costruito: backbone=%d params, comm=%d params, "
-        "sensing=%d params, TOT=%d params",
+        "model '%s' built: backbone=%d params, comm=%d params, "
+        "sensing=%d params, TOTAL=%d params",
         _MODEL_MC_DLSK_NAME,
         total_params - comm_params - sensing_params,
         comm_params,
@@ -394,7 +394,7 @@ def build_baseline(config: Dict[str, Any], name: str) -> tf.keras.Model:
     
     if not isinstance(name, str) or name not in _VALID_BASELINE_NAMES:
         raise ValueError(
-            f"baseline non valida: {name!r} (attese: {list(_VALID_BASELINE_NAMES)})"
+            f"invalid baseline: {name!r} (expected: {list(_VALID_BASELINE_NAMES)})"
         )
 
     builders: Dict[str, Any] = {
@@ -406,7 +406,7 @@ def build_baseline(config: Dict[str, Any], name: str) -> tf.keras.Model:
     input_shape = tuple(model.input_shape)
     if len(input_shape) != 3 or input_shape[1] is None or input_shape[2] is None:
         raise ValueError(
-            f"shape input attesa (None, L, F), ricevuta: {input_shape!r}"
+            f"expected input shape (None, L, F), got: {input_shape!r}"
         )
 
     if isinstance(model.output, dict):
@@ -415,7 +415,7 @@ def build_baseline(config: Dict[str, Any], name: str) -> tf.keras.Model:
         output_keys = {getattr(model.output, "name", str(model.output))}
     if output_keys != {"comm", "sensing"}:
         raise ValueError(
-            f"output attesi {{'comm', 'sensing'}}, ricevuti: {sorted(output_keys)}"
+            f"expected outputs {{'comm', 'sensing'}}, got: {sorted(output_keys)}"
         )
 
     dummy_input = tf.ones(
@@ -426,11 +426,11 @@ def build_baseline(config: Dict[str, Any], name: str) -> tf.keras.Model:
     for output_name in ("comm", "sensing"):
         tf.debugging.assert_all_finite(
             outputs[output_name],
-            f"output '{output_name}' non finito su input non degenere (build)",
+            f"output '{output_name}' not finite on a non-degenerate input (build)",
         )
 
     logger.info(
-        "baseline '%s' costruita: input=%s, output=%s, params=%d",
+        "baseline '%s' built: input=%s, output=%s, params=%d",
         name,
         input_shape,
         sorted(output_keys),
@@ -441,10 +441,10 @@ def build_baseline(config: Dict[str, Any], name: str) -> tf.keras.Model:
 def main(argv: Optional[Sequence[str]] = None) -> None:
     
     parser = argparse.ArgumentParser(
-        description="Smoke test baseline DL (LSTM e MC-DLCSK), Fase 2.5"
+        description="Smoke test for the DL baselines (LSTM and MC-DLCSK)"
     )
     parser.add_argument(
-        "--config", required=True, help="path della config esperimento (YAML)"
+        "--config", required=True, help="path to the experiment config (YAML)"
     )
     args = parser.parse_args(argv)
 
@@ -455,7 +455,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     general = config.get("general")
     if not isinstance(general, dict):
-        raise ValueError("sezione 'general' mancante o non dict nella config")
+        raise ValueError("'general' section missing or not a dict in config")
     experiment_name = str(general.get("experiment_name", "ultra_can_isac"))
     log_dir = _REPO_ROOT / "results" / experiment_name / "logs"
     setup_logging(
@@ -468,7 +468,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     lstm = build_baseline(config, "lstm")
     mc_dlsk = build_baseline(config, "mc_dlsk")
     logger.info(
-        "baseline pronte: lstm=%d params, mc_dlsk=%d params",
+        "baselines ready: lstm=%d params, mc_dlsk=%d params",
         count_trainable_params(lstm),
         count_trainable_params(mc_dlsk),
     )

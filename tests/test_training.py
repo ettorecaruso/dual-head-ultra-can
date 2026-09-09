@@ -4,8 +4,8 @@ Test per ``src/training/trainer.py`` (``tests/test_training.py``).
 Verificano:
 
   - ``Trainer.__init__``: costruzione valida (attributi, ``lambda_mse``
-    loggato), lambda mancante/non finito -> ValueError, training mancante ->
-    ValueError, train_ds vuoto -> ValueError, val_ds vuoto -> WARNING, tipi
+    loggato), lambda mancante/not finite -> ValueError, training mancante ->
+    ValueError, train_ds empty -> ValueError, val_ds empty -> WARNING, tipi
     invalidi -> TypeError.
   - ``_validate_loss_weights``: allineamento comm->1.0 e sensing->lambda
     (Eq. (14) Sez. IV-D) con WARNING; loss_weights mancante -> ValueError.
@@ -20,7 +20,7 @@ Verificano:
   - ``train()``: un passo reale -> loss/gradienti finiti (batch 1/32/128);
     log INFO con lambda_mse; early stopping con patience dal config;
     checkpoint salvato; senza val_ds; lambda 0 e 100 stabili; loss_weights
-    mancante -> ValueError; label senza chiavi attese -> RuntimeError.
+    mancante -> ValueError; label senza keys attese -> RuntimeError.
 
 Test di integrazione: import del modulo e flusso end-to-end (config ->
 dataset -> Trainer -> train -> artefatti finiti e coerenti con lambda_mse).
@@ -35,7 +35,7 @@ monkeypatch, parametrize) e con il comando dal log:
 unittest e' mappato sulle fixture di ``tests/conftest.py``.
 
 Conformita' : shape-check e check NaN/Inf ();
-nessuna pipe in shell; nessun file scritto fuori da ``paper/`` (log e
+nessuna pipe in shell; no valid .npz file scritto outside da ``paper/`` (log e
 checkpoint dei test in ``tmp_path`` via monkeypatch di ``Trainer._get_log_dir``).
 
 TODO (test mancanti, segnalati esplicitamente):
@@ -123,7 +123,7 @@ def _patch_log_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(Trainer, "_get_log_dir", lambda self: tmp_path)
 
 def _empty_dataset() -> tf.data.Dataset:
-    """Dataset vuoto con il contratto features/labels del Trainer.
+    """Dataset empty con il contratto features/labels del Trainer.
 
     Returns:
         ``tf.data.Dataset`` con cardinalita' 0 e labels ``{"comm", "sensing"}``.
@@ -207,7 +207,7 @@ def test_trainer_init_missing_training_section(
 def test_trainer_init_empty_train_ds(
     tiny_config: Dict[str, Any], tmp_path: Path
 ) -> None:
-    """Input limite: ``train_ds`` vuoto -> ValueError (nessun training su dati vuoti)."""
+    """Input limite: ``train_ds`` empty -> ValueError (nessun training su dati vuoti)."""
     config = _trainer_config(tiny_config, tmp_path)
     model = _make_fake_model()
     with pytest.raises(ValueError, match="train_ds"):
@@ -219,7 +219,7 @@ def test_trainer_init_empty_val_ds(
     tiny_dataset: Dict[str, np.ndarray],
     tmp_path: Path,
 ) -> None:
-    """Input limite: ``val_ds`` vuoto -> WARNING e disabilitato (self.val_ds = None)."""
+    """Input limite: ``val_ds`` empty -> WARNING e disabilitato (self.val_ds = None)."""
     config = _trainer_config(tiny_config, tmp_path)
     ds = _make_tf_dataset(tiny_dataset, config, 32)
     model = _make_fake_model()
@@ -297,8 +297,8 @@ def test_loss_weights_alignment(
     assert trainer.training_cfg["loss_weights"]["sensing"] == pytest.approx(
         _LAMBDA_YAML
     )
-    assert "forzato a 1.0" in caplog.text
-    assert "allineo a lambda_mse" in caplog.text
+    assert "forced to 1.0" in caplog.text
+    assert "aligning to lambda_mse" in caplog.text
 
 def test_loss_weights_missing_raises(
     tiny_config: Dict[str, Any], tiny_dataset: Dict[str, np.ndarray], tmp_path: Path
@@ -407,7 +407,7 @@ def test_build_callbacks_no_checkpoint_warns(
     trainer = Trainer(config, model, ds, ds)
     with caplog.at_level(logging.WARNING, logger="src.training.trainer"):
         callbacks = trainer._build_callbacks()
-    assert "checkpoint_path non impostato" in caplog.text
+    assert "checkpoint_path not set" in caplog.text
     assert not any(
         isinstance(c, tf.keras.callbacks.ModelCheckpoint) for c in callbacks
     )
@@ -463,7 +463,7 @@ def test_verify_finite_gradients_nan_raises(
 
     monkeypatch.setattr(trainer_module, "comm_ce_loss", _nan_comm_loss)
     trainer = Trainer(config, model, ds, ds)
-    with pytest.raises(ValueError, match="Gradiente non finito"):
+    with pytest.raises(ValueError, match="Non-finite gradient"):
         trainer.verify_finite_gradients()
 
 def test_verify_finite_gradients_requires_dataset(
@@ -478,8 +478,8 @@ def test_verify_finite_gradients_requires_dataset(
     trainer = Trainer(config, model, ds, ds)
     batch_features = next(iter(ds))[0]
     predictions = trainer.model(batch_features, training=False)
-    tf.debugging.assert_all_finite(predictions["comm"], "comm non finito")
-    tf.debugging.assert_all_finite(predictions["sensing"], "sensing non finito")
+    tf.debugging.assert_all_finite(predictions["comm"], "comm not finite")
+    tf.debugging.assert_all_finite(predictions["sensing"], "sensing not finite")
     assert predictions["comm"].shape == (32, _M_BPSK)
     assert predictions["sensing"].shape == (32, 2)
 
@@ -595,7 +595,7 @@ def test_trainer_checkpoint_saved(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Caso normale: dopo ``train()`` il checkpoint file esiste (e non e' vuoto)."""
+    """Caso normale: dopo ``train()`` il checkpoint file esiste (e non e' empty)."""
     _patch_log_dir(monkeypatch, tmp_path)
     config = _trainer_config(tiny_config, tmp_path)
     ds = _make_tf_dataset(tiny_dataset, config, 32)
@@ -673,7 +673,7 @@ def test_train_missing_label_keys_raises(
     bad_ds = tf.data.Dataset.from_tensor_slices((x, {"foo": comm})).batch(32)
     model = _make_fake_model()
     trainer = Trainer(config, model, bad_ds, bad_ds)
-    with pytest.raises(RuntimeError, match="Verifica gradienti fallita"):
+    with pytest.raises(RuntimeError, match="Gradient verification failed"):
         trainer.train()
 
 def test_trainer_restores_best_weights(
@@ -699,8 +699,8 @@ def test_trainer_restores_best_weights(
     trainer.train()
     batch_features = next(iter(ds))[0]
     predictions = trainer.model(batch_features, training=False)
-    tf.debugging.assert_all_finite(predictions["comm"], "comm non finito")
-    tf.debugging.assert_all_finite(predictions["sensing"], "sensing non finito")
+    tf.debugging.assert_all_finite(predictions["comm"], "comm not finite")
+    tf.debugging.assert_all_finite(predictions["sensing"], "sensing not finite")
 
 def test_trainer_module_import() -> None:
     
@@ -738,5 +738,5 @@ def test_end_to_end_trainer(
     predictions = trainer.model(batch_features, training=False)
     assert predictions["comm"].shape == (32, _M_BPSK)
     assert predictions["sensing"].shape == (32, 2)
-    tf.debugging.assert_all_finite(predictions["comm"], "comm non finito")
-    tf.debugging.assert_all_finite(predictions["sensing"], "sensing non finito")
+    tf.debugging.assert_all_finite(predictions["comm"], "comm not finite")
+    tf.debugging.assert_all_finite(predictions["sensing"], "sensing not finite")

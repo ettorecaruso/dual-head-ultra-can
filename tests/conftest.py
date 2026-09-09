@@ -18,7 +18,7 @@ Questo modulo fornisce tre fixture riutilizzate da tutti i file ``tests/test_*.p
 
 Nota su ``sys.path``: le fixture importano i moduli ``src.*``; il bootstrap
 aggiunge la root del repository (``paper/``) a ``sys.path`` cosi' la suite
-funziona anche quando pytest viene lanciato al di fuori di ``paper/``
+funziona anche quando pytest viene lanciato al di outside di ``paper/``
 (stesso pattern gia' usato in ``src/data/dataset_generator.py``).
 
 Scelta di pytest: il conftest e' un meccanismo nativo di pytest (nessuna

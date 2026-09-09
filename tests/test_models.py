@@ -3,7 +3,7 @@ Test per ``src/models/heads.py``, ``src/models/ultra_can.py`` e
 ``src/models/ultra_can_qkv.py`` (``tests/test_models.py``).
 
 Questi test verificano:
-  T1  test_forward_batch_1        batch size=1: comm (1,2), sensing (1,2), finito
+  T1  test_forward_batch_1        batch size=1: comm (1,2), sensing (1,2), finite
   T2  test_forward_batch_1024     batch size=1024: shape corrette, nessun NaN/Inf
   T3  test_model_output_shapes    tf.debugging.assert_shapes su input (B,100,1),
                                   H^att (B,96,64), logits (B,2), sensing (B,2)
@@ -16,7 +16,7 @@ Superficie coperta (funzioni pubbliche dei tre moduli):
   ``heads.build_communication_head`` / ``heads.build_sensing_head`` /
   ``heads.num_params`` / ``heads._head_input_dim`` / ``heads.main`` :
       shape di output (B, M) e (B, 2), conteggi parametri 8578/2146/8836,
-      input estremi |v| = 1e-6/1e6 (finito, logits stabili), input nullo
+      input estremi |v| = 1e-6/1e6 (finite, logits stabili), input nullo
       (= bias del layer finale per comm — Fase 4: attivazione lineare,
       logits — e bias per sensing), NaN -> guardia,
       feature dim errata -> shape error, config invalida -> ValueError,
@@ -163,7 +163,7 @@ def _random_input(batch: int, seq_len: int = _N_SEQ, channels: int = 2) -> np.nd
 
 @pytest.mark.parametrize("batch", [_SMALL_BATCH, _LARGE_BATCH])
 def test_comm_head_output_shapes(tiny_config: Dict[str, Any], batch: int) -> None:
-    """Output comm: (B, M) logits, finito, softmax(logits) ~1, argmax in {0,1} (M=2)."""
+    """Output comm: (B, M) logits, finite, softmax(logits) ~1, argmax in {0,1} (M=2)."""
     comm_head = build_communication_head(tiny_config)
     v = np.zeros((batch, _HEAD_INPUT_DIM), dtype=np.float32)
     out = comm_head(v, training=False).numpy()
@@ -196,7 +196,7 @@ def test_comm_head_modulation_order(
 
 @pytest.mark.parametrize("batch", [_SMALL_BATCH, _LARGE_BATCH])
 def test_sensing_head_output_shapes(tiny_config: Dict[str, Any], batch: int) -> None:
-    """Output sensing: (B, 2) [tau, fD], finito (Sez. IV-C)."""
+    """Output sensing: (B, 2) [tau, fD], finite (Sez. IV-C)."""
     sensing_head = build_sensing_head(tiny_config)
     v = np.zeros((batch, _HEAD_INPUT_DIM), dtype=np.float32)
     out = sensing_head(v, training=False).numpy()
@@ -255,7 +255,7 @@ def test_heads_nan_input_raises(tiny_config: Dict[str, Any]) -> None:
         tf.debugging.assert_all_finite(out, message="guardia NaN heads")
 
 def test_heads_wrong_feature_dim_raises(tiny_config: Dict[str, Any]) -> None:
-    """v (B, 32) vs atteso (B, 64): shape error all'forward."""
+    """v (B, 32) vs expected (B, 64): shape error all'forward."""
     comm_head = build_communication_head(tiny_config)
     v = np.zeros((2, 32), dtype=np.float32)
     with pytest.raises((tf.errors.InvalidArgumentError, ValueError)):
@@ -314,7 +314,7 @@ def test_head_input_dim_qkv_uses_attention_dim(tiny_config: Dict[str, Any]) -> N
     assert _head_input_dim(cfg_qkv_dim32) == 32
 
 def test_forward_batch_1(tiny_model: tf.keras.Model) -> None:
-    """T1 (): batch 1 -> comm (1,2), sensing (1,2), tutto finito."""
+    """T1 (): batch 1 -> comm (1,2), sensing (1,2), tutto finite."""
     x = _random_input(_SMALL_BATCH)
     out = tiny_model(x, training=False)
     assert out["comm"].shape == (_SMALL_BATCH, _M_BPSK)
@@ -369,7 +369,7 @@ def test_param_count_expected(tiny_model: tf.keras.Model) -> None:
 
 @pytest.mark.parametrize("batch", [_SMALL_BATCH, _LARGE_BATCH])
 def test_backbone_h_att_shape(tiny_config: Dict[str, Any], batch: int) -> None:
-    """Backbone conv1d: H^att (B, 96, 64), finito, per batch 1 e 1024."""
+    """Backbone conv1d: H^att (B, 96, 64), finite, per batch 1 e 1024."""
     backbone = build_backbone(tiny_config)
     x = _random_input(batch, channels=1)
     h_att = backbone(x, training=False).numpy()
@@ -399,7 +399,7 @@ def test_attention_weights_in_unit_interval(tiny_model: tf.keras.Model) -> None:
     )
 
 def test_ultra_can_zero_input_finite(tiny_model: tf.keras.Model) -> None:
-    """Input zero: comm = bias del layer finale (logits, Fase 4), sensing = bias, finito."""
+    """Input zero: comm = bias del layer finale (logits, Fase 4), sensing = bias, finite."""
     x0 = np.zeros((2, _N_SEQ, 2), dtype=np.float32)
     out = tiny_model(x0, training=False)
     comm = out["comm"].numpy()
@@ -810,7 +810,7 @@ def test_qkv_sensing_output_column_order(tiny_config: Dict[str, Any]) -> None:
     assert out["sensing"].shape == (4, 2)
 
 def test_qkv_wrong_input_dim_raises(tiny_config: Dict[str, Any]) -> None:
-    """QKV input con seq_len incompatibile (B, 50, 1) vs atteso (B, 100, 1)."""
+    """QKV input con seq_len incompatibile (B, 50, 1) vs expected (B, 100, 1)."""
     model = build_dual_head_ultra_can_qkv(_qkv_config(tiny_config))
     x_wrong = np.zeros((2, 50, 1), dtype=np.float32)
     with pytest.raises((tf.errors.InvalidArgumentError, ValueError)):

@@ -10,8 +10,8 @@ Verificano le modifiche a ``src/experiments/runner.py``:
   - il matched filter (conoscenza della sequenza) è il migliore tra i ricevitori
     classici ma resta peggiore dei DL (qui: meglio del DCSK).
 
-Conformità : shape-check e check NaN/Inf; type hints; nessun file
-scritto fuori da ``paper/`` (i test sono read-only sui dati generati al volo).
+Conformità : shape-check e check NaN/Inf; type hints; no valid .npz file
+scritto outside da ``paper/`` (i test sono read-only sui dati generati al volo).
 
 Esecuzione:
   python -m pytest tests/test_exp3_echo_only.py -v
@@ -120,7 +120,7 @@ def test_exp3_energy_detector_is_floor(module_config: Dict[str, Any]) -> None:
         num_symbols=400, echo_cfg=echo_cfg,
     )
     ber_energy = _ber_for(module_config, y, bits, "energy_detector")
-    assert 0.40 <= ber_energy <= 0.60, f"energy detector fuori dal floor: {ber_energy:.3f}"
+    assert 0.40 <= ber_energy <= 0.60, f"energy detector outside dal floor: {ber_energy:.3f}"
 
 def test_exp3_frame_consistency_raises(module_config: Dict[str, Any]) -> None:
     """Frame DCSK non rappresentabile (2*beta != sequence_length) -> ValueError."""

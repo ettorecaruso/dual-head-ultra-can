@@ -5,7 +5,7 @@ Questi test verificano:
   T1  test_logistic_map_r_400          mu=4.0 (limite del caos): no NaN/Inf,
                                        valori in (0,1), lunghezza 100
   T2  test_logistic_map_r_357          mu=3.57 (soglia del caos): limitata in [0,1]
-  T3  test_logistic_map_invalid_mu     mu=3.0 -> ValueError (guardia regime caotico)
+  T3  test_logistic_map_invalid_mu     mu=3.0 -> ValueError (guardia chaotic regime)
   T4  test_logistic_map_deterministic_seed  stesso seed -> stessa sequenza (1e-12)
   T5  test_bernoulli_map               Eq. (2): valori in [0,1], nessun collasso
   T6  test_autocorrelation_impulsive   lag 0 >> lag>0 (proprieta' Dirac-like, Sez. III-B)
@@ -19,7 +19,7 @@ funzione" (input validi / limite / invalidi) il file copre anche:
   - ``_map_type_for_bit``         : CSK bit 0/1 (), separazione,
     input invalidi;
   - ``EchoParams`` / ``DirectPathParams`` : validazione dei range (Tab. I);
-  - ``build_snr_grid``            : griglia aritmetica inclusiva sugli estremi (T13).
+  - ``build_snr_grid``            : grid aritmetica inclusiva sugli estremi (T13).
 
 Scelta di pytest: coerente con la suite esistente (``tests/test_logger.py`` usa
 pytest con fixtures) e con il comando dal log:
@@ -86,8 +86,8 @@ def test_logistic_map_r_357() -> None:
     assert float(np.max(seq) - np.min(seq)) > 1e-9
 
 def test_logistic_map_invalid_mu() -> None:
-    """T3: mu=3.0 fuori da [3.57, 4] -> ValueError (fail-fast,  Sez. 7)."""
-    with pytest.raises(ValueError, match="regime caotico"):
+    """T3: mu=3.0 outside da [3.57, 4] -> ValueError (fail-fast,  Sez. 7)."""
+    with pytest.raises(ValueError, match="chaotic regime"):
         generate_chaotic_sequence("logistic", 3.0, _SEED, _N_SEQ)
 
 def test_logistic_map_deterministic_seed() -> None:
@@ -140,7 +140,7 @@ def test_generate_chaotic_sequence_seed_zero() -> None:
     assert np.all(seq > 0.0)
 
 def test_generate_chaotic_sequence_different_seeds() -> None:
-    """Caso normale: seed diversi -> sequenze diverse (probabilita' di collisione ~0)."""
+    """Caso normale: seed diversi -> sequenze diverse (probabilita' di collision ~0)."""
     seq_a = generate_chaotic_sequence("logistic", _LOGISTIC_MU_PAPER, 1, _N_SEQ)
     seq_b = generate_chaotic_sequence("logistic", _LOGISTIC_MU_PAPER, 2, _N_SEQ)
     assert not np.allclose(seq_a, seq_b, rtol=0.0, atol=1e-12)
@@ -162,11 +162,11 @@ def test_generate_chaotic_sequence_length_2() -> None:
 
 def test_generate_chaotic_sequence_length_1_raises() -> None:
     
-    with pytest.raises(RuntimeError, match="degenerata"):
+    with pytest.raises(RuntimeError, match="degenerate"):
         generate_chaotic_sequence("logistic", _LOGISTIC_MU_PAPER, _SEED, 1)
 
 def test_bernoulli_map_ignores_map_param() -> None:
-    """Caso limite: map_param fuori [3.57, 4] NON e' errore per Bernoulli ()."""
+    """Caso limite: map_param outside [3.57, 4] NON e' errore per Bernoulli ()."""
     seq = generate_chaotic_sequence("bernoulli", 1.0, _SEED, _N_SEQ)
     assert np.all(np.isfinite(seq))
     assert np.all(seq >= 0.0)
@@ -204,13 +204,13 @@ def test_csk_classes_equienergetic() -> None:
 
 @pytest.mark.parametrize("map_type", ["tent", "", None, 3.7])
 def test_generate_chaotic_sequence_invalid_map_type(map_type: object) -> None:
-    """Input invalidi: map_type fuori da {logistic, bernoulli} -> ValueError."""
+    """Input invalidi: map_type outside da {logistic, bernoulli} -> ValueError."""
     with pytest.raises(ValueError, match="map_type"):
         generate_chaotic_sequence(map_type, _LOGISTIC_MU_PAPER, _SEED, _N_SEQ)
 
 @pytest.mark.parametrize("map_param", [3.0, 4.1, 2.9, float("nan"), float("inf"), "3.9"])
 def test_generate_chaotic_sequence_invalid_map_param(map_param: object) -> None:
-    """Input invalidi: mu fuori [3.57, 4] o non finito -> ValueError (logistic)."""
+    """Input invalidi: mu outside [3.57, 4] o not finite -> ValueError (logistic)."""
     with pytest.raises(ValueError):
         generate_chaotic_sequence("logistic", map_param, _SEED, _N_SEQ)
 
@@ -228,7 +228,7 @@ def test_generate_chaotic_sequence_invalid_length(sequence_length: object) -> No
 
 def test_generate_chaotic_sequence_bool_length_regression() -> None:
     
-    with pytest.raises(RuntimeError, match="degenerata"):
+    with pytest.raises(RuntimeError, match="degenerate"):
         generate_chaotic_sequence("logistic", _LOGISTIC_MU_PAPER, _SEED, True)
 
 def test_iterate_map_logistic_recurrence() -> None:
@@ -296,18 +296,18 @@ def test_echo_params_invalid_tau(tau: object) -> None:
 
 @pytest.mark.parametrize("f_doppler", [-0.1, 0.5, 1.0, float("nan")])
 def test_echo_params_invalid_doppler(f_doppler: float) -> None:
-    """Input invalidi: f_doppler fuori da [0, 0.5) o non finito -> ValueError."""
+    """Input invalidi: f_doppler outside da [0, 0.5) o not finite -> ValueError."""
     with pytest.raises(ValueError, match="f_doppler"):
         EchoParams(tau=1, f_doppler=f_doppler, alpha=1e-3)
 
 @pytest.mark.parametrize("alpha", [0.0, -0.1, 1.0, 1.5, float("nan")])
 def test_echo_params_invalid_alpha(alpha: float) -> None:
-    """Input invalidi: alpha fuori da (0, 1) o non finito -> ValueError."""
+    """Input invalidi: alpha outside da (0, 1) o not finite -> ValueError."""
     with pytest.raises(ValueError, match="alpha"):
         EchoParams(tau=1, f_doppler=1e-5, alpha=alpha)
 
 def test_direct_path_params_valid() -> None:
-    """Caso normale: DirectPathParams con h_c finito e f_dc in [0, 0.5)."""
+    """Caso normale: DirectPathParams con h_c finite e f_dc in [0, 0.5)."""
     direct = DirectPathParams(h_c=complex(0.7, 0.3), f_dc=1e-5)
     assert math.isfinite(direct.h_c.real)
     assert direct.f_dc == pytest.approx(1e-5)
@@ -320,7 +320,7 @@ def test_direct_path_params_invalid_hc(h_c: complex) -> None:
 
 @pytest.mark.parametrize("f_dc", [-0.1, 0.5, float("nan")])
 def test_direct_path_params_invalid_fdc(f_dc: float) -> None:
-    """Input invalidi: f_dc fuori da [0, 0.5) o non finito -> ValueError."""
+    """Input invalidi: f_dc outside da [0, 0.5) o not finite -> ValueError."""
     with pytest.raises(ValueError, match="f_dc"):
         DirectPathParams(h_c=complex(1.0, 0.0), f_dc=f_dc)
 

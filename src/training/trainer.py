@@ -34,13 +34,13 @@ class Trainer:
     ) -> None:
         
         if not isinstance(config, dict):
-            raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+            raise TypeError(f"config must be a dict, got: {type(config).__name__}")
         if not isinstance(model, tf.keras.Model):
-            raise TypeError(f"model deve essere tf.keras.Model, ricevuto: {type(model).__name__}")
+            raise TypeError(f"model must be a tf.keras.Model, got: {type(model).__name__}")
         if not isinstance(train_ds, tf.data.Dataset):
-            raise TypeError(f"train_ds deve essere tf.data.Dataset, ricevuto: {type(train_ds).__name__}")
+            raise TypeError(f"train_ds must be a tf.data.Dataset, got: {type(train_ds).__name__}")
         if val_ds is not None and not isinstance(val_ds, tf.data.Dataset):
-            raise TypeError(f"val_ds deve essere tf.data.Dataset o None, ricevuto: {type(val_ds).__name__}")
+            raise TypeError(f"val_ds must be a tf.data.Dataset or None, got: {type(val_ds).__name__}")
 
         self.config = config
         self.model = model
@@ -49,68 +49,68 @@ class Trainer:
 
         self.training_cfg = config.get("training")
         if not isinstance(self.training_cfg, dict):
-            raise ValueError("config['training'] mancante o non dict")
+            raise ValueError("config['training'] missing or not a dict")
 
         self.lambda_mse = self.training_cfg.get("lambda_mse")
         if self.lambda_mse is None:
-            raise ValueError("chiave 'training.lambda_mse' mancante nella config")
+            raise ValueError("missing 'training.lambda_mse' key in config")
         if not isinstance(self.lambda_mse, (int, float)):
-            raise ValueError(f"training.lambda_mse deve essere un numero finito, ricevuto: {self.lambda_mse!r}")
+            raise ValueError(f"training.lambda_mse must be a finite number, got: {self.lambda_mse!r}")
         self.lambda_mse = float(self.lambda_mse)
         if not math.isfinite(self.lambda_mse):
-            raise ValueError(f"training.lambda_mse deve essere un numero finito, ricevuto: {self.lambda_mse!r}")
+            raise ValueError(f"training.lambda_mse must be a finite number, got: {self.lambda_mse!r}")
 
-        logger.info("Trainer initializzato: lambda_mse = %s", self.lambda_mse)
+        logger.info("Trainer initialized: lambda_mse = %s", self.lambda_mse)
 
         try:
             if hasattr(train_ds, "cardinality") and train_ds.cardinality() == 0:
-                raise ValueError("train_ds è vuoto (cardinalità 0)")
+                raise ValueError("train_ds is empty (cardinality 0)")
             for _ in train_ds.take(1):
                 break
             else:
-                raise ValueError("train_ds è vuoto (nessun elemento)")
+                raise ValueError("train_ds is empty (no elements)")
         except Exception as e:
-            raise ValueError(f"train_ds non valido o vuoto: {e}")
+            raise ValueError(f"train_ds invalid or empty: {e}")
 
         if val_ds is not None:
             try:
                 for _ in val_ds.take(1):
                     break
                 else:
-                    logger.warning("val_ds è vuoto: verrà disabilitato l'early stopping e la validazione")
+                    logger.warning("val_ds is empty: early stopping and validation will be disabled")
                     self.val_ds = None
             except Exception:
-                logger.warning("val_ds non iterabile o vuoto: verrà disabilitato l'early stopping")
+                logger.warning("val_ds is not iterable or empty: early stopping will be disabled")
                 self.val_ds = None
         else:
-            logger.info("val_ds non fornito: early stopping e validazione disabilitati")
+            logger.info("val_ds not provided: early stopping and validation disabled")
 
     def _validate_loss_weights(self) -> None:
         
         loss_weights = self.training_cfg.get("loss_weights")
         if not isinstance(loss_weights, dict):
-            raise ValueError("config['training']['loss_weights'] mancante o non dict")
+            raise ValueError("config['training']['loss_weights'] missing or not a dict")
 
         comm_weight = loss_weights.get("comm")
         sensing_weight = loss_weights.get("sensing")
 
         if comm_weight != 1.0:
             logger.warning(
-                "loss_weights.comm = %s != 1.0, forzato a 1.0 (Eq. (14))",
+                "loss_weights.comm = %s != 1.0, forced to 1.0 (Eq. (14))",
                 comm_weight,
             )
             loss_weights["comm"] = 1.0
 
         if sensing_weight != self.lambda_mse:
             logger.warning(
-                "loss_weights.sensing = %s != lambda_mse = %s, allineo a lambda_mse",
+                "loss_weights.sensing = %s != lambda_mse = %s, aligning to lambda_mse",
                 sensing_weight,
                 self.lambda_mse,
             )
             loss_weights["sensing"] = self.lambda_mse
 
         self.training_cfg["loss_weights"] = loss_weights
-        logger.debug("loss_weights allineati: comm=%.1f, sensing=%.3f",
+        logger.debug("loss_weights aligned: comm=%.1f, sensing=%.3f",
                      loss_weights["comm"], loss_weights["sensing"])
 
     def _build_callbacks(self) -> List[tf.keras.callbacks.Callback]:
@@ -123,8 +123,8 @@ class Trainer:
             ))
             if monitor_metric not in ("val_loss", "val_comm_loss"):
                 raise ValueError(
-                    f"training.early_stopping_monitor deve essere 'val_loss' o "
-                    f"'val_comm_loss', ricevuto: {monitor_metric!r}"
+                    f"training.early_stopping_monitor must be 'val_loss' or "
+                    f"'val_comm_loss', got: {monitor_metric!r}"
                 )
         else:
             monitor_metric = "loss"
@@ -139,11 +139,11 @@ class Trainer:
             )
             callbacks.append(early_stopping)
             logger.debug(
-                "EarlyStopping configurato con patience=%d (monitor=%s)",
+                "EarlyStopping configured with patience=%d (monitor=%s)",
                 patience, monitor_metric,
             )
         else:
-            logger.info("EarlyStopping disabilitato (val_ds assente o patience=%d)", patience)
+            logger.info("EarlyStopping disabled (val_ds missing or patience=%d)", patience)
 
         run_output_dir = (self.config.get("general") or {}).get("run_output_dir")
         if run_output_dir:
@@ -153,7 +153,7 @@ class Trainer:
         if checkpoint_path and not checkpoint_path.endswith(".weights.h5"):
             checkpoint_path = str(Path(checkpoint_path).with_suffix(".weights.h5"))
         if not checkpoint_path:
-            logger.warning("training.checkpoint_path non impostato, il checkpoint non verrà salvato")
+            logger.warning("training.checkpoint_path not set; checkpoint will not be saved")
         else:
             ckpt_dir = Path(checkpoint_path).parent
             ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -166,7 +166,7 @@ class Trainer:
                 verbose=1,
             )
             callbacks.append(model_checkpoint)
-            logger.debug("ModelCheckpoint configurato su %s (monitor=%s)", checkpoint_path, monitor_metric)
+            logger.debug("ModelCheckpoint configured on %s (monitor=%s)", checkpoint_path, monitor_metric)
 
         log_dir = self._get_log_dir()
         csv_path = log_dir / "history.csv"
@@ -176,7 +176,7 @@ class Trainer:
             append=False,
         )
         callbacks.append(csv_logger)
-        logger.debug("CSVLogger configurato su %s", csv_path)
+        logger.debug("CSVLogger configured on %s", csv_path)
 
         if bool(self.training_cfg.get("tensorboard", True)):
             tensorboard_dir = log_dir / "tensorboard"
@@ -187,7 +187,7 @@ class Trainer:
                 write_images=False,
             )
             callbacks.append(tensorboard)
-            logger.debug("TensorBoard configurato su %s", tensorboard_dir)
+            logger.debug("TensorBoard configured on %s", tensorboard_dir)
 
         lr_schedule = str(self.training_cfg.get("lr_schedule", "none")).lower()
         if lr_schedule == "cosine":
@@ -205,11 +205,11 @@ class Trainer:
 
             callbacks.append(tf.keras.callbacks.LearningRateScheduler(_cosine_lr, verbose=0))
             logger.debug(
-                "LearningRateScheduler cosine: lr_max=%.5f, lr_min=%.5f, warmup=%d epoche",
+                "LearningRateScheduler cosine: lr_max=%.5f, lr_min=%.5f, warmup=%d epochs",
                 lr_max, lr_min, warmup_epochs,
             )
 
-        logger.info("Callbacks configurati: %d", len(callbacks))
+        logger.info("Callbacks configured: %d", len(callbacks))
         return callbacks
 
     def restore_best_weights(self) -> bool:
@@ -222,20 +222,20 @@ class Trainer:
             ckpt = Path(str(ckpt_raw)).with_suffix(".weights.h5") if ckpt_raw else None
         if ckpt is None:
             logger.warning(
-                "restore_best_weights: checkpoint non configurato "
-                "(manca general.run_output_dir e training.checkpoint_path); "
-                "il modello resta all'ultima epoca"
+                "restore_best_weights: checkpoint not configured "
+                "(missing general.run_output_dir and training.checkpoint_path); "
+                "model stays at the last epoch"
             )
             return False
         if not ckpt.is_file():
             logger.warning(
-                "restore_best_weights: checkpoint non trovato in %s; il modello "
-                "resta all'ultima epoca (ModelCheckpoint disabilitato?)",
+                "restore_best_weights: checkpoint not found in %s; the "
+                "model stays at the last epoch (ModelCheckpoint disabled?)",
                 ckpt,
             )
             return False
         self.model.load_weights(str(ckpt))
-        logger.info("Best weights ricaricati da %s prima di valutazione/salvataggio", ckpt)
+        logger.info("Best weights reloaded from %s before evaluation/saving", ckpt)
         return True
 
     def _get_log_dir(self) -> Path:
@@ -256,7 +256,7 @@ class Trainer:
     def verify_finite_gradients(self) -> None:
         
         if self.train_ds is None:
-            logger.warning("verify_finite_gradients: train_ds è None, impossibile verificare")
+            logger.warning("verify_finite_gradients: train_ds is None, cannot verify")
             return
 
         try:
@@ -264,10 +264,10 @@ class Trainer:
                 batch_features, batch_labels = features, labels
                 break
             else:
-                logger.warning("verify_finite_gradients: train_ds vuoto, salto la verifica")
+                logger.warning("verify_finite_gradients: train_ds is empty, skipping check")
                 return
         except Exception as e:
-            raise RuntimeError(f"Impossibile prelevare un batch da train_ds: {e}")
+            raise RuntimeError(f"Unable to fetch a batch from train_ds: {e}")
 
         with tf.GradientTape() as tape:
             predictions = self.model(batch_features, training=True)
@@ -280,30 +280,30 @@ class Trainer:
         gradients = tape.gradient(loss, self.model.trainable_variables)
 
         if gradients is None:
-            raise RuntimeError("tape.gradient ha restituito None (nessun gradiente calcolato)")
+            raise RuntimeError("tape.gradient returned None (no gradient computed)")
 
         for idx, grad in enumerate(gradients):
             if grad is None:
                 continue
             try:
-                tf.debugging.assert_all_finite(grad, f"gradiente {idx} contiene NaN/Inf")
+                tf.debugging.assert_all_finite(grad, f"gradient {idx} contains NaN/Inf")
             except tf.errors.InvalidArgumentError as e:
-                logger.error("Gradiente non finito rilevato per il parametro %d", idx)
-                raise ValueError(f"Gradiente non finito per il parametro {idx}: {e}") from e
+                logger.error("Non-finite gradient detected for parameter %d", idx)
+                raise ValueError(f"Non-finite gradient for parameter {idx}: {e}") from e
 
-        logger.debug("Gradienti finiti verificati (%d gradienti)", len(gradients))
+        logger.debug("Finite gradients verified (%d gradients)", len(gradients))
 
     def save_artifacts(self, history: tf.keras.callbacks.History) -> None:
         
         if not isinstance(history, tf.keras.callbacks.History):
-            raise TypeError(f"history deve essere tf.keras.callbacks.History, ricevuto: {type(history).__name__}")
+            raise TypeError(f"history must be a tf.keras.callbacks.History, got: {type(history).__name__}")
 
         log_dir = self._get_log_dir()
 
         history_df = pd.DataFrame(history.history)
         history_path = log_dir / "history.csv"
         history_df.to_csv(history_path, index=False)
-        logger.info("History salvata in %s", history_path)
+        logger.info("History saved to %s", history_path)
 
         metadata = {
             "timestamp": pd.Timestamp.now().isoformat(),
@@ -321,7 +321,7 @@ class Trainer:
         metadata_path = log_dir / "run_metadata.json"
         with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
-        logger.info("Metadati salvati in %s", metadata_path)
+        logger.info("Metadata saved to %s", metadata_path)
 
     def train(self) -> tf.keras.callbacks.History:
         
@@ -332,7 +332,7 @@ class Trainer:
         if optimizer_name.lower() == "adam":
             optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         else:
-            logger.warning("Optimizer %s non supportato, uso Adam con lr=%f", optimizer_name, learning_rate)
+            logger.warning("Optimizer %s not supported, using Adam with lr=%f", optimizer_name, learning_rate)
             optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
 
         loss_weights = self.training_cfg["loss_weights"]
@@ -353,7 +353,7 @@ class Trainer:
             loss_weights=loss_weights,
         )
         logger.info(
-            "Modello compilato: loss_weights = %s, lr=%f, optimizer=%s, "
+            "Model compiled: loss_weights = %s, lr=%f, optimizer=%s, "
             "label_smoothing=%s, lr_schedule=%s, sensing_range_penalty=%s",
             loss_weights,
             learning_rate,
@@ -366,15 +366,15 @@ class Trainer:
         try:
             self.verify_finite_gradients()
         except Exception as e:
-            logger.error("Verifica gradienti fallita: %s", e)
-            raise RuntimeError(f"Verifica gradienti fallita, training interrotto: {e}") from e
+            logger.error("Gradient verification failed: %s", e)
+            raise RuntimeError(f"Gradient verification failed, training aborted: {e}") from e
 
         callbacks = self._build_callbacks()
 
         epochs = self.training_cfg.get("epochs", 5)
         verbose = 1 if logger.isEnabledFor(logging.INFO) else 0
 
-        logger.info("Avvio training: epoche=%d, batch_size=%d",
+        logger.info("Starting training: epochs=%d, batch_size=%d",
                     epochs, self.training_cfg.get("batch_size", "N/D"))
 
         try:
@@ -386,8 +386,8 @@ class Trainer:
                 verbose=verbose,
             )
         except Exception as e:
-            logger.error("Errore durante model.fit: %s", e)
-            raise RuntimeError(f"Training fallito: {e}") from e
+            logger.error("Error during model.fit: %s", e)
+            raise RuntimeError(f"Training failed: {e}") from e
 
         self.save_artifacts(history)
 
@@ -396,7 +396,7 @@ class Trainer:
         val_loss_str = "N/D" if best_val_loss == float("inf") else f"{best_val_loss:.6f}"
         loss_str = "N/D" if best_loss == float("inf") else f"{best_loss:.6f}"
         logger.info(
-            "Training completato in %d epoche. Miglior val_loss = %s, miglior loss = %s",
+            "Training completed in %d epochs. Best val_loss = %s, best loss = %s",
             len(history.history.get("loss", [])),
             val_loss_str,
             loss_str,

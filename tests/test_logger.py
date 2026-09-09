@@ -2,14 +2,14 @@
 
 Casi coperti (equivalenza con i casi limite del template "dataset"):
   T1-T5  : creazione file di log, handler file+console, idempotenza, livelli
-           e path invalidi (analoghi a SNR estremi / K=0 / ritardi fuori
-           finestra del canale);
+           e path invalidi (analoghi a SNR estremi / K=0 / ritardi outside
+           window del canale);
   T6-T8  : riepilogo config — lambda_mse sempre presente, dump DEBUG, WARNING
            su NaN/Inf (analoghi ai check di contenuto/energia del template);
   T9-T10 : validazione di ``get_logger`` e livello letto dalla chiave YAML
            ``general.log_level`` (niente hard-coding).
   T11-T18: correzioni dalla review — TypeError sugli input, sezioni None,
-           chiavi mancanti, encoding UTF-8, caso positivo get_logger,
+           keys mancanti, encoding UTF-8, caso positivo get_logger,
            stream stderr marcato, root-level minimo INFO, NaN in lista.
 
 Comando di esecuzione (dal log):
@@ -77,7 +77,7 @@ def test_setup_logging_creates_file(tmp_path: Path) -> None:
     assert marker in content
 
 def test_setup_logging_console_and_file_handlers(tmp_path: Path) -> None:
-    """T2: il root ha 1 FileHandler verso il file atteso e >=1 StreamHandler."""
+    """T2: il root ha 1 FileHandler verso il file expected e >=1 StreamHandler."""
     log_file = setup_logging(tmp_path / "logs", level="INFO", experiment_name="exp_handlers")
     root_logger = logging.getLogger()
 
@@ -168,7 +168,7 @@ def test_log_config_summary_debug_dump(caplog: pytest.LogCaptureFixture) -> None
     messages = [r.getMessage() for r in caplog.records if r.name == "test.config_summary_debug"]
     assert any(m == "config.general.seed = 42" for m in messages)
     assert any(m.startswith("config.data.map_param = ") for m in messages)
-    assert any("Riepilogo config completato (4 sezioni)" in m for m in messages)
+    assert any("Config summary completed (4 sections)" in m for m in messages)
 
 def test_config_non_finite_warning(caplog: pytest.LogCaptureFixture) -> None:
     
@@ -192,7 +192,7 @@ def test_config_non_finite_warning(caplog: pytest.LogCaptureFixture) -> None:
     )
 
 def test_get_logger_empty_name_raises() -> None:
-    """T9: get_logger con nome vuoto/whitespace/non-str -> ValueError."""
+    """T9: get_logger con nome empty/whitespace/non-str -> ValueError."""
     with pytest.raises(ValueError):
         get_logger("")
     with pytest.raises(ValueError):

@@ -48,7 +48,7 @@ def _row_entropy(w: np.ndarray) -> np.ndarray:
 
 
 def _pool_temporal(arr: np.ndarray) -> np.ndarray:
-    """Pooling temporale medio per layer 3D ``(B,T,F)``; identita' per 2D."""
+    """Mean temporal pooling for 3D layers ``(B,T,F)``; identity for 2D."""
     arr = np.asarray(arr)
     return arr.mean(axis=1) if arr.ndim == 3 else arr
 
@@ -63,7 +63,7 @@ def _build_probe(model: tf.keras.Model, arch: str) -> Tuple[tf.keras.Model, List
                 outs[name] = layer.output
                 cap.append(name)
         except Exception:
-            logger.debug("jamming_interpretability %s: layer %s non presente, skip", arch, name)
+            logger.debug("jamming_interpretability %s: layer %s not present, skipping", arch, name)
     outs["comm_logits"] = model.output["comm"]
     outs["sensing"] = model.output["sensing"]
     probe = tf.keras.Model(model.inputs, outs)
@@ -90,7 +90,7 @@ def _run_condition(
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]], Optional[Dict[str, np.ndarray]]]:
     
     if not capture_clean and clean_store is None:
-        raise ValueError("clean_store richiesto per le condizioni non-clean")
+        raise ValueError("clean_store is required for non-clean conditions")
     n = xx.shape[0]
     pos = {int(i): p for p, i in enumerate(ret_idx)}
     acc_err, acc_sym = 0, 0
@@ -233,7 +233,7 @@ def run_jamming_interpretability_probe(
     ret_idx = np.linspace(0, n - 1, max(1, min(ret_subset, n))).astype(np.int64)
 
     probe, cap = _build_probe(model, arch)
-    logger.info("[jamming_interpretability %s] probe pronto: %d layer catturati", arch, len(cap))
+    logger.info("[jamming_interpretability %s] probe ready: %d captured layers", arch, len(cap))
 
     tau_max = float(config["data"]["max_delay"])
     fd_max = float(config["data"]["max_doppler"])
@@ -295,11 +295,11 @@ def run_jamming_interpretability_probe(
     with open(out_dir / "run_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
-    logger.info("[jamming_interpretability %s] completato -> %s (condizioni=%d)", arch, out_dir, len(cond_rows))
+    logger.info("[jamming_interpretability %s] completed -> %s (conditions=%d)", arch, out_dir, len(cond_rows))
     return {"conditions_csv": str(out_dir / "conditions.csv"),
             "per_snr_csv": str(out_dir / "per_snr.csv"),
             "n_conditions": len(cond_rows)}
 
 
 if __name__ == "__main__":
-    raise SystemExit("Modulo non eseguibile direttamente: usare il runner (jamming_interpretability).")
+    raise SystemExit("Module not directly executable: use the runner (jamming_interpretability).")

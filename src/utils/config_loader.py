@@ -1,27 +1,19 @@
-"""Caricamento e validazione della configurazione YAML per il progetto
-Dual-Head Ultra-CAN (ISAC in IoD).
+"""YAML configuration loading and validation for the Dual-Head Ultra-CAN
+project (ISAC in IoD).
 
-  - Docstring iniziale con lo scopo del modulo                     [questo blocco]
-  - Type hints su tutti i parametri e i ritorni
-  - Logging strutturato con livelli INFO e DEBUG
-  - Logger di modulo via ``logging.getLogger(__name__)``
-  - Docstring Google-style su ogni funzione pubblica
+Contents:
+  - ``load_config``          : deep merge of
+    base_config.yaml <- experiment config <- CLI overrides (--set).
+  - ``validate_config``      : fail-fast (``ValueError``) on missing keys.
+  - ``parse_cli_overrides``  : parsing of ``--set path.to.key=value``.
+  - ``save_config_snapshot`` : writes ``config_used.yaml`` into the run
+    metadata folder so the effective configuration is recorded with the
+    results.
 
-Contenuto:
-  - ``load_config``          : merge profondo
-    base_config.yaml <- config esperimento <- override CLI (--set).
-  - ``validate_config``      : fail-fast (``ValueError``) su chiavi mancanti.
-  - ``parse_cli_overrides``  : parsing di ``--set path.to.key=value``.
-  - ``save_config_snapshot`` : salva ``config_used.yaml`` nei metadati del run
-    . Il valore di lambda_mse usato nel run DEVE
-    comparire nei metadati salvati con i risultati).
-
-Note:
-  - Nessuna formula del paper (Eq. (1)-(15)) e' implementata in questo modulo:
-    utility pura, quindi nessun riferimento matematico da commentare.
-  - Il merge e' ricorsivo sui dizionari; le liste (es. ``snr_range``,
-    ``echoes``) vengono SOSTITUITE, non concatenate.
-  - Dipendenze: PyYAML (requirements.txt) e ``src.utils.logger``.
+Notes:
+  - The merge is recursive over dicts; lists (e.g. ``snr_range``,
+    ``echoes``) are replaced, not concatenated.
+  - Dependencies: PyYAML (requirements.txt) and ``src.utils.logger``.
 """
 
 from __future__ import annotations
@@ -67,30 +59,30 @@ def load_config(
     
     base_path = Path(base_config_path)
     exp_path = Path(config_path)
-    for path, label in ((base_path, "base_config"), (exp_path, "config esperimento")):
+    for path, label in ((base_path, "base_config"), (exp_path, "experiment config")):
         if not path.is_file():
-            raise FileNotFoundError(f"{label} non trovato: {path}")
+            raise FileNotFoundError(f"{label} not found: {path}")
     try:
         with open(base_path, "r", encoding="utf-8") as fh:
             base = yaml.safe_load(fh)
         with open(exp_path, "r", encoding="utf-8") as fh:
             experiment = yaml.safe_load(fh)
     except yaml.YAMLError as exc:
-        raise ValueError(f"file YAML non valido: {exc}") from exc
+        raise ValueError(f"invalid YAML file: {exc}") from exc
     if not isinstance(base, dict):
-        raise ValueError(f"{base_path} non contiene un dict in testa")
+        raise ValueError(f"{base_path} does not contain a top-level dict")
     if not isinstance(experiment, dict):
-        raise ValueError(f"{exp_path} non contiene un dict in testa")
+        raise ValueError(f"{exp_path} does not contain a top-level dict")
 
     merged = _deep_merge(base, experiment)
     if cli_overrides is not None:
         if not isinstance(cli_overrides, dict):
             raise TypeError(
-                f"cli_overrides deve essere dict, ricevuto: {type(cli_overrides).__name__}"
+                f"cli_overrides must be a dict, got: {type(cli_overrides).__name__}"
             )
         merged = _deep_merge(merged, cli_overrides)
 
-    logger.debug("config caricata: %s <- %s (override CLI: %s)", base_path, exp_path, bool(cli_overrides))
+    logger.debug("config loaded: %s <- %s (CLI overrides: %s)", base_path, exp_path, bool(cli_overrides))
     return merged
 
 def _key_exists(config: Dict[str, Any], dotted_path: str) -> bool:
@@ -105,11 +97,11 @@ def _key_exists(config: Dict[str, Any], dotted_path: str) -> bool:
 def validate_config(config: Dict[str, Any], required_keys: Sequence[str]) -> None:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
     missing = [key for key in required_keys if not _key_exists(config, key)]
     if missing:
-        raise ValueError(f"chiavi richieste mancanti nella config: {missing}")
-    logger.debug("validate_config OK: %d chiavi verificate", len(required_keys))
+        raise ValueError(f"required keys missing in the config: {missing}")
+    logger.debug("validate_config OK: %d keys checked", len(required_keys))
 
 def _coerce_cli_value(raw_value: str) -> Any:
     
@@ -139,11 +131,11 @@ def parse_cli_overrides(raw: Sequence[str]) -> Dict[str, Any]:
         elif item.startswith("--set "):
             item = item[len("--set "):].strip()
         if "=" not in item:
-            raise ValueError(f"override CLI malformato (atteso path.to.key=value): {token!r}")
+            raise ValueError(f"malformed CLI override (expected path.to.key=value): {token!r}")
         dotted_path, raw_value = item.split("=", 1)
         parts = [part for part in dotted_path.split(".") if part]
         if not parts:
-            raise ValueError(f"path di override vuoto: {token!r}")
+            raise ValueError(f"empty override path: {token!r}")
         value = _coerce_cli_value(raw_value)
         node: Dict[str, Any] = overrides
         for part in parts[:-1]:
@@ -152,21 +144,21 @@ def parse_cli_overrides(raw: Sequence[str]) -> Dict[str, Any]:
                 child = {}
                 node[part] = child
             elif not isinstance(child, dict):
-                raise ValueError(f"collisione di tipo sul path {dotted_path!r}")
+                raise ValueError(f"type collision on path {dotted_path!r}")
             node = child
         node[parts[-1]] = value
-    logger.debug("override CLI parsati: %s", overrides)
+    logger.debug("parsed CLI overrides: %s", overrides)
     return overrides
 
 def save_config_snapshot(config: Dict[str, Any], output_dir: Path) -> Path:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     snapshot_path = output / "config_used.yaml"
     with open(snapshot_path, "w", encoding="utf-8") as fh:
         yaml.safe_dump(config, fh, sort_keys=False, allow_unicode=True)
-    logger.info("snapshot config salvato: %s", snapshot_path)
+    logger.info("config snapshot saved: %s", snapshot_path)
     return snapshot_path
 

@@ -72,13 +72,13 @@ def prepare_dataset(config: dict, no_regen: bool = False) -> Path:
                 missing = True
                 break
         if missing:
-            logger.info("Dataset non trovato in %s, generazione...", data_dir)
+            logger.info("Dataset not found in %s, generating...", data_dir)
             for split in splits:
                 generate_dataset(config, split, data_dir)
         else:
-            logger.info("Dataset già presente in %s", data_dir)
+            logger.info("Dataset already present in %s", data_dir)
     else:
-        logger.info("no_regen=True, utilizzo dataset esistente in %s", data_dir)
+        logger.info("no_regen=True, reusing existing dataset in %s", data_dir)
     return data_dir
 
 def load_datasets(
@@ -99,7 +99,7 @@ def load_datasets(
         verify_snr_balance(data, snr_grid, echoes)
         data["x_ref"] = build_reference_matrix(data["bit"], data["seed"], config)
         data_dicts[split] = data
-        logger.info("Split '%s': %d campioni", split, data["x"].shape[0])
+        logger.info("Split '%s': %d samples", split, data["x"].shape[0])
 
     batch_size = int(config["training"]["batch_size"])
     seed = int(config["general"]["seed"])
@@ -138,8 +138,8 @@ def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
     np.random.seed(_seed)
     tf.random.set_seed(_seed)
     logger.info(
-        "build_model '%s': seed MODELLO applicato = %d (da model.seeds.%s, "
-        "dataset seed resta %d)",
+        "build_model '%s': model seed applied = %d (from model.seeds.%s, "
+        "dataset seed stays %d)",
         model_type, _seed, model_type, int(general.get("seed", 42)),
     )
 
@@ -151,7 +151,7 @@ def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
     }
     if model_type not in builders:
         raise ValueError(
-            f"model_type non supportato: {model_type!r} (attesi: {list(builders.keys())})"
+            f"model_type not supported: {model_type!r} (expected: {list(builders.keys())})"
         )
 
     model = builders[model_type](config)
@@ -163,7 +163,7 @@ def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
         num_features = 2 if feature_mode == "iq" else 1
         model.build(input_shape=(None, seq_len, num_features))
         logger.debug(
-            "Modello %s buildato con input_shape=(None,%d,%d)",
+            "Model %s built with input_shape=(None,%d,%d)",
             model_type, seq_len, num_features
         )
 
@@ -176,10 +176,10 @@ def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
     ])
 
     for name, tensor in outputs.items():
-        tf.debugging.assert_all_finite(tensor, f"Output '{name}' non finito nel build.")
+        tf.debugging.assert_all_finite(tensor, f"Output '{name}' not finite in build.")
 
     logger.info(
-        "Modello '%s' costruito: %d parametri addestrabili.",
+        "Model '%s' built: %d trainable parameters.",
         model.name, model.count_params(),
     )
     return model
@@ -195,7 +195,7 @@ def train_and_evaluate(
     
     epochs = int(config["training"]["epochs"])
     lambda_mse = float(config["training"]["lambda_mse"])
-    logger.info("Training per %d epoche, lambda_mse=%.4f", epochs, lambda_mse)
+    logger.info("Training for %d epochs, lambda_mse=%.4f", epochs, lambda_mse)
 
     trainer = Trainer(config, model, train_ds, val_ds)
     history = trainer.train()
@@ -211,24 +211,24 @@ def train_and_evaluate(
     output_dir.mkdir(parents=True, exist_ok=True)
     csv_path = output_dir / "metrics.csv"
     df_ber.to_csv(csv_path, index=False)
-    logger.info("Metriche salvate in %s", csv_path)
+    logger.info("Metrics saved to %s", csv_path)
 
     plot_format = config["visualization"].get("plot_format", "pdf")
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     ber_plot_path = plot_ber_vs_snr(df_ber, plot_dir, plot_format, model.name)
-    logger.info("Plot BER vs SNR salvato in %s", ber_plot_path)
+    logger.info("BER vs SNR plot saved to %s", ber_plot_path)
 
     best_model_path = output_dir / "best_model.keras"
     model.save(best_model_path)
-    logger.info("Modello salvato in %s", best_model_path)
+    logger.info("Model saved to %s", best_model_path)
 
     if "ber" in df_ber.columns:
         ber_values = df_ber["ber"].values
         if not np.all(np.isfinite(ber_values)):
-            raise ValueError("BER contiene NaN o Inf")
+            raise ValueError("BER contains NaN or Inf")
         if np.any((ber_values < 0) | (ber_values > 1)):
-            raise ValueError("BER fuori range [0,1]")
+            raise ValueError("BER out of range [0,1]")
 
     return {
         "history": history,
@@ -272,7 +272,7 @@ def _build_jsr_values(jamming_cfg: Dict[str, Any]) -> List[float]:
     jsr_step = float(jamming_cfg.get("jsr_step", 2.0))
     jsr_lo, jsr_hi = float(jsr_range[0]), float(jsr_range[1])
     if jsr_step <= 0.0:
-        raise ValueError(f"jamming.jsr_step deve essere > 0, ricevuto: {jsr_step}")
+        raise ValueError(f"jamming.jsr_step must be > 0, got: {jsr_step}")
     return [round(float(v), 6) for v in np.arange(jsr_lo, jsr_hi + jsr_step / 2.0, jsr_step)]
 
 def evaluate_with_jamming(
@@ -288,7 +288,7 @@ def evaluate_with_jamming(
     jamming_cfg = config.get("jamming", {}) or {}
     jammer_types = list(jamming_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
     jsr_values = _build_jsr_values(jamming_cfg)
-    logger.info("Avvio valutazione jamming per JSR = %s, tipi = %s", jsr_values, jammer_types)
+    logger.info("Starting jamming evaluation for JSR = %s, types = %s", jsr_values, jammer_types)
 
     results = evaluate_jamming(
         model=model,
@@ -300,7 +300,7 @@ def evaluate_with_jamming(
         model_name=model_name,
     )
 
-    logger.info("Jamming completato. Risultati salvati in %s", output_dir)
+    logger.info("Jamming evaluation completed. Results saved to %s", output_dir)
     return results
 
 def generate_weight_table(
@@ -318,7 +318,7 @@ def generate_weight_table(
         include_classical=include_classical
     )
 
-    logger.info("Tabella pesi generata: %s", tex_path)
+    logger.info("Weight table generated: %s", tex_path)
     return tex_path
 
 def collect_and_plot_overlay(
@@ -335,7 +335,7 @@ def collect_and_plot_overlay(
         plot_format=plot_format
     )
 
-    logger.info("Overlay salvato in %s", plot_path)
+    logger.info("Overlay saved to %s", plot_path)
     return plot_path
 
 def plot_layer_activity(
@@ -370,12 +370,12 @@ def plot_layer_activity(
         )
     except ValueError as exc:
         logger.warning(
-            "Mappe di attenzione non generabili (nessun layer di attenzione nel "
-            "modello '%s'?): %s",
+            "Attention maps cannot be generated (no attention layer in "
+            "model '%s'?): %s",
             model.name, exc,
         )
     except Exception as exc:
-        logger.error("Generazione mappe di attenzione fallita: %s", exc)
+        logger.error("Attention map generation failed: %s", exc)
 
     activity_dir = output_dir / "activity"
     activity_dir.mkdir(parents=True, exist_ok=True)
@@ -385,12 +385,12 @@ def plot_layer_activity(
             _plot_activity_bars(
                 weight_norms,
                 activity_dir / f"layer_activity_weights.{plot_format}",
-                title_prefix="Norma L2 dei pesi per layer",
+                title_prefix="Per-layer L2 weight norm",
             )
         else:
-            logger.warning("Nessun layer con pesi addestrabili: salto le norme L2")
+            logger.warning("No layer with trainable weights: skipping the L2 norms")
     except Exception as exc:
-        logger.error("Calcolo norme L2 dei pesi fallito: %s", exc)
+        logger.error("Weight L2 norm computation failed: %s", exc)
 
     try:
         x_first = np.asarray(test_data["x"])[0:1]
@@ -400,14 +400,14 @@ def plot_layer_activity(
             _plot_activity_bars(
                 activation_variance,
                 activity_dir / f"layer_activity_variance.{plot_format}",
-                title_prefix="Varianza delle attivazioni per layer",
+                title_prefix="Per-layer activation variance",
             )
         else:
-            logger.warning("Nessuna varianza di attivazione calcolata")
+            logger.warning("No activation variance computed")
     except Exception as exc:
-        logger.error("Calcolo varianza delle attivazioni fallito: %s", exc)
+        logger.error("Activation variance computation failed: %s", exc)
 
-    logger.info("Layer activity plots generati in %s", output_dir)
+    logger.info("Layer activity plots generated in %s", output_dir)
 
 _EXP_BLOCKS: Tuple[str, ...] = ("ber_vs_snr", "classical_receivers", "jamming", "jamming_interpretability", "final_report")
 _EXP_MODES: Tuple[str, ...] = ("full", "fast")
@@ -429,8 +429,8 @@ def _apply_scenario_config(config: Dict[str, Any], scenario: Dict[str, Any]) -> 
     if scenario_data is not None:
         if not isinstance(scenario_data, dict):
             raise ValueError(
-                f"scenario '{scenario.get('name', '?')}': il campo 'data' deve "
-                f"essere un dict di override data.*, ricevuto: {type(scenario_data).__name__}"
+                f"scenario '{scenario.get('name', '?')}': the 'data' field must "
+                f"be a dict of data.* overrides, got: {type(scenario_data).__name__}"
             )
         data_overrides.update(scenario_data)
     sc_cfg["data"] = {**config["data"], **data_overrides}
@@ -447,7 +447,7 @@ def prepare_all_datasets(
     logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 
     if not config_path.exists():
-        raise FileNotFoundError(f"File config non trovato: {config_path}")
+        raise FileNotFoundError(f"Config file not found: {config_path}")
 
     base_config = load_config(config_path, DEFAULT_BASE_CONFIG_PATH)
 
@@ -476,7 +476,7 @@ def prepare_all_datasets(
                 for scenario in scenarios:
                     if not isinstance(scenario, dict) or "name" not in scenario:
                         logger.warning(
-                            "ber_vs_snr.%s: scenario malformato in experiments.yaml, saltato: %s",
+                            "ber_vs_snr.%s: malformed scenario in experiments.yaml, skipped: %s",
                             mode, scenario,
                         )
                         continue
@@ -487,7 +487,7 @@ def prepare_all_datasets(
                 all_configs.append(merged)
 
     if not all_configs:
-        logger.warning("Nessuna configurazione di dataset trovata in %s", config_path)
+        logger.warning("No dataset configuration found in %s", config_path)
         return
 
     seen_hashes: set[str] = set()
@@ -495,7 +495,7 @@ def prepare_all_datasets(
         try:
             data_dir = get_dataset_dir(cfg)
         except Exception as e:
-            logger.warning("Impossibile calcolare hash per configurazione: %s", e)
+            logger.warning("Unable to compute hash for configuration: %s", e)
             continue
 
         if str(data_dir) in seen_hashes:
@@ -503,18 +503,18 @@ def prepare_all_datasets(
         seen_hashes.add(str(data_dir))
 
         if split is None:
-            logger.info("Generazione dataset per %s", data_dir)
+            logger.info("Generating dataset for %s", data_dir)
             prepare_dataset(cfg, no_regen=no_regen)
         else:
             if split not in ("train", "val", "test"):
                 raise ValueError(
-                    f"split deve essere in ('train','val','test'), ricevuto: {split!r}"
+                    f"split must be in ('train','val','test'), got: {split!r}"
                 )
-            logger.info("Generazione split '%s' per %s", split, data_dir)
+            logger.info("Generating split '%s' for %s", split, data_dir)
             data_dir.mkdir(parents=True, exist_ok=True)
             generate_dataset(cfg, split, data_dir)
 
     logger.info(
-        "Preparazione dataset completata. %d configurazioni uniche elaborate.",
+        "Dataset preparation completed. %d unique configurations processed.",
         len(seen_hashes)
     )

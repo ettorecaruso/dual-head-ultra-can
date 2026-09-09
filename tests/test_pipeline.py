@@ -84,13 +84,12 @@ def _expected_dirs(base: Dict[str, Any], raw: Dict[str, Any]) -> Set[str]:
         .get("scenarios") or []
     )
     for mode in ("full", "fast"):
-        for scenario in raw["ber_vs_snr"][mode]["experiments"]["ber_vs_snr"]["scenarios"]:
-            dirs.add(str(get_dataset_dir(_merged(base, raw, "ber_vs_snr", mode, scenario))))
-        for sname in raw["exp2"][mode]["experiments"]["exp2_reduced_params"]["scenarios"]:
-            scenario = next(s for s in default_scenarios if s.get("name") == sname)
-            dirs.add(str(get_dataset_dir(_merged(base, raw, "exp2", mode, scenario))))
+        for sname in raw["ber_vs_snr"][mode]["experiments"]["ber_vs_snr"]["scenarios"]:
+            dirs.add(str(get_dataset_dir(_merged(base, raw, "ber_vs_snr", mode, sname))))
         if "data" in raw["jamming"][mode]:
             dirs.add(str(get_dataset_dir(_merged(base, raw, "jamming", mode))))
+        if "data" in raw["jamming_interpretability"][mode]:
+            dirs.add(str(get_dataset_dir(_merged(base, raw, "jamming_interpretability", mode))))
     return dirs
 
 def test_prepare_all_datasets_discovers_scenario_configs(
@@ -187,7 +186,7 @@ def test_apply_scenario_config_rejects_non_dict_data() -> None:
     merged = pipeline._merge_data_config(base, raw["ber_vs_snr"]["full"].get("data") or {})
     sc_bad = {"name": "bad", "echoes": [1], "max_doppler": 0.00008,
               "data": "iq"}
-    with pytest.raises(ValueError, match="'data' deve essere un dict"):
+    with pytest.raises(ValueError, match="'data' field must"):
         pipeline._apply_scenario_config(merged, sc_bad)
 
 def test_prepare_all_datasets_split_calls_generate_dataset(

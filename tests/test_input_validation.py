@@ -9,28 +9,28 @@ Questi test verificano:
 
 Superficie coperta (funzioni pubbliche e guardie dei moduli dati):
   ``dataset_generator._validate_config``  : validazione fail-fast della config
-      del generatore (chiavi mancanti, NaN/Inf, map_param fuori regime, policy
+      del generatore (keys mancanti, NaN/Inf, map_param outside regime, policy
       max_delay <= sequence_length, dimensioni seq_len/num_symbols, echoes,
       snr_range/snr_step, seed, raw_dir/processed_dir).
   ``dataset_generator.generate_chaotic_sequence`` : validazione della
       lunghezza della sequenza (0, negativa, non-int) + caso valido N=100.
-  ``dataset_generator.build_snr_grid``    : griglia SNR inclusiva, input validi/
+  ``dataset_generator.build_snr_grid``    : grid SNR inclusiva, input validi/
       limite/invalidi (range invertito, step <= 0, valori non finiti).
   ``dataset_generator.generate_dataset``  : guardie di bilanciamento
-      (num_symbols_train non divisibile, n_per_combo dispari) e split invalido.
+      (num_symbols_train not divisible, n_per_combo diseven) e split invalido.
   ``data_loader._validate_config``        : validazione fail-fast della config
       del loader (sezioni mancanti, seq_len/num_symbols/batch_size/seed/echoes/
       snr_range/feature_mode/max_doppler).
   ``data_loader.normalize_targets``       : Min-Max [0,1] (Sez. IV-D), shape
-      allineate, tau_max/fd_max > 0, NaN/Inf, output fuori range -> RuntimeError.
+      allineate, tau_max/fd_max > 0, NaN/Inf, output outside range -> RuntimeError.
   ``data_loader.build_tf_dataset``        : batch size 1/32/128 con shape
-      corrette ``(B, 100, 1)``, batch/seed/feature_mode/chiavi invalidi.
+      corrette ``(B, 100, 1)``, batch/seed/feature_mode/keys invalidi.
   ``data_loader._parse_npz_name``         : pattern ``<split>_snr<snr>_echo<k>``.
   ``data_loader._validate_npz_arrays``    : shape/range/finitezza dei blocchi.
   ``data_loader.load_npz_files``          : ``FileNotFoundError`` per directory
-      mancante/vuota, griglia (SNR, K) incompleta, argomenti invalidi.
+      mancante/vuota, grid (SNR, K) incomplete, argomenti invalidi.
   ``data_loader.verify_snr_balance``      : bilanciamento per (SNR, K) e ``expected_per_combo``.
-  ``data_loader._expected_per_combo``     : conteggio atteso per split.
+  ``data_loader._expected_per_combo``     : conteggio expected per split.
 
 Test di integrazione:
   flusso end-to-end generatore -> loader (generate_dataset -> load_npz_files ->
@@ -292,19 +292,19 @@ def test_generator_config_missing_keys_raises() -> None:
     """Input invalido: chiave richiesta mancante -> ValueError (fail-fast)."""
     cfg = _generator_config()
     del cfg["data"]["max_doppler"]
-    with pytest.raises(ValueError, match="chiavi mancanti"):
+    with pytest.raises(ValueError, match="missing keys"):
         validate_generator_config(cfg)
 
 def test_generator_config_nan_raises() -> None:
     
     cfg = _generator_config({"snr_range": [float("nan"), 20.0]})
-    with pytest.raises(ValueError, match="non finito"):
+    with pytest.raises(ValueError, match="non-finite"):
         validate_generator_config(cfg)
 
 def test_generator_config_mu_out_of_regime_raises() -> None:
-    """Input invalido: mu=3.0 fuori [3.57, 4] -> ValueError (Eq. (1))."""
+    """Input invalido: mu=3.0 outside [3.57, 4] -> ValueError (Eq. (1))."""
     cfg = _generator_config({"map_param": 3.0})
-    with pytest.raises(ValueError, match="regime caotico"):
+    with pytest.raises(ValueError, match="chaotic regime"):
         validate_generator_config(cfg)
 
 def test_generator_config_max_delay_policy_raises() -> None:
@@ -442,7 +442,7 @@ def test_build_tf_dataset_missing_data_keys_raises() -> None:
     
     data = _tiny_data_dict()
     del data["f_d"]
-    with pytest.raises(ValueError, match="chiavi"):
+    with pytest.raises(ValueError, match="keys"):
         build_tf_dataset(data, batch_size=8, config=_loader_config())
 
 @pytest.mark.parametrize(
@@ -472,8 +472,8 @@ def test_parse_npz_name_valid(filename: str, expected: Tuple[str, float, int]) -
     ],
 )
 def test_parse_npz_name_invalid_raises(filename: str) -> None:
-    """Input invalidi: nome fuori pattern -> ValueError."""
-    with pytest.raises(ValueError, match="nome file non riconosciuto"):
+    """Input invalidi: nome outside pattern -> ValueError."""
+    with pytest.raises(ValueError, match="file name not recognized"):
         _parse_npz_name(Path(filename))
 
 def test_validate_npz_arrays_valid() -> None:
@@ -496,11 +496,11 @@ def test_validate_npz_arrays_empty_block_raises() -> None:
 @pytest.mark.parametrize(
     ("mutate", "pattern"),
     [
-        ("x_wrong_shape", "x deve avere shape"),
+        ("x_wrong_shape", "x must have shape"),
         ("x_nan", "NaN/Inf"),
         ("bit_invalid", "0/1"),
-        ("tau_out_of_range", "tau fuori range"),
-        ("f_d_out_of_range", "f_d fuori range"),
+        ("tau_out_of_range", "tau out of range"),
+        ("f_d_out_of_range", "f_d out of range"),
         ("lengths_mismatch", "lunghezze incoerenti"),
     ],
 )
@@ -533,13 +533,13 @@ def test_load_npz_files_missing_dir_raises(tmp_path: Path) -> None:
 
 def test_load_npz_files_empty_dir_raises(tmp_path: Path) -> None:
     """File mancante: directory senza file .npz -> FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="nessun file"):
+    with pytest.raises(FileNotFoundError, match="no valid .npz file"):
         load_npz_files(tmp_path, [0.0], [0], "test", _loader_config())
 
 def test_load_npz_files_incomplete_grid_raises(tmp_path: Path) -> None:
-    """Input invalido: griglia (SNR, K) incompleta -> ValueError."""
+    """Input invalido: grid (SNR, K) incomplete -> ValueError."""
     _write_tiny_npz(tmp_path, "test", snr=0.0, k=0)
-    with pytest.raises(ValueError, match="incompleta"):
+    with pytest.raises(ValueError, match="incomplete"):
         load_npz_files(tmp_path, [0.0, 2.0], [0], "test", _loader_config())
 
 @pytest.mark.parametrize(
@@ -580,13 +580,13 @@ def test_verify_snr_balance_unbalanced_raises() -> None:
     """Input invalido: conteggi non uniformi -> ValueError."""
     data = _tiny_data_dict(n=8)
     data["snr_db"] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0])
-    with pytest.raises(ValueError, match="sbilanciato"):
+    with pytest.raises(ValueError, match="unbalanced"):
         verify_snr_balance(data, [0.0, 2.0], [0])
 
 def test_verify_snr_balance_expected_mismatch_raises() -> None:
     """Input invalido: conteggi uniformi ma != expected_per_combo -> ValueError."""
     data = _tiny_data_dict(n=8)
-    with pytest.raises(ValueError, match="atteso"):
+    with pytest.raises(ValueError, match="expected"):
         verify_snr_balance(data, [0.0], [0], expected_per_combo=4)
 
 def test_verify_snr_balance_invalid_expected_raises() -> None:
@@ -614,9 +614,9 @@ def test_expected_per_combo_val_test() -> None:
     assert _expected_per_combo(cfg, "test", num_combos=28) == 2000
 
 def test_expected_per_combo_not_divisible_raises() -> None:
-    """Input invalido: num_symbols_train non divisibile -> ValueError ()."""
+    """Input invalido: num_symbols_train not divisible -> ValueError ()."""
     cfg = _generator_config({"num_symbols_train": 1000})
-    with pytest.raises(ValueError, match="non divisibile"):
+    with pytest.raises(ValueError, match="not divisible"):
         _expected_per_combo(cfg, "train", num_combos=28)
 
 @pytest.mark.parametrize(
@@ -636,9 +636,9 @@ def test_expected_per_combo_invalid_args_raises(
         _expected_per_combo(_generator_config(), split, num_combos)
 
 def test_expected_per_combo_odd_raises() -> None:
-    """Input invalido: per-combo dispari -> ValueError (bit 0/1 bilanciati)."""
+    """Input invalido: per-combo diseven -> ValueError (bit 0/1 bilanciati)."""
     cfg = _generator_config({"num_symbols_val": 5})
-    with pytest.raises(ValueError, match="pari"):
+    with pytest.raises(ValueError, match="even"):
         _expected_per_combo(cfg, "val", num_combos=28)
 
 def test_resolve_n_per_combo_train_108_even() -> None:
@@ -659,12 +659,12 @@ def test_resolve_n_per_combo_constructive_message() -> None:
     assert "108" in msg
 
 def test_resolve_n_per_combo_odd_val_hint() -> None:
-    """Messaggio costruttivo anche per val/test dispari (suggerisce il pari)."""
+    """Messaggio costruttivo anche per val/test diseven (suggerisce il even)."""
     cfg = _generator_config({"num_symbols_val": 5})
     with pytest.raises(ValueError) as exc_info:
         resolve_n_per_combo(cfg, "val", num_combos=6)
     msg = str(exc_info.value)
-    assert "num_symbols_val pari (es. 6)" in msg
+    assert "num_symbols_val even (e.g. 6)" in msg
 
 def _even_per_combo_for_data(data: Dict[str, Any], split: str) -> int:
     """Risolve n_per_combo per un blocco ``data`` reale di experiments.yaml."""
@@ -681,13 +681,14 @@ def test_all_experiment_configs_even_per_combo() -> None:
     base_data = dict(base["data"])
     raw = yaml.safe_load(experiments_path.read_text(encoding="utf-8"))
 
-    for exp_id in ("ber_vs_snr", "exp2", "classical_receivers", "jamming", "final_report"):
+    for exp_id in ("ber_vs_snr", "classical_receivers", "jamming",
+                   "jamming_interpretability", "final_report"):
         for mode in ("full", "fast"):
             data = {**base_data, **raw[exp_id][mode]["data"]}
             for split in ("train", "val", "test"):
                 n_per_combo = _even_per_combo_for_data(data, split)
                 assert n_per_combo > 0 and n_per_combo % 2 == 0, (
-                    f"{exp_id}.{mode}.{split}: n_per_combo={n_per_combo} non pari"
+                    f"{exp_id}.{mode}.{split}: n_per_combo={n_per_combo} non even"
                 )
 
     for mode in ("fast", "full"):
@@ -707,7 +708,7 @@ def test_all_experiment_configs_even_per_combo() -> None:
                 n_per_combo = _even_per_combo_for_data(data, split)
                 assert n_per_combo > 0 and n_per_combo % 2 == 0, (
                     f"ber_vs_snr.{mode} scenario {scenario['name']}.{split}: "
-                    f"n_per_combo={n_per_combo} non pari"
+                    f"n_per_combo={n_per_combo} non even"
                 )
 
 def test_generate_dataset_invalid_split_raises(tmp_path: Path) -> None:
@@ -716,15 +717,15 @@ def test_generate_dataset_invalid_split_raises(tmp_path: Path) -> None:
         generate_dataset(_generator_config(), "foo", tmp_path)
 
 def test_generate_dataset_train_not_divisible_raises(tmp_path: Path) -> None:
-    """Input invalido: num_symbols_train non divisibile -> ValueError ()."""
+    """Input invalido: num_symbols_train not divisible -> ValueError ()."""
     cfg = _generator_config({"num_symbols_train": 1000})
-    with pytest.raises(ValueError, match="non divisibile"):
+    with pytest.raises(ValueError, match="not divisible"):
         generate_dataset(cfg, "train", tmp_path)
 
 def test_generate_dataset_odd_per_combo_raises(tmp_path: Path) -> None:
-    """Input invalido: n_per_combo dispari -> ValueError (bit 0/1 bilanciati)."""
+    """Input invalido: n_per_combo diseven -> ValueError (bit 0/1 bilanciati)."""
     cfg = _generator_config({"num_symbols_val": 5})
-    with pytest.raises(ValueError, match="pari"):
+    with pytest.raises(ValueError, match="even"):
         generate_dataset(cfg, "val", tmp_path)
 
 def test_integration_generator_to_loader(tmp_path: Path) -> None:

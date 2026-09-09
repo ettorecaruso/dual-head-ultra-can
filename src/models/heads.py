@@ -50,22 +50,22 @@ def _assert_config_finite(config: Any) -> None:
     
     for path, value in _iter_config_leaves(config):
         if isinstance(value, (int, float)) and not math.isfinite(float(value)):
-            raise ValueError(f"valore non finito nella config: {path} = {value!r}")
+            raise ValueError(f"non-finite value in the config: {path} = {value!r}")
 
 def _as_positive_int(value: Any, label: str) -> int:
     
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(f"{label} deve essere un intero positivo, ricevuto: {value!r}")
+        raise ValueError(f"{label} must be a positive integer, got: {value!r}")
     number = float(value)
     if not math.isfinite(number) or number <= 0.0 or not number.is_integer():
-        raise ValueError(f"{label} deve essere un intero positivo, ricevuto: {value!r}")
+        raise ValueError(f"{label} must be a positive integer, got: {value!r}")
     return int(number)
 
 def _head_input_dim(config: Dict[str, Any]) -> int:
     
     model_cfg = config.get("model")
     if not isinstance(model_cfg, dict):
-        raise ValueError("sezione 'model' mancante o non dict nella config")
+        raise ValueError("'model' section missing or not a dict in config")
 
     backbone_type = str(model_cfg.get("backbone_type", "conv1d"))
     dim: Optional[int] = None
@@ -81,12 +81,12 @@ def _head_input_dim(config: Dict[str, Any]) -> int:
     if dim is None:
         dim = _HEAD_INPUT_DIM
         logger.debug(
-            "feature dim non derivabile da config, adotto il contratto v in R^%d", dim
+            "feature dim not derivable from config, assuming the contract v in R^%d", dim
         )
     if dim != _HEAD_INPUT_DIM:
         logger.warning(
-            "feature dim %d diversa dal contratto paper v in R^%d (Eq. (gap_comm)): "
-            "i conteggi di parametri attesi (8578/2146) non si applicano",
+            "feature dim %d differs from the paper contract v in R^%d: "
+            "the expected parameter counts (8578/2146) do not apply",
             dim,
             _HEAD_INPUT_DIM,
         )
@@ -98,19 +98,19 @@ def _validate_head_config(
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
     if head_name not in _HEAD_NAMES:
         raise ValueError(
-            f"head_name non valido: {head_name!r} (attesi: {sorted(_HEAD_NAMES)})"
+            f"invalid head_name: {head_name!r} (expected: {sorted(_HEAD_NAMES)})"
         )
 
     model_cfg = config.get("model")
     if not isinstance(model_cfg, dict):
-        raise ValueError("sezione 'model' mancante o non dict nella config")
+        raise ValueError("'model' section missing or not a dict in config")
     head_cfg = model_cfg.get(head_name)
     if not isinstance(head_cfg, dict):
         raise ValueError(
-            f"sezione 'model.{head_name}' mancante o non dict nella config"
+            f"'model.{head_name}' section missing or not a dict in the config"
         )
 
     _assert_config_finite(head_cfg)
@@ -118,14 +118,14 @@ def _validate_head_config(
     required = _COMM_REQUIRED_KEYS if head_name == "communication_head" else _SENSING_REQUIRED_KEYS
     missing = [key for key in required if key not in head_cfg]
     if missing:
-        raise ValueError(f"chiavi mancanti in model.{head_name}: {missing}")
+        raise ValueError(f"missing keys in model.{head_name}: {missing}")
 
     units = _as_positive_int(head_cfg["units"], f"model.{head_name}.units")
     activation = head_cfg["activation"]
     if not isinstance(activation, str) or not activation.strip():
         raise ValueError(
-            f"model.{head_name}.activation deve essere una stringa non vuota, "
-            f"ricevuto: {activation!r}"
+            f"model.{head_name}.activation must be a non-empty string, "
+            f"got: {activation!r}"
         )
 
     output_units: Optional[int] = None
@@ -135,12 +135,12 @@ def _validate_head_config(
         )
         if modulation_order < _MIN_MODULATION_ORDER:
             raise ValueError(
-                f"model.communication_head.modulation_order deve essere >= "
-                f"{_MIN_MODULATION_ORDER} (BPSK=2, QPSK=4), ricevuto: {modulation_order}"
+                f"model.communication_head.modulation_order must be >= "
+                f"{_MIN_MODULATION_ORDER} (BPSK=2, QPSK=4), got: {modulation_order}"
             )
         dropout = model_cfg.get("dropout_rate")
         if dropout is None:
-            raise ValueError("chiave mancante: model.dropout_rate (Sez. IV-B, p=0.3)")
+            raise ValueError("missing key: model.dropout_rate")
         if (
             isinstance(dropout, bool)
             or not isinstance(dropout, (int, float))
@@ -148,7 +148,7 @@ def _validate_head_config(
             or not (0.0 <= float(dropout) < 1.0)
         ):
             raise ValueError(
-                f"model.dropout_rate deve essere in [0, 1), ricevuto: {dropout!r}"
+                f"model.dropout_rate must be in [0, 1), got: {dropout!r}"
             )
     else:
         output_units = _as_positive_int(
@@ -156,12 +156,12 @@ def _validate_head_config(
         )
         if output_units != _SENSING_OUTPUT_UNITS:
             raise ValueError(
-                f"model.sensing_head.output_units deve essere {_SENSING_OUTPUT_UNITS} "
-                f"([tau, fD], Sez. IV-C), ricevuto: {output_units}"
+                f"model.sensing_head.output_units must be {_SENSING_OUTPUT_UNITS} "
+                f"([tau, fD]), got: {output_units}"
             )
 
     logger.debug(
-        "config testa '%s' validata: units=%d, activation=%s, "
+        "head config '%s' validated: units=%d, activation=%s, "
         "dropout/out_units=%s",
         head_name,
         units,
@@ -177,13 +177,13 @@ def _smoke_check(
 ) -> None:
     
     if not tf.executing_eagerly():
-        logger.debug("smoke check saltato (contesto non eager): %s", tag)
+        logger.debug("smoke check skipped (non-eager context): %s", tag)
         return
 
     input_shape = tuple(model.input_shape)
     if len(input_shape) != 2 or input_shape[1] is None:
         raise ValueError(
-            f"{tag}: shape input attesa (None, D), ricevuta: {input_shape!r}"
+            f"{tag}: expected input shape (None, D), got: {input_shape!r}"
         )
 
     dummy = tf.zeros((1, int(input_shape[1])), dtype=model.inputs[0].dtype)
@@ -192,12 +192,12 @@ def _smoke_check(
     expected = list(expected_output_shape)
     if len(actual) != len(expected) or actual[0] < 1 or actual[1:] != expected[1:]:
         raise ValueError(
-            f"{tag}: output shape attesa {expected}, "
-            f"ricevuta: {actual}"
+            f"{tag}: expected output shape {expected}, "
+            f"got: {actual}"
         )
 
     tf.debugging.assert_all_finite(
-        outputs, message=f"{tag}: output contiene NaN/Inf"
+        outputs, message=f"{tag}: output contains NaN/Inf"
     )
     logger.debug("smoke check OK: %s output_shape=%s", tag, actual)
 
@@ -227,7 +227,7 @@ def build_communication_head(config: Dict[str, Any]) -> tf.keras.Model:
     model = tf.keras.Model(inputs=v, outputs=logits, name="communication_head")
     _smoke_check(model, expected_output_shape=[None, modulation_order], tag="comm")
     logger.info(
-        "communication_head costruita: input_dim=%d, units=%d, M=%d, params=%d",
+        "communication_head built: input_dim=%d, units=%d, M=%d, params=%d",
         input_dim,
         units,
         modulation_order,
@@ -307,14 +307,14 @@ def build_sensing_features(
 ) -> Tuple[tf.keras.KerasTensor, tf.keras.KerasTensor]:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
     if not isinstance(h_att, tf.keras.KerasTensor) or len(h_att.shape) != 3:
         raise ValueError(
-            f"h_att deve essere un KerasTensor 3D (B, att_len, F2), ricevuto: {h_att!r}"
+            f"h_att must be a 3D KerasTensor (B, att_len, F2), got: {h_att!r}"
         )
     feature_dim = int(h_att.shape[2])
     if feature_dim is None or feature_dim <= 0:
-        raise ValueError(f"ultima dimensione di h_att non nota o non positiva: {h_att.shape}")
+        raise ValueError(f"last dimension of h_att unknown or not positive: {h_att.shape}")
 
     data_cfg = config.get("data") or {}
     sensing_cfg = config.get("model", {}).get("sensing_head") or {}
@@ -379,7 +379,7 @@ def build_sensing_head(
     else:
         input_dim = int(input_dim)
     if input_dim <= 0:
-        raise ValueError(f"input_dim deve essere > 0, ricevuto: {input_dim!r}")
+        raise ValueError(f"input_dim must be > 0, got: {input_dim!r}")
 
     v = tf.keras.layers.Input(shape=(input_dim,), name="sensing_features")
     x = tf.keras.layers.Dense(
@@ -391,8 +391,8 @@ def build_sensing_head(
     output_activation = str(sens_cfg.get("output_activation", "sigmoid"))
     if output_activation not in ("sigmoid", "linear"):
         raise ValueError(
-            f"model.sensing_head.output_activation deve essere 'sigmoid' o 'linear', "
-            f"ricevuto: {output_activation!r}"
+            f"model.sensing_head.output_activation must be 'sigmoid' or 'linear', "
+            f"got: {output_activation!r}"
         )
     out = tf.keras.layers.Dense(
         units=output_units,
@@ -402,7 +402,7 @@ def build_sensing_head(
     model = tf.keras.Model(inputs=v, outputs=out, name="sensing_head")
     _smoke_check(model, expected_output_shape=[None, output_units], tag="sensing")
     logger.info(
-        "sensing_head costruita: input_dim=%d, units=%d, output_units=%d, params=%d",
+        "sensing_head built: input_dim=%d, units=%d, output_units=%d, params=%d",
         input_dim,
         units,
         output_units,
@@ -414,7 +414,7 @@ def num_params(model: tf.keras.Model) -> int:
     
     if not isinstance(model, tf.keras.Model):
         raise TypeError(
-            f"model deve essere tf.keras.Model, ricevuto: {type(model).__name__}"
+            f"model must be a tf.keras.Model, got: {type(model).__name__}"
         )
     try:
         total = int(model.count_params())
@@ -422,8 +422,8 @@ def num_params(model: tf.keras.Model) -> int:
         input_shape = getattr(model, "input_shape", None)
         if input_shape is None:
             raise ValueError(
-                "modello non buildato e senza input_shape dichiarata: "
-                "impossibile contare i parametri"
+                "model not built and no input_shape declared: "
+                "cannot count parameters"
             )
         model.build(input_shape=tuple(input_shape))
         total = int(model.count_params())
@@ -437,10 +437,10 @@ def num_params(model: tf.keras.Model) -> int:
 def main(argv: Optional[Sequence[str]] = None) -> None:
     
     parser = argparse.ArgumentParser(
-        description="Smoke test teste Dual-Head Ultra-CAN (ISAC in IoD), Fase 2.1"
+        description="Smoke test for the Dual-Head Ultra-CAN (ISAC in IoD) heads"
     )
     parser.add_argument(
-        "--config", required=True, help="path della config esperimento (YAML)"
+        "--config", required=True, help="path to the experiment config (YAML)"
     )
     args = parser.parse_args(argv)
 
@@ -453,7 +453,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     general = config.get("general")
     if not isinstance(general, dict):
-        raise ValueError("sezione 'general' mancante o non dict nella config")
+        raise ValueError("'general' section missing or not a dict in config")
     experiment_name = str(general.get("experiment_name", "ultra_can_isac"))
     log_dir = _REPO_ROOT / "results" / experiment_name / "logs"
     setup_logging(
@@ -466,7 +466,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     comm_head = build_communication_head(config)
     sensing_head = build_sensing_head(config)
     logger.info(
-        "teste pronte: comm=%d params, sensing=%d params, TOT=%d params",
+        "heads ready: comm=%d params, sensing=%d params, TOTAL=%d params",
         num_params(comm_head),
         num_params(sensing_head),
         num_params(comm_head) + num_params(sensing_head),

@@ -9,21 +9,21 @@ Questi test verificano:
   T4  test_mse_non_negative       MSE >= 0 (tolleranza 1e-7)
   T5  test_ce_positive            CE > 0 con logits random
   T6  test_targets_normalized_01  target sensing in [0,1] (tolleranza 1e-7);
-                                  guardia eager -> WARNING se fuori range
+                                  guardia eager -> WARNING se outside range
   T7  test_lambda_from_yaml       lambda letto dalla config; fail-fast se mancante
 
 Superficie coperta (funzioni pubbliche di ``src/training/losses.py``):
-  - ``assert_finite``        : tensore finito OK; NaN/Inf -> InvalidArgumentError.
+  - ``assert_finite``        : tensore finite OK; NaN/Inf -> InvalidArgumentError.
   - ``comm_ce_loss``         : CE sparsa (paper Sez. IV-D, Eq. (14)): caso
       normale, minimo con logits perfetti, CE > 0 con logits random (T5),
       batch 1/32/128, logits NaN/Inf -> errore, shape errate -> ValueError,
-      etichette fuori da {0, M-1} -> errore.
+      etichette outside da {0, M-1} -> errore.
   - ``mse_sensing_loss``     : MSE su target normalizzati (Sez. IV-D): caso
       normale, pred == truth -> 0, MSE >= 0 (T4), batch 1/32/128, shape
-      errate -> ValueError, pred NaN -> errore, target fuori [0,1] -> WARNING (T6).
+      errate -> ValueError, pred NaN -> errore, target outside [0,1] -> WARNING (T6).
   - ``combined_loss_factory``: L_total = L_comm + lambda_mse * L_sensing
-      (Eq. (14)): lambda 0/100/da YAML/mancante/negativo/NaN/Inf/non-numero,
-      chiavi mancanti nei dict -> ValueError, shape errate -> ValueError, batch
+      (Eq. (14)): lambda 0/100/da YAML/mancante/negativo/NaN/Inf/non-number,
+      keys mancanti nei dict -> ValueError, shape errate -> ValueError, batch
       1/32/128.
 
 Ogni funzione pubblica ha ALMENO 3 test: input validi, input limite e input
@@ -31,7 +31,7 @@ invalidi.
 
 Test di integrazione: import del modulo, flusso end-to-end (config ->
 normalizzazione target sensing -> factory -> loss) sul dataset reale
-``tiny_dataset`` e ``FileNotFoundError`` su config esperimento mancante.
+``tiny_dataset`` e ``FileNotFoundError`` su config experiment mancante.
 
 Le casistiche di correttezza matematica su sequenze caotiche (mappa logistica
 r=4.0/r=3.57, Bernoulli), canale (conservazione energia, Eq. (4)) e range di
@@ -189,7 +189,7 @@ def test_ce_positive_random_logits() -> None:
 
 @pytest.mark.parametrize("batch_size", list(_BATCH_SIZES))
 def test_comm_ce_loss_batch_sizes(batch_size: int) -> None:
-    """Consistenza dimensioni: batch 1/32/128 -> output scalare e finito."""
+    """Consistenza dimensioni: batch 1/32/128 -> output scalare e finite."""
     labels, logits = _make_comm_batch(batch_size=batch_size)
     loss_val = comm_ce_loss(labels, logits)
     assert tf.rank(loss_val) == 0
@@ -218,7 +218,7 @@ def test_comm_ce_loss_wrong_logits_shape_raises() -> None:
         comm_ce_loss(labels, logits)
 
 def test_comm_ce_loss_out_of_range_labels_raises() -> None:
-    """Input invalido: etichetta fuori da {0, M-1} -> errore del backend TF."""
+    """Input invalido: etichetta outside da {0, M-1} -> errore del backend TF."""
     labels = tf.constant([0, 5], dtype=tf.int32)
     logits = tf.constant([[0.0, 1.0], [1.0, 0.0]])
     with pytest.raises(tf.errors.InvalidArgumentError):
@@ -245,14 +245,14 @@ def test_mse_non_negative() -> None:
 
 @pytest.mark.parametrize("batch_size", list(_BATCH_SIZES))
 def test_mse_sensing_loss_batch_sizes(batch_size: int) -> None:
-    """Consistenza dimensioni: batch 1/32/128 -> output scalare e finito."""
+    """Consistenza dimensioni: batch 1/32/128 -> output scalare e finite."""
     targets, preds = _make_sensing_batch(batch_size=batch_size)
     loss_val = mse_sensing_loss(targets, preds)
     assert tf.rank(loss_val) == 0
     assert np.isfinite(float(loss_val))
 
 def test_mse_shape_raises() -> None:
-    """Input invalido: y_true (B,3) vs atteso (B,2) -> shape error (header losses.py)."""
+    """Input invalido: y_true (B,3) vs expected (B,2) -> shape error (header losses.py)."""
     targets = tf.ones((4, 3), dtype=tf.float32)
     preds = tf.ones((4, 2), dtype=tf.float32)
     with pytest.raises(ValueError):
@@ -309,7 +309,7 @@ def test_targets_normalized_01(caplog: pytest.LogCaptureFixture) -> None:
     raw_targets = tf.constant([[0.0, 0.0], [33.0, 0.0]], dtype=tf.float32)
     with caplog.at_level(logging.WARNING, logger="src.training.losses"):
         mse_sensing_loss(raw_targets, tf.zeros_like(raw_targets))
-    assert "fuori da [0,1]" in caplog.text
+    assert "outside [0,1]" in caplog.text
 
 def test_lambda_0() -> None:
     """ (T1): lambda=0 -> L_total == L_comm (sensing disattivato)."""
@@ -397,17 +397,17 @@ def test_lambda_negative_raises() -> None:
 
 def test_lambda_nan_raises() -> None:
     
-    with pytest.raises(ValueError, match="finito"):
+    with pytest.raises(ValueError, match="finite"):
         combined_loss_factory(float("nan"))
 
 def test_lambda_inf_raises() -> None:
     
-    with pytest.raises(ValueError, match="finito"):
+    with pytest.raises(ValueError, match="finite"):
         combined_loss_factory(float("inf"))
 
 def test_lambda_type_raises() -> None:
     """Input invalido: lambda non numerico -> TypeError."""
-    with pytest.raises(TypeError, match="numero"):
+    with pytest.raises(TypeError, match="number"):
         combined_loss_factory("0.1")
 
 @pytest.mark.parametrize(
@@ -421,7 +421,7 @@ def test_missing_key_raises(missing_key: str) -> None:
     del (y_true if owner == "y_true" else y_pred)[key]
 
     loss_fn = combined_loss_factory(0.1)
-    with pytest.raises(ValueError, match="Chiave mancante"):
+    with pytest.raises(ValueError, match="Missing key"):
         loss_fn(y_true, y_pred)
 
 def test_combined_wrong_comm_shape_raises() -> None:

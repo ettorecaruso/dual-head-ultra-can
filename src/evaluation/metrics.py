@@ -14,31 +14,31 @@ _MSE_NEGATIVE_TOL = 1e-9
 def _validate_logits_labels(logits: np.ndarray, labels: np.ndarray) -> Tuple[int, int]:
     
     if not isinstance(logits, np.ndarray):
-        raise TypeError(f"logits deve essere np.ndarray, ricevuto: {type(logits).__name__}")
+        raise TypeError(f"logits must be a np.ndarray, got: {type(logits).__name__}")
     if not isinstance(labels, np.ndarray):
-        raise TypeError(f"labels deve essere np.ndarray, ricevuto: {type(labels).__name__}")
+        raise TypeError(f"labels must be a np.ndarray, got: {type(labels).__name__}")
 
     if logits.ndim != 2:
-        raise ValueError(f"logits deve essere 2D (B, M), ricevuto: {logits.ndim}D")
+        raise ValueError(f"logits must be 2D (B, M), got: {logits.ndim}D")
     if labels.ndim != 1:
-        raise ValueError(f"labels deve essere 1D (B,), ricevuto: {labels.ndim}D")
+        raise ValueError(f"labels must be 1D (B,), got: {labels.ndim}D")
 
     B, M = logits.shape
     if labels.shape[0] != B:
         raise ValueError(
-            f"shape non coincidono: logits.shape[0]={B}, labels.shape[0]={labels.shape[0]}"
+            f"shape mismatch: logits.shape[0]={B}, labels.shape[0]={labels.shape[0]}"
         )
     if B == 0:
-        raise ValueError("nessun campione (B=0)")
+        raise ValueError("no samples (B=0)")
 
     if not np.all(np.isfinite(logits)):
-        raise ValueError("logits contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("logits contains NaN/Inf")
     if not np.all(np.isfinite(labels)):
-        raise ValueError("labels contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("labels contains NaN/Inf")
 
     if labels.min() < 0 or labels.max() >= M:
         raise ValueError(
-            f"etichette fuori da [0, {M-1}]: min={labels.min()}, max={labels.max()}"
+            f"labels outside [0, {M-1}]: min={labels.min()}, max={labels.max()}"
         )
 
     return B, M
@@ -58,32 +58,32 @@ def ber_from_logits(logits: np.ndarray, labels: np.ndarray) -> float:
 def ber(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     
     if not isinstance(y_true, np.ndarray):
-        raise TypeError(f"y_true deve essere np.ndarray, ricevuto: {type(y_true).__name__}")
+        raise TypeError(f"y_true must be a np.ndarray, got: {type(y_true).__name__}")
     if not isinstance(y_pred, np.ndarray):
-        raise TypeError(f"y_pred deve essere np.ndarray, ricevuto: {type(y_pred).__name__}")
+        raise TypeError(f"y_pred must be a np.ndarray, got: {type(y_pred).__name__}")
 
     if y_true.ndim != 1:
-        raise ValueError(f"y_true deve essere 1D, ricevuto: {y_true.ndim}D")
+        raise ValueError(f"y_true must be 1D, got: {y_true.ndim}D")
     if y_pred.ndim != 1:
-        raise ValueError(f"y_pred deve essere 1D, ricevuto: {y_pred.ndim}D")
+        raise ValueError(f"y_pred must be 1D, got: {y_pred.ndim}D")
 
     if y_true.shape != y_pred.shape:
         raise ValueError(
-            f"shape non coincidono: y_true {y_true.shape}, y_pred {y_pred.shape}"
+            f"shape mismatch: y_true {y_true.shape}, y_pred {y_pred.shape}"
         )
     B = y_true.shape[0]
     if B == 0:
-        raise ValueError("nessun campione (B=0)")
+        raise ValueError("no samples (B=0)")
 
     if not np.all(np.isfinite(y_true)):
-        raise ValueError("y_true contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("y_true contains NaN/Inf")
     if not np.all(np.isfinite(y_pred)):
-        raise ValueError("y_pred contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("y_pred contains NaN/Inf")
 
     if not np.all(np.isin(y_true, [0, 1])):
-        raise ValueError("y_true deve contenere solo valori 0/1")
+        raise ValueError("y_true must contain only 0/1 values")
     if not np.all(np.isin(y_pred, [0, 1])):
-        raise ValueError("y_pred deve contenere solo valori 0/1")
+        raise ValueError("y_pred must contain only 0/1 values")
 
     n_errors = int(np.count_nonzero(y_true != y_pred))
     ber = n_errors / B
@@ -104,39 +104,39 @@ def mse_delay_doppler(
     fd_true = np.asarray(fd_true)
 
     if tau_pred.ndim != 1:
-        raise ValueError(f"tau_pred deve essere 1D, ricevuto: {tau_pred.ndim}D")
+        raise ValueError(f"tau_pred must be 1D, got: {tau_pred.ndim}D")
     if fd_pred.ndim != 1:
-        raise ValueError(f"fd_pred deve essere 1D, ricevuto: {fd_pred.ndim}D")
+        raise ValueError(f"fd_pred must be 1D, got: {fd_pred.ndim}D")
     if tau_true.ndim != 1:
-        raise ValueError(f"tau_true deve essere 1D, ricevuto: {tau_true.ndim}D")
+        raise ValueError(f"tau_true must be 1D, got: {tau_true.ndim}D")
     if fd_true.ndim != 1:
-        raise ValueError(f"fd_true deve essere 1D, ricevuto: {fd_true.ndim}D")
+        raise ValueError(f"fd_true must be 1D, got: {fd_true.ndim}D")
 
     if len(tau_pred) != len(fd_pred):
         raise ValueError(
-            f"shape predittori non coincidono: tau_pred {len(tau_pred)}, fd_pred {len(fd_pred)}"
+            f"predictor shape mismatch: tau_pred {len(tau_pred)}, fd_pred {len(fd_pred)}"
         )
     if len(tau_pred) != len(tau_true):
         raise ValueError(
-            f"shape pred e true non coincidono: tau_pred {len(tau_pred)}, tau_true {len(tau_true)}"
+            f"pred/true shape mismatch: tau_pred {len(tau_pred)}, tau_true {len(tau_true)}"
         )
     if len(tau_pred) != len(fd_true):
         raise ValueError(
-            f"shape pred e true non coincidono: tau_pred {len(tau_pred)}, fd_true {len(fd_true)}"
+            f"pred/true shape mismatch: tau_pred {len(tau_pred)}, fd_true {len(fd_true)}"
         )
 
     B = len(tau_pred)
     if B == 0:
-        raise ValueError("nessun campione (B=0)")
+        raise ValueError("no samples (B=0)")
 
     if not np.all(np.isfinite(tau_pred)):
-        raise ValueError("tau_pred contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("tau_pred contains NaN/Inf")
     if not np.all(np.isfinite(fd_pred)):
-        raise ValueError("fd_pred contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("fd_pred contains NaN/Inf")
     if not np.all(np.isfinite(tau_true)):
-        raise ValueError("tau_true contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("tau_true contains NaN/Inf")
     if not np.all(np.isfinite(fd_true)):
-        raise ValueError("fd_true contiene NaN/Inf ( Sez. 1.2)")
+        raise ValueError("fd_true contains NaN/Inf")
 
     err_tau = tau_pred - tau_true
     err_fd = fd_pred - fd_true
@@ -145,7 +145,7 @@ def mse_delay_doppler(
     mse_fd = float(np.mean(err_fd ** 2))
 
     if not np.isfinite(mse_tau) or not np.isfinite(mse_fd):
-        raise RuntimeError("MSE non finito (NaN/Inf): STOP  Sez. 1.2")
+        raise RuntimeError("MSE is not finite (NaN/Inf)")
     if mse_tau < -_MSE_NEGATIVE_TOL or mse_fd < -_MSE_NEGATIVE_TOL:
         raise RuntimeError(f"MSE negativo: mse_tau={mse_tau:.6f}, mse_fd={mse_fd:.6f}")
     if mse_tau < 0.0:
@@ -162,16 +162,16 @@ def mse_delay_doppler(
 def rmse_from_mse(mse: float) -> float:
     
     if not isinstance(mse, (int, float)):
-        raise TypeError(f"mse deve essere int o float, ricevuto: {type(mse).__name__}")
+        raise TypeError(f"mse must be int or float, got: {type(mse).__name__}")
     if not np.isfinite(mse):
-        raise ValueError(f"MSE deve essere finito, ricevuto: {mse}")
+        raise ValueError(f"MSE must be finite, got: {mse}")
     if mse < -_MSE_NEGATIVE_TOL:
         raise ValueError(f"MSE negativo: {mse:.6f}")
     if mse < 0.0:
         mse = 0.0
 
     rmse = float(np.sqrt(mse))
-    logger.debug("rmse_from_mse: MSE=%.6f → RMSE=%.6f", mse, rmse)
+    logger.debug("rmse_from_mse: MSE=%.6f -> RMSE=%.6f", mse, rmse)
     return rmse
 
 def bit_error_count(logits: np.ndarray, labels: np.ndarray) -> Tuple[int, int]:

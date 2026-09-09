@@ -102,7 +102,7 @@ class _MultiHeadQKVAttention(tf.keras.layers.Layer):
         self._store_attention_weights = bool(store_attention_weights)
         if not math.isfinite(self._temperature) or self._temperature <= 0.0:
             raise ValueError(
-                f"temperature deve essere un numero positivo, ricevuto: {self._temperature!r}"
+                f"temperature must be a positive number, got: {self._temperature!r}"
             )
         self._head_dim = attention_dim // num_heads
         self._scale = 1.0 / (self._temperature * math.sqrt(float(self._head_dim)))
@@ -130,7 +130,7 @@ class _MultiHeadQKVAttention(tf.keras.layers.Layer):
 
     @property
     def last_attention_weights(self) -> Optional[tf.Tensor]:
-        """Pesi softmax medi sui capi dell'ultimo forward (debug/visualizer)."""
+        """Mean softmax weights across heads of the last forward pass (debug/visualizer)."""
         return self._last_attention_weights
 
     @staticmethod
@@ -153,20 +153,20 @@ class _MultiHeadQKVAttention(tf.keras.layers.Layer):
         training: Optional[bool] = None,
         mask: Optional[tf.Tensor] = None,
     ) -> tf.Tensor:
-        """Forward del layer: ``Softmax(Q K^T / sqrt(d_k)) V`` multi-head.
+        """Forward pass of the layer: multi-head ``Softmax(Q K^T / sqrt(d_k)) V``.
 
         Args:
-            inputs: Tensore ``(B, T, attention_dim)`` (es. H^(2), (B, 96, 64)).
-            training: Flag di training (non usato: il layer non ha dropout;
-                presente per compatibilita' con l'API Keras).
-            mask: Maschera opzionale (non usata; compatibilita' API Keras).
+            inputs: Tensor ``(B, T, attention_dim)`` (e.g. H^(2), (B, 96, 64)).
+            training: Training flag (unused: the layer has no dropout; kept for
+                Keras API compatibility).
+            mask: Optional mask (unused; Keras API compatibility).
 
         Returns:
-            ``(B, T, attention_dim)``: H^att riproiettato (es. (B, 96, 64)).
+            ``(B, T, attention_dim)``: reprojected H^att (e.g. (B, 96, 64)).
 
         Raises:
-            tf.errors.InvalidArgumentError: Se gli score o i pesi softmax
-                contengono NaN/Inf.
+            tf.errors.InvalidArgumentError: If the scores or softmax weights
+                contain NaN/Inf.
         """
         del training, mask
         batch_size = tf.shape(inputs)[0]
@@ -182,7 +182,7 @@ class _MultiHeadQKVAttention(tf.keras.layers.Layer):
         v = self._dense_v(inputs)
 
         def _split_heads(x: tf.Tensor) -> tf.Tensor:
-            """Ridimensiona ``(B, T, D)`` in ``(B, num_heads, T, d_k)``."""
+            """Reshapes ``(B, T, D)`` into ``(B, num_heads, T, d_k)``."""
             x = tf.reshape(
                 x, (batch_size, time_len, self._num_heads, self._head_dim)
             )
@@ -239,11 +239,11 @@ class _MultiHeadQKVAttention(tf.keras.layers.Layer):
     def compute_output_shape(
         self, input_shape: Sequence[Optional[int]]
     ) -> Tuple[Optional[int], ...]:
-        """Shape di output ``(B, T, attention_dim)`` (batch incluso)."""
+        """Output shape ``(B, T, attention_dim)`` (batch included)."""
         return tuple(list(input_shape[:-1]) + [self._attention_dim])
 
     def get_config(self) -> Dict[str, Any]:
-        """Config del layer per la serializzazione Keras (``model.save``)."""
+        """Layer config for Keras serialization (``model.save``)."""
         config = super().get_config()
         config.update(
             {
@@ -270,11 +270,11 @@ class _MultiHeadQKVAttention(tf.keras.layers.Layer):
         self.built = True
 
     def get_build_config(self) -> Dict[str, Any]:
-        """Config di build per la deserializzazione Keras 3."""
+        """Build config for Keras 3 deserialization."""
         return {"input_shape": self._build_input_shape}
 
     def build_from_config(self, config: Dict[str, Any]) -> None:
-        """Ripristina lo stato di build da ``get_build_config``."""
+        """Restores the build state from ``get_build_config``."""
         self.build(config["input_shape"])
 
 def build_qkv_attention_layer(
@@ -289,31 +289,30 @@ def build_qkv_attention_layer(
     
     if isinstance(attention_dim, bool) or not isinstance(attention_dim, int):
         raise TypeError(
-            "attention_dim deve essere int, "
-            f"ricevuto: {attention_dim!r} ({type(attention_dim).__name__})"
+            "attention_dim must be int, "
+            f"got: {attention_dim!r} ({type(attention_dim).__name__})"
         )
     if isinstance(num_heads, bool) or not isinstance(num_heads, int):
         raise TypeError(
-            "num_heads deve essere int, "
-            f"ricevuto: {num_heads!r} ({type(num_heads).__name__})"
+            "num_heads must be int, "
+            f"got: {num_heads!r} ({type(num_heads).__name__})"
         )
     if attention_dim <= 0:
         raise ValueError(
-            f"attention_dim deve essere un intero positivo, ricevuto: "
+            f"attention_dim must be a positive integer, got: "
             f"{attention_dim!r}"
         )
     if num_heads <= 0:
         raise ValueError(
-            f"num_heads deve essere un intero positivo, ricevuto: {num_heads!r}"
+            f"num_heads must be a positive integer, got: {num_heads!r}"
         )
     if attention_dim % num_heads != 0:
         raise ValueError(
-            f"attention_dim ({attention_dim}) deve essere divisibile per "
-            f"num_heads ({num_heads}): d_k deve essere >= 1 ( "
-            "Sez. 4.3)"
+            f"attention_dim ({attention_dim}) must be divisible by "
+            f"num_heads ({num_heads}): d_k must be >= 1"
         )
     logger.debug(
-        "layer QKV: attention_dim=%d, num_heads=%d, d_k=%d, "
+        "QKV layer: attention_dim=%d, num_heads=%d, d_k=%d, "
         "positional_encoding=%s, qkv_residual=%s, enable_checks=%s, "
         "store_attention_weights=%s",
         attention_dim,
@@ -341,15 +340,15 @@ def _validate_qkv_backbone_config(
     
     if not isinstance(config, dict):
         raise TypeError(
-            f"config deve essere dict, ricevuto: {type(config).__name__}"
+            f"config must be a dict, got: {type(config).__name__}"
         )
 
     model_cfg = config.get("model")
     if not isinstance(model_cfg, dict):
-        raise ValueError("sezione 'model' mancante o non dict nella config")
+        raise ValueError("'model' section missing or not a dict in config")
     data_cfg = config.get("data")
     if not isinstance(data_cfg, dict):
-        raise ValueError("sezione 'data' mancante o non dict nella config")
+        raise ValueError("'data' section missing or not a dict in config")
 
     _assert_config_finite(model_cfg)
 
@@ -357,37 +356,37 @@ def _validate_qkv_backbone_config(
         key for key in _BACKBONE_REQUIRED_KEYS if key not in model_cfg
     ]
     if missing_model:
-        raise ValueError(f"chiavi mancanti in model: {missing_model}")
+        raise ValueError(f"missing keys in model: {missing_model}")
     missing_data = [key for key in _DATA_REQUIRED_KEYS if key not in data_cfg]
     if missing_data:
-        raise ValueError(f"chiavi mancanti in data: {missing_data}")
+        raise ValueError(f"missing keys in data: {missing_data}")
 
     backbone_type = str(model_cfg["backbone_type"])
     if backbone_type not in _VALID_BACKBONE_TYPES:
         raise ValueError(
-            f"model.backbone_type {backbone_type!r} non supportato da questo "
-            f"modulo (attesi: {list(_VALID_BACKBONE_TYPES)}); per 'conv1d' "
-            "usare src/models/ultra_can.py"
+            f"model.backbone_type {backbone_type!r} not supported by this "
+            f"module (expected: {list(_VALID_BACKBONE_TYPES)}); for 'conv1d' "
+            "use src/models/ultra_can.py"
         )
 
     size = str(model_cfg["size"])
     if size not in _VALID_SIZES:
         raise ValueError(
-            f"model.size deve essere uno di {list(_VALID_SIZES)}, "
-            f"ricevuto: {size!r}"
+            f"model.size must be one of {list(_VALID_SIZES)}, "
+            f"got: {size!r}"
         )
     if size == "micro":
         logger.warning(
-            "model.size='micro'(~100 params, Exp 2): richiede "
-            "attention_dim ridotto; i conteggi attesi delle teste (8578/2146) "
-            "NON si applicano piu'"
+            "model.size='micro' requires a reduced attention_dim; the expected "
+            "head parameter counts (8578/2146) "
+            "no longer apply"
         )
 
     conv_filters = model_cfg["conv_filters"]
     if not isinstance(conv_filters, (list, tuple)) or len(conv_filters) != 2:
         raise ValueError(
-            "model.conv_filters deve essere una lista di ESATTAMENTE 2 interi "
-            f"positivi [F1, F2] (paper Sez. IV-A), ricevuto: {conv_filters!r}"
+            "model.conv_filters must be a list of EXACTLY 2 positive "
+            f"integers [F1, F2], got: {conv_filters!r}"
         )
     _as_positive_int(conv_filters[0], "model.conv_filters[0]")
     _as_positive_int(conv_filters[1], "model.conv_filters[1]")
@@ -397,8 +396,8 @@ def _validate_qkv_backbone_config(
     conv_padding = str(model_cfg["conv_padding"])
     if conv_padding not in _VALID_PADDINGS:
         raise ValueError(
-            f"model.conv_padding deve essere {list(_VALID_PADDINGS)} "
-            f"(ricevuto: {conv_padding!r})"
+            f"model.conv_padding must be one of {list(_VALID_PADDINGS)} "
+            f"(got: {conv_padding!r})"
         )
     conv_dilations = _read_conv_dilations(model_cfg, n_layers=2)
 
@@ -410,16 +409,16 @@ def _validate_qkv_backbone_config(
     )
     if attention_dim % attention_heads != 0:
         raise ValueError(
-            f"model.attention_dim ({attention_dim}) deve essere divisibile per "
-            f"model.attention_heads ({attention_heads}): d_k deve essere "
-            ">= 1 ( Sez. 4.3)"
+            f"model.attention_dim ({attention_dim}) must be divisible by "
+            f"model.attention_heads ({attention_heads}): d_k must be "
+            ">= 1"
         )
     f2 = int(conv_filters[1])
     if attention_dim != f2:
         raise ValueError(
-            f"model.attention_dim ({attention_dim}) deve coincidere con "
-            f"model.conv_filters[1] ({f2}): la QKV agisce su H^(2) e le teste "
-            "ricevono v in R^(attention_dim) via GAP (contratto paper Sez. IV-B)"
+            f"model.attention_dim ({attention_dim}) must match "
+            f"model.conv_filters[1] ({f2}): the QKV operates on H^(2) and the heads "
+            "receive v in R^(attention_dim) via GAP"
         )
 
     seq_len = _as_positive_int(
@@ -428,15 +427,15 @@ def _validate_qkv_backbone_config(
     feature_mode = str(data_cfg["feature_mode"])
     if feature_mode not in _VALID_FEATURE_MODES:
         raise ValueError(
-            f"data.feature_mode deve essere uno di {list(_VALID_FEATURE_MODES)}, "
-            f"ricevuto: {feature_mode!r}"
+            f"data.feature_mode must be one of {list(_VALID_FEATURE_MODES)}, "
+            f"got: {feature_mode!r}"
         )
 
     if conv_kernel >= seq_len:
         raise ValueError(
-            f"model.conv_kernel ({conv_kernel}) deve essere < "
-            f"data.sequence_length ({seq_len}): la convoluzione 'valid' "
-            "produrrebbe una lunghezza <= 0"
+            f"model.conv_kernel ({conv_kernel}) must be < "
+            f"data.sequence_length ({seq_len}): the 'valid' convolution "
+            "would produce a length <= 0"
         )
 
     att_len = _expected_att_length(
@@ -449,7 +448,7 @@ def _validate_qkv_backbone_config(
     num_features = 1 if feature_mode == "real" else 2
 
     logger.debug(
-        "config backbone QKV validata: conv_filters=%s, conv_kernel=%d, "
+        "QKV backbone config validated: conv_filters=%s, conv_kernel=%d, "
         "padding=%s, attention_dim=%d, attention_heads=%d, seq_len=%d, "
         "feature_mode=%s, num_features=%d",
         list(conv_filters),
@@ -493,14 +492,14 @@ def _log_attention_saturation(attn_layer: _MultiHeadQKVAttention) -> None:
         )
     )
     logger.debug(
-        "attenzione QKV: max prob. = %.4f, entropia media = %.4f",
+        "QKV attention: max prob. = %.4f, mean entropy = %.4f",
         max_prob,
         entropy,
     )
     if max_prob > _SATURATION_MAX_PROB:
         logger.warning(
-            "attenzione QKV saturata: max prob. softmax = %.4f (> %.2f) -> "
-            "gradienti quasi nulli su quelle posizioni ( Sez. 4.3)",
+            "QKV attention saturated: max softmax prob. = %.4f (> %.2f) -> "
+            "near-zero gradients on those positions",
             max_prob,
             _SATURATION_MAX_PROB,
         )
@@ -526,8 +525,8 @@ def _build_qkv_backbone(
     if input_tensor is not None:
         if tuple(input_tensor.shape[1:]) != (seq_len, num_features):
             raise ValueError(
-                f"input_tensor shape attesa (None, {seq_len}, {num_features}), "
-                f"ricevuta: {tuple(input_tensor.shape)}"
+                f"expected input_tensor shape (None, {seq_len}, {num_features}), "
+                f"got: {tuple(input_tensor.shape)}"
             )
         r_input = input_tensor
     else:
@@ -572,14 +571,14 @@ def _build_qkv_backbone(
 
     if tuple(h_att.shape) != (None, att_len, f2):
         raise ValueError(
-            f"H^att shape attesa (None, {att_len}, {f2}) (conv 'valid' "
+            f"expected H^att shape (None, {att_len}, {f2}) (conv 'valid' "
             f"{seq_len} -> {seq_len - (conv_kernel - 1)} -> {att_len}), "
-            f"ricevuta: {tuple(h_att.shape)}"
+            f"got: {tuple(h_att.shape)}"
         )
 
     if input_tensor is not None:
         logger.debug(
-            "backbone '%s' (layer condivisi): H^att=(None,%d,%d)",
+            "backbone '%s' (shared layers): H^att=(None,%d,%d)",
             _BACKBONE_NAME_QKV, att_len, f2,
         )
         return h_att
@@ -594,7 +593,7 @@ def _build_qkv_backbone(
     )
     _log_attention_saturation(qkv_layer)
     logger.info(
-        "backbone '%s' costruita: input=(None,%d,%d), H^att=(None,%d,%d), "
+        "backbone '%s' built: input=(None,%d,%d), H^att=(None,%d,%d), "
         "params=%d",
         _BACKBONE_NAME_QKV,
         seq_len,
@@ -640,20 +639,20 @@ def build_dual_head_ultra_can_qkv(config: Dict[str, Any]) -> tf.keras.Model:
 
     if tuple(h_att.shape) != (None, att_len, f2):
         raise ValueError(
-            f"H^att shape attesa (None, {att_len}, {f2}), "
-            f"ricevuta: {tuple(h_att.shape)}"
+            f"expected H^att shape (None, {att_len}, {f2}), "
+            f"got: {tuple(h_att.shape)}"
         )
     if tuple(v.shape) != (None, f2):
-        raise ValueError(f"v shape attesa (None, {f2}), ricevuta: {tuple(v.shape)}")
+        raise ValueError(f"expected v shape (None, {f2}), got: {tuple(v.shape)}")
     if tuple(comm.shape) != (None, modulation_order):
         raise ValueError(
-            f"comm shape attesa (None, {modulation_order}), "
-            f"ricevuta: {tuple(comm.shape)}"
+            f"expected comm shape (None, {modulation_order}), "
+            f"got: {tuple(comm.shape)}"
         )
     if tuple(sensing.shape) != (None, _SENSING_OUTPUT_UNITS):
         raise ValueError(
-            f"sensing shape attesa (None, {_SENSING_OUTPUT_UNITS}), "
-            f"ricevuta: {tuple(sensing.shape)}"
+            f"expected sensing shape (None, {_SENSING_OUTPUT_UNITS}), "
+            f"got: {tuple(sensing.shape)}"
         )
 
     model = tf.keras.Model(
@@ -675,8 +674,8 @@ def build_dual_head_ultra_can_qkv(config: Dict[str, Any]) -> tf.keras.Model:
         training_cfg.get("lambda_mse") if isinstance(training_cfg, dict) else None
     )
     logger.info(
-        "modello '%s' costruito: comm=%d params, sensing=%d params, "
-        "TOT=%d params, lambda_mse=%s",
+        "model '%s' built: comm=%d params, sensing=%d params, "
+        "TOTAL=%d params, lambda_mse=%s",
         _MODEL_NAME_QKV,
         count_trainable_params(comm_head),
         count_trainable_params(sensing_head),
@@ -689,7 +688,7 @@ def count_trainable_params(model: tf.keras.Model) -> int:
     
     if not isinstance(model, tf.keras.Model):
         raise TypeError(
-            f"model deve essere tf.keras.Model, ricevuto: {type(model).__name__}"
+            f"model must be a tf.keras.Model, got: {type(model).__name__}"
         )
     return num_params(model)
 
@@ -697,8 +696,8 @@ def _build_and_smoke_check(config: Dict[str, Any]) -> tf.keras.Model:
     
     model = build_dual_head_ultra_can_qkv(config)
     logger.info(
-        "modello '%s' pronto: TOT=%d params, footprint ~%.0f kB a "
-        "4 byte/param",
+        "model '%s' ready: TOTAL=%d params, footprint ~%.0f kB a "
+        "4 bytes/param",
         model.name,
         count_trainable_params(model),
         count_trainable_params(model) * 4.0 / 1024.0,
@@ -708,18 +707,18 @@ def _build_and_smoke_check(config: Dict[str, Any]) -> tf.keras.Model:
 def main(argv: Optional[Sequence[str]] = None) -> None:
     
     parser = argparse.ArgumentParser(
-        description="Smoke test modello Dual-Head Ultra-CAN QKV (ISAC in IoD), "
+        description="Smoke test for the Dual-Head Ultra-CAN QKV (ISAC in IoD) model"
         ""
     )
     parser.add_argument(
-        "--config", required=True, help="path della config esperimento (YAML)"
+        "--config", required=True, help="path to the experiment config (YAML)"
     )
     parser.add_argument(
         "--set",
         action="append",
         default=[],
         metavar="path.to.key=value",
-        help="override CLI (puo' essere ripetuto), es. "
+        help="CLI override (can be repeated), e.g. "
         "--set model.backbone_type=qkv_attention",
     )
     args = parser.parse_args(argv)
@@ -736,13 +735,13 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         str(model_cfg.get("backbone_type", "")) != "qkv_attention"
     ):
         raise ValueError(
-            "model.backbone_type deve essere 'qkv_attention' per questo "
-            "modulo (usare: --set model.backbone_type=qkv_attention)"
+            "model.backbone_type must be 'qkv_attention' for this "
+            "module (use: --set model.backbone_type=qkv_attention)"
         )
 
     general = config.get("general")
     if not isinstance(general, dict):
-        raise ValueError("sezione 'general' mancante o non dict nella config")
+        raise ValueError("'general' section missing or not a dict in config")
     experiment_name = str(general.get("experiment_name", "ultra_can_isac"))
     log_dir = _REPO_ROOT / "results" / experiment_name / "logs"
     setup_logging(

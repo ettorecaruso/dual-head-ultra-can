@@ -4,12 +4,12 @@ Test per ``src/data/dataset_generator.py``: canale aereo (test_channel).
 Questi test verificano:
   T1  test_channel_k10_echoes           K=10 (eco massimo): uscita finita,
                                         shape (100,), normalizzazione Eq. (4)
-  T2  test_channel_k0_no_echoes         K=0: solo AWGN, output finito,
+  T2  test_channel_k0_no_echoes         K=0: solo AWGN, output finite,
                                         label sensing (0, 0) ()
   T3  test_channel_extreme_delay_raises tau > sequence_length -> ValueError
-                                        (ritardo fuori finestra di osservazione)
-  T4  test_channel_snr_minus20          SNR=-20 dB: finito, rumore dominante
-  T5  test_channel_snr_plus30           SNR=+30 dB: finito, segnale dominante
+                                        (ritardo outside window di osservazione)
+  T4  test_channel_snr_minus20          SNR=-20 dB: finite, rumore dominante
+  T5  test_channel_snr_plus30           SNR=+30 dB: finite, segnale dominante
   T6  test_doppler_range                fD,k in [0, 8e-5] (Tab. I, Sez. III-B)
   T7  test_labels_ranges                tau in [0, max_delay]; alpha in
                                         [1e-6, 1e-2] (Tab. I, Sez. III-B)
@@ -26,7 +26,7 @@ funzione" (input validi / limite / invalidi) il file copre anche:
     k invalidi (negativi, float, bool), config incoerente;
   - ``sample_direct_path``     : range di f_Dc, potenza unitaria statistica
     E[|h_c|^2] = 1, K=0 dB (Rayleigh) e K=30 dB (LOS dominante), kappa
-    invalidi e chiave mancante;
+    invalidi e missing key;
   - ``_dominant_echo_index``   : eco dominante = alpha massimo (),
     lista singola e lista vuota (ValueError);
   - ``EchoParams``/``DirectPathParams``: dataclass frozen (immutabilita');
@@ -45,13 +45,13 @@ funzioni pubbliche di questo modulo di test.
 
 TODO (test mancanti, segnalati esplicitamente):
   - ``apply_aerial_channel`` NON impone un limite inferiore a ``snr_db``
-    (accetta qualsiasi valore finito): il template utente suggeriva
+    (accetta qualsiasi valore finite): il template utente suggeriva
     "SNR < -30 -> ValueError", NON implementato nella sorgente. Testato qui
-    solo il comportamento reale (SNR=-40 dB: finito). Se il paper richiede
+    solo il comportamento reale (SNR=-40 dB: finite). Se il paper richiede
     una soglia minima, va aggiunta la validazione nel sorgente (ALERT).
   - ``sample_direct_path`` NON valida ``doppler_direct_max`` nel proprio corpo
     (range controllato solo da ``_validate_config``): test mancante per
-    ``doppler_direct_max`` negativo/non finito a livello di funzione.
+    ``doppler_direct_max`` negativo/not finite a livello di funzione.
   - ``FileNotFoundError`` per file di input mancante: NON applicabile al
     generatore (il canale non legge file); spetta a ``tests/test_data``
     (data_loader).
@@ -148,7 +148,7 @@ def test_channel_k10_echoes() -> None:
     assert float(np.max(np.abs(y)) - np.min(np.abs(y))) > 0.0
 
 def test_channel_k0_no_echoes(tmp_path: Path) -> None:
-    """T2: K=0 -> solo path diretto + AWGN, output finito, label sensing (0, 0)."""
+    """T2: K=0 -> solo path diretto + AWGN, output finite, label sensing (0, 0)."""
     cfg = _tiny_config()
     rng = np.random.default_rng(_SEED)
     x = generate_chaotic_sequence("logistic", _MU_PAPER, _SEED, _N_SEQ)
@@ -173,10 +173,10 @@ def test_channel_k0_no_echoes(tmp_path: Path) -> None:
     assert data["x"].shape == (4, _N_SEQ)
 
 def test_channel_extreme_delay_raises() -> None:
-    """T3: tau > sequence_length -> ValueError (ritardo fuori finestra)."""
+    """T3: tau > sequence_length -> ValueError (ritardo outside window)."""
     x = generate_chaotic_sequence("logistic", _MU_PAPER, _SEED, _N_SEQ)
     echo_out_of_window = EchoParams(tau=_N_SEQ + 1, f_doppler=1e-5, alpha=1e-3)
-    with pytest.raises(ValueError, match="finestra"):
+    with pytest.raises(ValueError, match="window"):
         apply_aerial_channel(
             x, complex(1.0, 0.0), 0.0, [echo_out_of_window], 10.0,
             np.random.default_rng(0),
@@ -337,7 +337,7 @@ def test_apply_channel_snr_extreme_low_minus40_finite() -> None:
     assert noise_var > float(np.mean(x ** 2))
 
 def test_apply_channel_tau_equal_length_allowed() -> None:
-    """Caso limite: tau == N (boundary) ammesso, contributo eco nullo, finito."""
+    """Caso limite: tau == N (boundary) ammesso, contributo eco nullo, finite."""
     x = generate_chaotic_sequence("logistic", _MU_PAPER, _SEED, _N_SEQ)
     echo = EchoParams(tau=_N_SEQ, f_doppler=1e-5, alpha=1e-3)
     y, _ = apply_aerial_channel(
@@ -362,7 +362,7 @@ def test_apply_channel_tau_equal_length_allowed() -> None:
     ],
 )
 def test_apply_channel_invalid_x(bad_x: np.ndarray) -> None:
-    """Input invalidi: x non 1D/vuoto/NaN/Inf -> ValueError."""
+    """Input invalidi: x non 1D/empty/NaN/Inf -> ValueError."""
     with pytest.raises(ValueError):
         apply_aerial_channel(bad_x, complex(1.0, 0.0), 0.0, [], 10.0, np.random.default_rng(0))
 
@@ -375,14 +375,14 @@ def test_apply_channel_invalid_h_c(bad_h_c: complex) -> None:
 
 @pytest.mark.parametrize("bad_f_dc", [-0.1, 0.5, float("nan")])
 def test_apply_channel_invalid_f_dc(bad_f_dc: float) -> None:
-    """Input invalidi: f_dc fuori da [0, 0.5) o non finito -> ValueError."""
+    """Input invalidi: f_dc outside da [0, 0.5) o not finite -> ValueError."""
     x = generate_chaotic_sequence("logistic", _MU_PAPER, _SEED, _N_SEQ)
     with pytest.raises(ValueError, match="f_dc"):
         apply_aerial_channel(x, complex(1.0, 0.0), bad_f_dc, [], 10.0, np.random.default_rng(0))
 
 @pytest.mark.parametrize("bad_snr", [float("nan"), float("inf")])
 def test_apply_channel_invalid_snr(bad_snr: float) -> None:
-    """Input invalidi: snr_db non finito -> ValueError."""
+    """Input invalidi: snr_db not finite -> ValueError."""
     x = generate_chaotic_sequence("logistic", _MU_PAPER, _SEED, _N_SEQ)
     with pytest.raises(ValueError, match="snr_db"):
         apply_aerial_channel(x, complex(1.0, 0.0), 0.0, [], bad_snr, np.random.default_rng(0))
@@ -472,7 +472,7 @@ def test_sample_echoes_config_inconsistent_max_delay() -> None:
         sample_echo_parameters(1, np.random.default_rng(0), cfg)
 
 def test_sample_direct_path_normal_ranges() -> None:
-    """Caso normale: h_c finito, f_dc in [0, 1e-5], oggetto DirectPathParams."""
+    """Caso normale: h_c finite, f_dc in [0, 1e-5], oggetto DirectPathParams."""
     cfg = _tiny_config()
     direct = sample_direct_path(np.random.default_rng(4), cfg)
     assert isinstance(direct, DirectPathParams)
@@ -510,7 +510,7 @@ def test_sample_direct_path_kappa30_los_edge() -> None:
 
 @pytest.mark.parametrize("bad_kappa", [-1.0, float("nan"), float("inf")])
 def test_sample_direct_path_invalid_kappa(bad_kappa: float) -> None:
-    """Input invalidi: rician_kappa_db < 0 o non finito -> ValueError."""
+    """Input invalidi: rician_kappa_db < 0 o not finite -> ValueError."""
     cfg = _tiny_config(data_overrides={"rician_kappa_db": bad_kappa})
     with pytest.raises(ValueError, match="rician_kappa_db"):
         sample_direct_path(np.random.default_rng(0), cfg)

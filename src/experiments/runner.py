@@ -96,10 +96,10 @@ def _validate_common_config(config: Dict[str, Any]) -> None:
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     
     parser = argparse.ArgumentParser(
-        description="Runner unico per esperimenti DH-ISAC",
+        description="Single entry point for the DH-ISAC experiments",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Esempi:
+Examples:
   python src/experiments/runner.py --experiments 1 --mode fast
   python src/experiments/runner.py --experiments 1,2,3 --mode full --model qkv
   python src/experiments/runner.py --experiments all --mode full --no-regen
@@ -108,13 +108,13 @@ Esempi:
     parser.add_argument(
         "--experiments",
         required=True,
-        help="Numeri degli esperimenti da eseguire, separati da virgola (es. 1,2,3) o 'all'",
+        help="Experiment identifiers to run, comma separated (e.g. 1,2,3) or 'all'",
     )
     parser.add_argument(
         "--mode",
         choices=["fast", "full"],
         default=_DEFAULT_MODE,
-        help=f"Modalità di esecuzione (default: {_DEFAULT_MODE})",
+        help=f"Execution mode (default: {_DEFAULT_MODE})",
     )
     parser.add_argument(
         "--model",
@@ -129,19 +129,19 @@ Esempi:
     parser.add_argument(
         "--no-regen",
         action="store_true",
-        help="Se presente, non rigenera il dataset (usa i file esistenti)",
+        help="If set, do not regenerate the dataset (use existing files)",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=_DEFAULT_OUTPUT_DIR,
-        help=f"Directory di output (default: {_DEFAULT_OUTPUT_DIR})",
+        help=f"Output directory (default: {_DEFAULT_OUTPUT_DIR})",
     )
     parser.add_argument(
         "--config",
         type=Path,
         default=_REPO_ROOT / "configs" / "experiments.yaml",
-        help="Path del file experiments.yaml (default: configs/experiments.yaml)",
+        help="Path to the experiments.yaml file (default: configs/experiments.yaml)",
     )
     return parser.parse_args(argv)
 
@@ -197,12 +197,12 @@ def load_experiment_config(
 
     exp_key = experiment_name
     if exp_key not in experiments_full:
-        raise ValueError(f"Sezione '{exp_key}' mancante in {experiments_yaml_path}")
+        raise ValueError(f"Section '{exp_key}' missing in {experiments_yaml_path}")
 
     exp_section = experiments_full[exp_key]
     if mode not in exp_section:
         raise ValueError(
-            f"Modalità '{mode}' mancante per {exp_key} in {experiments_yaml_path}"
+            f"Mode '{mode}' missing for {exp_key} in {experiments_yaml_path}"
         )
 
     exp_config = exp_section[mode]
@@ -374,7 +374,7 @@ def _compute_winner_summary(
     return summary
 
 def _generate_pdf_from_tex(tex_path: Path) -> Optional[Path]:
-    """Converte un file .tex in PDF usando pdflatex (se disponibile)."""
+    """Convert a .tex file to PDF using pdflatex (if available)."""
     pdf_path = tex_path.with_suffix(".pdf")
 
     try:
@@ -395,7 +395,7 @@ def _generate_pdf_from_tex(tex_path: Path) -> Optional[Path]:
             "-halt-on-error",
             tex_path.name,
         ]
-        logger.debug("Esecuzione comando: %s (cwd=%s)", " ".join(cmd), cwd)
+        logger.debug("Running command: %s (cwd=%s)", " ".join(cmd), cwd)
 
         result = subprocess.run(
             cmd,
@@ -421,7 +421,7 @@ def _generate_pdf_from_tex(tex_path: Path) -> Optional[Path]:
         logger.warning("pdflatex not found in PATH, skipping PDF generation")
         return None
     except subprocess.TimeoutExpired:
-        logger.warning("pdflatex timeout dopo 30 secondi")
+        logger.warning("pdflatex timeout after 30 seconds")
         return None
     except Exception as e:
         logger.warning("Error while generating the PDF: %s", e)
@@ -471,7 +471,7 @@ def run_ber_vs_snr(
         scenario_results = {}
 
         for arch in architectures:
-            logger.info("Architettura: %s", arch)
+            logger.info("Architecture: %s", arch)
             if arch in ("conv1d", "qkv", "lstm", "mc_dlsk"):
                 arch_output_dir = output_dir / scenario_name / arch
                 model = pipeline.build_model(scenario_config, arch)
@@ -512,7 +512,7 @@ def run_ber_vs_snr(
                 scenario_curves["blind_stat"] = df_blind
                 scenario_results["blind_stat"] = {"metrics": df_blind}
             else:
-                logger.warning("Architettura non supportata: %s, saltata", arch)
+                logger.warning("Unsupported architecture: %s, skipping", arch)
                 continue
 
         plot_dir = output_dir / "plots"
@@ -566,7 +566,7 @@ def run_classical_receivers(
 ) -> Dict[str, Any]:
     
     logger.info("=" * 60)
-    logger.info("Esperimento 3: solo equazioni (no DL) - ricevitori classici")
+    logger.info("Experiment classical_receivers: equations only (no DL) - classical receivers")
     logger.info("=" * 60)
 
     echo_config = copy.deepcopy(config)
@@ -635,8 +635,8 @@ def _find_clean_ber_curve(
                 if {"snr_db", "ber"}.issubset(df.columns) and not df.empty:
                     return df
             except Exception as exc:
-                logger.warning("metrics.csv di ber_vs_snr non leggibile (%s): %s", path, exc)
-    logger.debug("curva clean ber_vs_snr non trovata per %s (mode=%s)", arch, mode)
+                logger.warning("ber_vs_snr metrics.csv not readable (%s): %s", path, exc)
+    logger.debug("clean ber_vs_snr curve not found for %s (mode=%s)", arch, mode)
     return None
 
 
@@ -649,7 +649,7 @@ def _plot_jamming_vs_clean_ber(
 ) -> Optional[Path]:
     
     if not jamming_dfs:
-        logger.warning("Nessuna curva jammata per %s: salto il confronto", model_name)
+        logger.warning("No jammed curve for %s: skipping the comparison", model_name)
         return None
 
     output_dir = Path(output_dir)
@@ -666,16 +666,16 @@ def _plot_jamming_vs_clean_ber(
         )
         ax_clean.set_xlabel("SNR (dB)")
         ax_clean.set_ylabel("Bit Error Rate (BER)")
-        ax_clean.set_title(f"{model_name} - pulita (ber_vs_snr)")
+        ax_clean.set_title(f"{model_name} - clean (ber_vs_snr)")
         ax_clean.grid(True, which="both", linestyle="--", alpha=0.6)
         ax_clean.legend()
         clean_mean = float(np.mean(clean_curve["ber"]))
     else:
         ax_clean.text(
-            0.5, 0.5, "curva clean ber_vs_snr non disponibile",
+            0.5, 0.5, "clean ber_vs_snr curve not available",
             ha="center", va="center", transform=ax_clean.transAxes,
         )
-        ax_clean.set_title(f"{model_name} - pulita (ber_vs_snr)")
+        ax_clean.set_title(f"{model_name} - clean (ber_vs_snr)")
 
     _JAM_COLORS = {"cw": "blue", "barrage": "red", "partial_band": "green"}
     _JAM_MARKERS = {"cw": "o", "barrage": "s", "partial_band": "D"}
@@ -693,16 +693,16 @@ def _plot_jamming_vs_clean_ber(
     if clean_mean is not None:
         ax_jam.axhline(
             clean_mean, linestyle="--", color="gray", linewidth=1.5,
-            label=f"Clean media (ber_vs_snr) = {clean_mean:.4f}",
+            label=f"Clean mean (ber_vs_snr) = {clean_mean:.4f}",
         )
     ax_jam.set_xlabel("JSR (dB)")
     ax_jam.set_ylabel("Bit Error Rate (BER)")
-    ax_jam.set_title(f"{model_name} - jammato")
+    ax_jam.set_title(f"{model_name} - jammed")
     ax_jam.grid(True, which="both", linestyle="--", alpha=0.6)
     ax_jam.legend()
 
-    fig.suptitle(f"{model_name}: BER jammato vs BER pulita (ber_vs_snr)", y=1.02)
-    out_path = output_dir / f"ber_vs_jsr_{model_name}_vs_exp1_clean.{plot_format}"
+    fig.suptitle(f"{model_name}: Jammed BER vs clean BER (ber_vs_snr)", y=1.02)
+    out_path = output_dir / f"ber_vs_jsr_{model_name}_vs_clean.{plot_format}"
     plt.savefig(out_path, format=plot_format, bbox_inches="tight", dpi=300)
     plt.close(fig)
     logger.info("Jamming vs clean ber_vs_snr comparison saved to %s", out_path)
@@ -718,17 +718,17 @@ def run_jamming(
 ) -> Dict[str, Any]:
     
     logger.info("=" * 60)
-    logger.info("Esperimento 4: jamming + explainability")
+    logger.info("Experiment jamming: jamming robustness + explainability")
     logger.info("=" * 60)
 
-    exp4_cfg = config.get("experiments", {}).get("jamming", {}) or {}
-    models_to_test = list(exp4_cfg.get("models") or ["conv1d", "qkv"])
+    jamming_cfg = config.get("experiments", {}).get("jamming", {}) or {}
+    models_to_test = list(jamming_cfg.get("models") or ["conv1d", "qkv"])
     if model_type is not None:
         models_to_test = [m for m in models_to_test if m == model_type]
         logger.info(
-            "jamming: --model=%s -> modelli filtrati a: %s", model_type, models_to_test
+            "jamming: --model=%s -> models filtered to: %s", model_type, models_to_test
         )
-    logger.info("Modelli testati: %s", models_to_test)
+    logger.info("Models to test: %s", models_to_test)
 
     data_dir = pipeline.prepare_dataset(config, no_regen)
     train_data, train_ds, val_ds, test_data = pipeline.load_datasets(
@@ -736,11 +736,11 @@ def run_jamming(
     )
 
     results: Dict[str, Any] = {"models": {}}
-    visualize_layers = bool(exp4_cfg.get("visualize_layers", False))
+    visualize_layers = bool(jamming_cfg.get("visualize_layers", False))
 
     for model_name in models_to_test:
         logger.info("=" * 60)
-        logger.info("Modello: %s", model_name)
+        logger.info("Model: %s", model_name)
         logger.info("=" * 60)
 
         model_output_dir = output_dir / model_name
@@ -831,7 +831,7 @@ def _plot_jamming_multi_model(
             dfs = (mod.get("jamming") or {}).get("results", {})
             df = dfs.get(jt)
             if df is None or df.empty:
-                logger.warning("Modello %s senza dati jamming per %s", name, jt)
+                logger.warning("Model %s without jamming data for %s", name, jt)
                 continue
             ax.semilogy(
                 df["jsr_db"], df["ber"],
@@ -846,7 +846,7 @@ def _plot_jamming_multi_model(
         ax.set_ylim([1e-6, 1.0])
         ax.legend()
 
-    fig.suptitle("Confronto BER jammato - tutti i modelli", y=1.02)
+    fig.suptitle("Jammed BER comparison - all models", y=1.02)
     plot_dir = output_dir / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     out_path = plot_dir / f"ber_vs_jsr_all_models.{plot_format}"
@@ -866,17 +866,17 @@ def run_jamming_interpretability(
     from src.data.data_loader import build_reference_matrix, load_npz_files
     from src.experiments.jamming_interpretability import run_jamming_interpretability_probe
 
-    exp6_cfg = (config.get("experiments") or {}).get("jamming_interpretability") or {}
-    models_to_test = list(exp6_cfg.get("models") or ["conv1d", "qkv"])
+    jamming_interpretability_cfg = (config.get("experiments") or {}).get("jamming_interpretability") or {}
+    models_to_test = list(jamming_interpretability_cfg.get("models") or ["conv1d", "qkv"])
     if model_type is not None:
         wanted = {model_type} if isinstance(model_type, str) else set(model_type)
         models_to_test = [m for m in models_to_test if m in wanted]
-    jsr_values = [float(v) for v in (exp6_cfg.get("jsr_values") or [-10.0, -6.0, -2.0, 2.0, 6.0, 10.0])]
-    jammer_types = list(exp6_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
-    snr_eval = [float(v) for v in (exp6_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 20.0])]
-    ret_subset = int(exp6_cfg.get("ret_subset", 3000))
+    jsr_values = [float(v) for v in (jamming_interpretability_cfg.get("jsr_values") or [-10.0, -6.0, -2.0, 2.0, 6.0, 10.0])]
+    jammer_types = list(jamming_interpretability_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
+    snr_eval = [float(v) for v in (jamming_interpretability_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 20.0])]
+    ret_subset = int(jamming_interpretability_cfg.get("ret_subset", 3000))
 
-    logger.info("Esperimento 6: jamming interpretability (modelli=%s)", models_to_test)
+    logger.info("Experiment jamming_interpretability (models=%s)", models_to_test)
     logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d",
                 snr_eval, jsr_values, jammer_types, ret_subset)
 
@@ -884,7 +884,7 @@ def run_jamming_interpretability(
     echoes = [int(k) for k in config["data"]["echoes"]]
     test_data = load_npz_files(data_dir, snr_eval, echoes, "test", config)
     test_data["x_ref"] = build_reference_matrix(test_data["bit"], test_data["seed"], config)
-    logger.info("jamming_interpretability: test set %d campioni (SNR %s)", test_data["x"].shape[0], snr_eval)
+    logger.info("jamming_interpretability: test set of %d samples (SNR %s)", test_data["x"].shape[0], snr_eval)
 
     results: Dict[str, Any] = {"models": {}}
     for arch in models_to_test:
@@ -902,11 +902,11 @@ def run_jamming_interpretability(
             logger.info("jamming_interpretability %s: jamming model loaded from %s", arch, ckpt_path)
             model = load_model(ckpt_path)
         else:
-            logger.warning("jamming_interpretability %s: checkpoint jamming non trovato, addestro fallback", arch)
-            exp4_dir = output_dir.parent / "jamming" / arch
-            exp4_dir.mkdir(parents=True, exist_ok=True)
+            logger.warning("jamming_interpretability %s: jamming checkpoint not found, training a fallback", arch)
+            jamming_dir = output_dir.parent / "jamming" / arch
+            jamming_dir.mkdir(parents=True, exist_ok=True)
             res_train = pipeline.run_single_experiment(
-                config=config, model_type=arch, output_dir=exp4_dir, no_regen=no_regen,
+                config=config, model_type=arch, output_dir=jamming_dir, no_regen=no_regen,
             )
             model = res_train["model"]
 
@@ -933,8 +933,8 @@ def _find_trained_model(
     
     candidates: List[Path] = []
 
-    exp1_cfg = config.get("experiments", {}).get("ber_vs_snr", {})
-    scenarios = exp1_cfg.get("scenarios", []) if isinstance(exp1_cfg, dict) else []
+    ber_vs_snr_cfg = config.get("experiments", {}).get("ber_vs_snr", {})
+    scenarios = ber_vs_snr_cfg.get("scenarios", []) if isinstance(ber_vs_snr_cfg, dict) else []
 
     run_root_candidates = [
         output_dir.parent,
@@ -957,9 +957,9 @@ def _find_trained_model(
 
     for ckpt_path in candidates:
         if ckpt_path.is_file():
-            logger.debug("Checkpoint trovato per '%s': %s", arch, ckpt_path)
+            logger.debug("Checkpoint found for '%s': %s", arch, ckpt_path)
             return ckpt_path
-    logger.debug("Nessun checkpoint trovato per '%s' tra: %s", arch, candidates)
+    logger.debug("No checkpoint found for '%s' among: %s", arch, candidates)
     return None
 
 def run_final_report(
@@ -992,7 +992,7 @@ def run_final_report(
                 try:
                     models[arch] = pipeline.build_model(config, arch)
                 except Exception as build_exc:
-                    logger.error("Costruzione fallita per %s: %s", arch, build_exc)
+                    logger.error("Building failed for %s: %s", arch, build_exc)
                     models[arch] = None
         else:
             logger.info("Building model %s from scratch (no checkpoint found)", arch)
@@ -1000,13 +1000,13 @@ def run_final_report(
                 model = pipeline.build_model(config, arch)
                 models[arch] = model
             except Exception as e:
-                logger.error("Costruzione fallita per %s: %s", arch, e)
+                logger.error("Building failed for %s: %s", arch, e)
                 models[arch] = None
 
     models["classical"] = None
 
-    exp5_cfg = config["experiments"]["final_report"]
-    output_rel = exp5_cfg.get("output", "weight_table.tex")
+    final_report_cfg = config["experiments"]["final_report"]
+    output_rel = final_report_cfg.get("output", "weight_table.tex")
     output_path = Path(output_rel) if Path(output_rel).is_absolute() else output_dir / output_rel
     pipeline.generate_weight_table(
         config=config,
@@ -1075,7 +1075,7 @@ def _sweep_k_echo_only(
             ber = float(res["ber"])
             if not np.isfinite(ber) or ber < 0.0 or ber > 1.0:
                 raise RuntimeError(
-                    f"BER non finito o fuori range per K={k}, detector={detector}: {ber}"
+                    f"BER not finite or out of range for K={k}, detector={detector}: {ber}"
                 )
             ber_dict[detector] = ber
 
@@ -1125,7 +1125,7 @@ def _sweep_doppler_echo_only(
             ber = float(res["ber"])
             if not np.isfinite(ber) or ber < 0.0 or ber > 1.0:
                 raise RuntimeError(
-                    f"BER non finito o fuori range per doppler={doppler}, detector={detector}: {ber}"
+                    f"BER not finite or out of range for doppler={doppler}, detector={detector}: {ber}"
                 )
             ber_dict[detector] = ber
 
@@ -1151,8 +1151,8 @@ def _build_echo_only_dataset(
     beta = int(config["baselines"]["dcsk_correlator"]["correlation_length"])
     if 2 * beta != sequence_length:
         raise ValueError(
-            f"classical_receivers richiede 2*correlation_length ({2 * beta}) == sequence_length "
-            f"({sequence_length}): frame DCSK [ref|data] non rappresentabile"
+            f"classical_receivers requires 2*correlation_length ({2 * beta}) == sequence_length "
+            f"({sequence_length}): the DCSK [ref|data] frame is not representable"
         )
 
     offset = int(echo_cfg.get("tau_offset", 7))
@@ -1202,7 +1202,7 @@ def _build_echo_only_dataset(
               + 1j * rng.normal(0.0, math.sqrt(noise_var / 2.0), stream_len)
 
     if not np.all(np.isfinite(y)):
-        raise RuntimeError("segnale echo-only non finito (NaN/Inf): STOP  Sez. 1.2")
+        raise RuntimeError("echo-only signal not finite (NaN/Inf)")
 
     local_n = np.arange(2 * beta, dtype=np.float64)
     direct_phase = np.exp(1j * 2.0 * math.pi * float(doppler_direct) * local_n)
@@ -1212,101 +1212,6 @@ def _build_echo_only_dataset(
     ])
     return y_sym, bits_true
 
-def _plot_ber_vs_k(
-    results: Dict[int, Dict[str, float]],
-    plot_dir: Path,
-    plot_format: str,
-) -> None:
-    
-    if not results:
-        logger.warning("No results for BER vs K")
-        return
-
-    plot_dir.mkdir(parents=True, exist_ok=True)
-    sorted_k = sorted(results.keys())
-    detectors = ["dcsk", "matched_filter", "energy_detector"]
-    colors = {"dcsk": "blue", "matched_filter": "green", "energy_detector": "red"}
-    markers = {"dcsk": "o", "matched_filter": "s", "energy_detector": "D"}
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    for det in detectors:
-        k_vals = []
-        ber_vals = []
-        for k in sorted_k:
-            if det in results[k]:
-                ber = results[k][det]
-                if np.isfinite(ber) and 0.0 <= ber <= 1.0:
-                    k_vals.append(k)
-                    ber_vals.append(ber)
-        if k_vals:
-            ax.semilogy(
-                k_vals,
-                ber_vals,
-                marker=markers.get(det, "."),
-                linestyle="-",
-                color=colors.get(det, "black"),
-                label=det.capitalize().replace("_", " "),
-            )
-
-    ax.set_xlabel("Numero di echi K")
-    ax.set_ylabel("Bit Error Rate (BER)")
-    ax.set_title("BER vs K - Ricevitori classici (echo-only)")
-    ax.grid(True, which="both", linestyle="--", alpha=0.7)
-    ax.legend()
-    ax.set_ylim([1e-6, 1.0])
-
-    output_path = plot_dir / f"ber_vs_k.{plot_format}"
-    plt.savefig(output_path, format=plot_format, bbox_inches="tight", dpi=300)
-    plt.close(fig)
-    logger.info("BER vs K plot saved to %s", output_path)
-
-def _plot_ber_vs_doppler(
-    results: Dict[float, Dict[str, float]],
-    plot_dir: Path,
-    plot_format: str,
-) -> None:
-    
-    if not results:
-        logger.warning("No results for BER vs Doppler")
-        return
-
-    plot_dir.mkdir(parents=True, exist_ok=True)
-    sorted_doppler = sorted(results.keys())
-    detectors = ["dcsk", "matched_filter", "energy_detector"]
-    colors = {"dcsk": "blue", "matched_filter": "green", "energy_detector": "red"}
-    markers = {"dcsk": "o", "matched_filter": "s", "energy_detector": "D"}
-
-    fig, ax = plt.subplots(figsize=(8, 6))
-    for det in detectors:
-        d_vals = []
-        ber_vals = []
-        for d in sorted_doppler:
-            if det in results[d]:
-                ber = results[d][det]
-                if np.isfinite(ber) and 0.0 <= ber <= 1.0:
-                    d_vals.append(d)
-                    ber_vals.append(ber)
-        if d_vals:
-            ax.semilogy(
-                d_vals,
-                ber_vals,
-                marker=markers.get(det, "."),
-                linestyle="-",
-                color=colors.get(det, "black"),
-                label=det.capitalize().replace("_", " "),
-            )
-
-    ax.set_xlabel("Doppler massimo normalizzato fD_max")
-    ax.set_ylabel("Bit Error Rate (BER)")
-    ax.set_title("BER vs Doppler - Ricevitori classici (echo-only)")
-    ax.grid(True, which="both", linestyle="--", alpha=0.7)
-    ax.legend()
-    ax.set_ylim([1e-6, 1.0])
-
-    output_path = plot_dir / f"ber_vs_doppler.{plot_format}"
-    plt.savefig(output_path, format=plot_format, bbox_inches="tight", dpi=300)
-    plt.close(fig)
-    logger.info("BER vs Doppler plot saved to %s", output_path)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> None:

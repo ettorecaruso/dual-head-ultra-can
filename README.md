@@ -87,9 +87,3 @@ this convention.
 `00_Setup_and_Datasets`, `01_BER_and_Sensing_Benchmark`,
 `02_Jamming_and_Interpretability`, `03_Final_Report`. Each notebook issues
 short commands and regenerates the corresponding figures/tables.
-
-## Tests
-
-```bash
-python -m pytest tests -v
-```

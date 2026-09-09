@@ -45,56 +45,56 @@ _MSE_NEG_TOL = 1e-9
 def _validate_config(config: Dict[str, Any]) -> None:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
 
     general = config.get("general")
     data = config.get("data")
     training = config.get("training")
     evaluation = config.get("evaluation")
     if not isinstance(general, dict):
-        raise ValueError("sezione 'general' mancante o non dict")
+        raise ValueError("'general' section missing or not a dict")
     if not isinstance(data, dict):
-        raise ValueError("sezione 'data' mancante o non dict")
+        raise ValueError("'data' section missing or not a dict")
     if not isinstance(training, dict):
-        raise ValueError("sezione 'training' mancante o non dict")
+        raise ValueError("'training' section missing or not a dict")
     if not isinstance(evaluation, dict):
-        raise ValueError("sezione 'evaluation' mancante o non dict")
+        raise ValueError("'evaluation' section missing or not a dict")
 
     required_data = ("sequence_length", "max_delay", "max_doppler", "raw_dir", "echoes")
     for key in required_data:
         if key not in data:
-            raise ValueError(f"chiave mancante in data: {key}")
+            raise ValueError(f"missing key in data: {key}")
 
     required_eval = ("snr_test_range", "bit_error_threshold", "max_symbols_per_snr")
     for key in required_eval:
         if key not in evaluation:
-            raise ValueError(f"chiave mancante in evaluation: {key}")
+            raise ValueError(f"missing key in evaluation: {key}")
 
     max_delay = data.get("max_delay")
     if not isinstance(max_delay, (int, float)) or max_delay <= 0:
-        raise ValueError(f"data.max_delay deve essere > 0, ricevuto: {max_delay}")
+        raise ValueError(f"data.max_delay must be > 0, got: {max_delay}")
 
     max_doppler = data.get("max_doppler")
     if not isinstance(max_doppler, (int, float)) or max_doppler <= 0:
-        raise ValueError(f"data.max_doppler deve essere > 0, ricevuto: {max_doppler}")
+        raise ValueError(f"data.max_doppler must be > 0, got: {max_doppler}")
 
     snr_test_range = evaluation.get("snr_test_range")
     if not isinstance(snr_test_range, (list, tuple)) or len(snr_test_range) == 0:
-        raise ValueError(f"evaluation.snr_test_range deve essere una lista non vuota, ricevuto: {snr_test_range}")
+        raise ValueError(f"evaluation.snr_test_range must be a non-empty list, got: {snr_test_range}")
 
     bit_error_threshold = evaluation.get("bit_error_threshold")
     if not isinstance(bit_error_threshold, int) or bit_error_threshold <= 0:
-        raise ValueError(f"evaluation.bit_error_threshold deve essere un int > 0, ricevuto: {bit_error_threshold}")
+        raise ValueError(f"evaluation.bit_error_threshold must be an int > 0, got: {bit_error_threshold}")
 
     max_symbols_per_snr = evaluation.get("max_symbols_per_snr")
     if not isinstance(max_symbols_per_snr, int) or max_symbols_per_snr <= 0:
-        raise ValueError(f"evaluation.max_symbols_per_snr deve essere un int > 0, ricevuto: {max_symbols_per_snr}")
+        raise ValueError(f"evaluation.max_symbols_per_snr must be an int > 0, got: {max_symbols_per_snr}")
 
     batch_size = training.get("batch_size")
     if not isinstance(batch_size, int) or batch_size < _MIN_BATCH_SIZE:
-        raise ValueError(f"training.batch_size deve essere un int >= {_MIN_BATCH_SIZE}, ricevuto: {batch_size}")
+        raise ValueError(f"training.batch_size must be an int >= {_MIN_BATCH_SIZE}, got: {batch_size}")
 
-    logger.debug("Config evaluator validata")
+    logger.debug("Evaluator config validated")
 
 def evaluate_model(
     model: tf.keras.Model,
@@ -103,18 +103,18 @@ def evaluate_model(
 ) -> Dict[str, np.ndarray]:
     
     if not isinstance(model, tf.keras.Model):
-        raise TypeError(f"model deve essere tf.keras.Model, ricevuto: {type(model).__name__}")
+        raise TypeError(f"model must be a tf.keras.Model, got: {type(model).__name__}")
     if not isinstance(data, dict):
-        raise TypeError(f"data deve essere dict, ricevuto: {type(data).__name__}")
+        raise TypeError(f"data must be a dict, got: {type(data).__name__}")
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
 
     _validate_config(config)
 
     required_keys = ("x", "bit", "tau", "f_d", "snr_db", "seed")
     missing = [k for k in required_keys if k not in data]
     if missing:
-        raise ValueError(f"data manca delle chiavi: {missing}")
+        raise ValueError(f"data is missing the keys: {missing}")
 
     x = data["x"]
     bit = data["bit"]
@@ -124,7 +124,7 @@ def evaluate_model(
     seed = data["seed"]
 
     if x.shape[0] == 0:
-        raise ValueError("data non contiene campioni (N=0)")
+        raise ValueError("data contains no samples (N=0)")
 
     eval_cfg = config["evaluation"]
     snr_test_range = eval_cfg["snr_test_range"]
@@ -147,13 +147,13 @@ def evaluate_model(
     corr_tau_list: List[float] = []
     corr_fd_list: List[float] = []
 
-    logger.info("Avvio valutazione su %d punti SNR", len(snr_test_range))
+    logger.info("Starting evaluation over %d SNR points", len(snr_test_range))
 
     for snr_target in snr_test_range:
         mask = np.isclose(snr_db, snr_target, rtol=0, atol=1e-6)
         idx = np.where(mask)[0]
         if len(idx) == 0:
-            logger.warning("Nessun campione per SNR=%.1f dB, salto", snr_target)
+            logger.warning("No samples for SNR=%.1f dB, skipping", snr_target)
             continue
 
         x_snr = None
@@ -197,13 +197,13 @@ def evaluate_model(
             sensing_pred = pred["sensing"].numpy()
 
             if comm_logits.shape[0] != batch_size_actual or comm_logits.ndim != 2:
-                raise ValueError(f"comm_logits shape {comm_logits.shape} non valida")
+                raise ValueError(f"comm_logits shape {comm_logits.shape} is invalid")
             if sensing_pred.shape[0] != batch_size_actual or sensing_pred.ndim != 2 or sensing_pred.shape[1] != 2:
-                raise ValueError(f"sensing_pred shape {sensing_pred.shape} non valida")
+                raise ValueError(f"sensing_pred shape {sensing_pred.shape} is invalid")
             if not np.all(np.isfinite(comm_logits)):
-                raise RuntimeError("comm_logits contiene NaN/Inf")
+                raise RuntimeError("comm_logits contains NaN/Inf")
             if not np.all(np.isfinite(sensing_pred)):
-                raise RuntimeError("sensing_pred contiene NaN/Inf")
+                raise RuntimeError("sensing_pred contains NaN/Inf")
 
             n_errors_batch, _ = bit_error_count(
                 comm_logits, np.asarray(batch_bit, dtype=np.int64)
@@ -222,7 +222,7 @@ def evaluate_model(
                 if n_out_range_max is None or batch_max > n_out_range_max:
                     n_out_range_max = batch_max
                 logger.debug(
-                    "SNR=%.1f dB, batch: %d/%d elementi sensing fuori da [0,1] -> clamp",
+                    "SNR=%.1f dB, batch: %d/%d sensing elements outside [0,1] -> clamped",
                     snr_target, n_out_batch, sensing_pred.size,
                 )
             sensing_pred_clamped = np.clip(sensing_pred, 0.0, 1.0)
@@ -236,12 +236,12 @@ def evaluate_model(
 
             if tau_min < 0.0 or tau_max_pred > tau_max + _RANGE_TOL:
                 raise RuntimeError(
-                    f"tau_pred fuori range [0, {tau_max}] per SNR={snr_target}: "
+                    f"tau_pred out of range [0, {tau_max}] for SNR={snr_target}: "
                     f"min={tau_min:.4f}, max={tau_max_pred:.4f}"
                 )
             if fd_min < 0.0 or fd_max_pred > fd_max + _RANGE_TOL:
                 raise RuntimeError(
-                    f"fd_pred fuori range [0, {fd_max}] per SNR={snr_target}: "
+                    f"fd_pred out of range [0, {fd_max}] for SNR={snr_target}: "
                     f"min={fd_min:.4e}, max={fd_max_pred:.4e}"
                 )
 
@@ -262,14 +262,14 @@ def evaluate_model(
 
         if n_out_range > 0:
             logger.warning(
-                "SNR=%.1f dB: %d/%d elementi sensing fuori da [0,1] "
-                "(min=%.4f, max=%.4f) -> clamp",
+                "SNR=%.1f dB: %d/%d sensing elements outside [0,1] "
+                "(min=%.4f, max=%.4f) -> clamped",
                 snr_target, n_out_range, n_out_range_total,
                 n_out_range_min, n_out_range_max,
             )
 
         if accum_symbols == 0:
-            logger.warning("Nessun simbolo valutato per SNR=%.1f dB, salto", snr_target)
+            logger.warning("No symbols evaluated for SNR=%.1f dB, skipping", snr_target)
             continue
 
         ber = accum_errors / accum_symbols
@@ -277,11 +277,11 @@ def evaluate_model(
         mse_fd = mse_fd_acc / accum_symbols
 
         if not np.isfinite(ber) or ber < 0.0 or ber > 1.0:
-            raise RuntimeError(f"BER non valida per SNR {snr_target}: {ber}")
+            raise RuntimeError(f"invalid BER for SNR {snr_target}: {ber}")
         if not np.isfinite(mse_tau) or not np.isfinite(mse_fd):
-            raise RuntimeError(f"MSE non finito per SNR {snr_target}: mse_tau={mse_tau}, mse_fd={mse_fd}")
+            raise RuntimeError(f"MSE not finite for SNR {snr_target}: mse_tau={mse_tau}, mse_fd={mse_fd}")
         if mse_tau < -_MSE_NEG_TOL or mse_fd < -_MSE_NEG_TOL:
-            logger.warning("MSE negativo per SNR=%.1f: mse_tau=%.6f, mse_fd=%.6f", snr_target, mse_tau, mse_fd)
+            logger.warning("negative MSE for SNR=%.1f: mse_tau=%.6f, mse_fd=%.6f", snr_target, mse_tau, mse_fd)
             mse_tau = max(0.0, mse_tau)
             mse_fd = max(0.0, mse_fd)
 
@@ -314,7 +314,7 @@ def evaluate_model(
         )
 
     if not snr_values:
-        raise RuntimeError("Nessun SNR valutato (dataset vuoto o nessuna corrispondenza)")
+        raise RuntimeError("No SNR evaluated (empty dataset or no match)")
 
     results = {
         "snr_db": np.array(snr_values, dtype=np.float64),
@@ -327,7 +327,7 @@ def evaluate_model(
         "corr_fd": np.array(corr_fd_list, dtype=np.float64),
     }
 
-    logger.info("Valutazione completata per %d punti SNR", len(snr_values))
+    logger.info("Evaluation completed for %d SNR points", len(snr_values))
     return results
 
 def _online_batch_seed(seed_base: int, snr_db: float, batch_idx: int) -> int:
@@ -346,10 +346,10 @@ def _predict_online_chunked(
     n = int(batch_x.shape[0])
     if isinstance(predict_batch, bool) or int(predict_batch) < 1:
         raise ValueError(
-            f"predict_batch deve essere un int >= 1, ricevuto: {predict_batch!r}"
+            f"predict_batch must be an int >= 1, got: {predict_batch!r}"
         )
     if isinstance(min_batch, bool) or int(min_batch) < 1:
-        raise ValueError(f"min_batch deve essere un int >= 1, ricevuto: {min_batch!r}")
+        raise ValueError(f"min_batch must be an int >= 1, got: {min_batch!r}")
     chunk = int(predict_batch)
     min_batch = int(min_batch)
 
@@ -363,14 +363,14 @@ def _predict_online_chunked(
         except tf.errors.ResourceExhaustedError:
             if chunk <= min_batch:
                 logger.error(
-                    "OOM persistente nel forward online anche a chunk=%d "
-                    "(batch=%d campioni): interrompo la valutazione",
+                    "Persistent OOM in online forward even at chunk=%d "
+                    "(batch=%d samples): aborting evaluation",
                     min_batch, n,
                 )
                 raise
             chunk = max(min_batch, chunk // 2)
             logger.warning(
-                "OOM nel forward online (chunk=%d campioni): dimezzo a %d e riprovo",
+                "OOM in online forward (chunk=%d samples): halving to %d and retrying",
                 end - start, chunk,
             )
             gc.collect()
@@ -387,9 +387,9 @@ def evaluate_model_online(
 ) -> Dict[str, np.ndarray]:
     
     if not isinstance(model, tf.keras.Model):
-        raise TypeError(f"model deve essere tf.keras.Model, ricevuto: {type(model).__name__}")
+        raise TypeError(f"model must be a tf.keras.Model, got: {type(model).__name__}")
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
 
     _validate_config(config)
 
@@ -403,7 +403,7 @@ def evaluate_model_online(
     fd_max = float(config["data"]["max_doppler"])
     echoes = [int(k) for k in config["data"]["echoes"]]
     if not echoes:
-        raise ValueError("data.echoes vuoto: impossibile generare i batch online")
+        raise ValueError("data.echoes is empty: cannot generate online batches")
     feature_mode = str(config["data"].get("feature_mode", "real"))
     feature_norm = str(config["data"].get("feature_norm", "none"))
     seed_base = int(config["general"].get("seed", 42))
@@ -420,7 +420,7 @@ def evaluate_model_online(
     corr_fd_list: List[float] = []
 
     logger.info(
-        "Valutazione ONLINE su %d punti SNR (batch=%d, max_symbols=%d, "
+        "ONLINE evaluation over %d SNR points (batch=%d, max_symbols=%d, "
         "floor BER=%.1e)",
         len(snr_test_range), eval_batch_symbols, max_symbols_per_snr,
         1.0 / (2.0 * max_symbols_per_snr),
@@ -465,17 +465,17 @@ def evaluate_model_online(
             )
 
             if comm_logits.shape[0] != batch_size_actual or comm_logits.ndim != 2:
-                raise ValueError(f"comm_logits shape {comm_logits.shape} non valida")
+                raise ValueError(f"comm_logits shape {comm_logits.shape} is invalid")
             if (
                 sensing_pred.shape[0] != batch_size_actual
                 or sensing_pred.ndim != 2
                 or sensing_pred.shape[1] != 2
             ):
-                raise ValueError(f"sensing_pred shape {sensing_pred.shape} non valida")
+                raise ValueError(f"sensing_pred shape {sensing_pred.shape} is invalid")
             if not np.all(np.isfinite(comm_logits)):
-                raise RuntimeError("comm_logits contiene NaN/Inf")
+                raise RuntimeError("comm_logits contains NaN/Inf")
             if not np.all(np.isfinite(sensing_pred)):
-                raise RuntimeError("sensing_pred contiene NaN/Inf")
+                raise RuntimeError("sensing_pred contains NaN/Inf")
 
             n_errors_batch, _ = bit_error_count(
                 comm_logits, np.asarray(batch_bit, dtype=np.int64)
@@ -506,12 +506,12 @@ def evaluate_model_online(
             fd_max_pred = np.max(fd_pred)
             if tau_min < 0.0 or tau_max_pred > tau_max + _RANGE_TOL:
                 raise RuntimeError(
-                    f"tau_pred fuori range [0, {tau_max}] per SNR={snr_target}: "
+                    f"tau_pred out of range [0, {tau_max}] for SNR={snr_target}: "
                     f"min={tau_min:.4f}, max={tau_max_pred:.4f}"
                 )
             if fd_min < 0.0 or fd_max_pred > fd_max + _RANGE_TOL:
                 raise RuntimeError(
-                    f"fd_pred fuori range [0, {fd_max}] per SNR={snr_target}: "
+                    f"fd_pred out of range [0, {fd_max}] for SNR={snr_target}: "
                     f"min={fd_min:.4e}, max={fd_max_pred:.4e}"
                 )
 
@@ -539,14 +539,14 @@ def evaluate_model_online(
 
         if n_out_range > 0:
             logger.warning(
-                "SNR=%.1f dB: %d/%d elementi sensing fuori da [0,1] "
-                "(min=%.4f, max=%.4f) -> clamp",
+                "SNR=%.1f dB: %d/%d sensing elements outside [0,1] "
+                "(min=%.4f, max=%.4f) -> clamped",
                 snr_target, n_out_range, n_out_range_total,
                 n_out_range_min, n_out_range_max,
             )
 
         if accum_symbols == 0:
-            logger.warning("Nessun simbolo valutato per SNR=%.1f dB, salto", snr_target)
+            logger.warning("No symbols evaluated for SNR=%.1f dB, skipping", snr_target)
             continue
 
         ber = accum_errors / accum_symbols
@@ -554,10 +554,10 @@ def evaluate_model_online(
         mse_fd = mse_fd_acc / accum_symbols
 
         if not np.isfinite(ber) or ber < 0.0 or ber > 1.0:
-            raise RuntimeError(f"BER non valida per SNR {snr_target}: {ber}")
+            raise RuntimeError(f"invalid BER for SNR {snr_target}: {ber}")
         if not np.isfinite(mse_tau) or not np.isfinite(mse_fd):
             raise RuntimeError(
-                f"MSE non finito per SNR {snr_target}: mse_tau={mse_tau}, mse_fd={mse_fd}"
+                f"MSE not finite for SNR {snr_target}: mse_tau={mse_tau}, mse_fd={mse_fd}"
             )
         if mse_tau < -_MSE_NEG_TOL or mse_fd < -_MSE_NEG_TOL:
             mse_tau = max(0.0, mse_tau)
@@ -566,8 +566,8 @@ def evaluate_model_online(
         def _pearson_from_sums(
             n: int, sa: float, sa2: float, sb: float, sb2: float, sab: float
         ) -> float:
-            """Pearson da somme incrementali (equivalente a np.corrcoef senza
-            materializzare le liste; identico a parita' di floating point)."""
+            """Pearson computed from incremental sums (equivalent to np.corrcoef
+            without materializing the lists)."""
             if n < 2:
                 return 0.0
             cov = n * sab - sa * sb
@@ -599,7 +599,7 @@ def evaluate_model_online(
         )
 
     if not snr_values:
-        raise RuntimeError("Nessun SNR valutato (snr_test_range vuoto)")
+        raise RuntimeError("No SNR evaluated (empty snr_test_range)")
 
     results = {
         "snr_db": np.array(snr_values, dtype=np.float64),
@@ -612,18 +612,18 @@ def evaluate_model_online(
         "corr_fd": np.array(corr_fd_list, dtype=np.float64),
     }
 
-    logger.info("Valutazione online completata per %d punti SNR", len(snr_values))
+    logger.info("Online evaluation completed for %d SNR points", len(snr_values))
     return results
 
 
 def compute_ber_curve(results: Dict[str, np.ndarray]) -> pd.DataFrame:
     
     if not isinstance(results, dict):
-        raise TypeError(f"results deve essere dict, ricevuto: {type(results).__name__}")
+        raise TypeError(f"results must be a dict, got: {type(results).__name__}")
     required = ("snr_db", "ber", "mse_tau", "mse_fd", "n_errors", "n_symbols")
     missing = [k for k in required if k not in results]
     if missing:
-        raise ValueError(f"results manca delle chiavi: {missing}")
+        raise ValueError(f"results is missing the keys: {missing}")
 
     df = pd.DataFrame({
         "snr_db": results["snr_db"],
@@ -643,22 +643,22 @@ def compute_ber_curve(results: Dict[str, np.ndarray]) -> pd.DataFrame:
         n_floored = int(np.count_nonzero(zero_mask))
         df["ber"] = np.where(zero_mask, 1.0 / (2.0 * n_symbols), ber)
         logger.info(
-            "BER floor applicato a %d punti (nessun errore osservato): "
+            "BER floor applied to %d points (no observed errors): "
             "1/(2*n_symbols)", n_floored,
         )
 
     df = df.sort_values("snr_db").reset_index(drop=True)
-    logger.debug("Curve generate: %d punti", len(df))
+    logger.debug("Curves generated: %d points", len(df))
     return df
 
 def compute_sensing_rmse(results: Dict[str, np.ndarray]) -> pd.DataFrame:
     
     if not isinstance(results, dict):
-        raise TypeError(f"results deve essere dict, ricevuto: {type(results).__name__}")
+        raise TypeError(f"results must be a dict, got: {type(results).__name__}")
     required = ("snr_db", "mse_tau", "mse_fd")
     missing = [k for k in required if k not in results]
     if missing:
-        raise ValueError(f"results manca delle chiavi: {missing}")
+        raise ValueError(f"results is missing the keys: {missing}")
 
     rmse_tau = np.sqrt(np.maximum(results["mse_tau"], 0.0))
     rmse_fd = np.sqrt(np.maximum(results["mse_fd"], 0.0))
@@ -669,7 +669,7 @@ def compute_sensing_rmse(results: Dict[str, np.ndarray]) -> pd.DataFrame:
         "rmse_fd": rmse_fd,
     })
     df = df.sort_values("snr_db").reset_index(drop=True)
-    logger.debug("RMSE sensing calcolati per %d punti", len(df))
+    logger.debug("Sensing RMSE computed for %d points", len(df))
     return df
 
 def plot_ber_vs_snr(
@@ -680,9 +680,9 @@ def plot_ber_vs_snr(
 ) -> Path:
     
     if not isinstance(df, pd.DataFrame):
-        raise TypeError(f"df deve essere pd.DataFrame, ricevuto: {type(df).__name__}")
+        raise TypeError(f"df must be a pd.DataFrame, got: {type(df).__name__}")
     if "snr_db" not in df.columns or "ber" not in df.columns:
-        raise ValueError("df deve contenere le colonne 'snr_db' e 'ber'")
+        raise ValueError("df must contain the 'snr_db' and 'ber' columns")
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -707,7 +707,7 @@ def plot_ber_vs_snr(
     plt.savefig(output_path, format=plot_format, bbox_inches="tight", dpi=300)
     plt.close(fig)
 
-    logger.info("Plot BER salvato in %s", output_path)
+    logger.info("BER plot saved to %s", output_path)
     return output_path
 
 def plot_loss_curves(
@@ -718,9 +718,9 @@ def plot_loss_curves(
 ) -> Path:
     
     if not isinstance(history, tf.keras.callbacks.History):
-        raise TypeError(f"history deve essere tf.keras.callbacks.History, ricevuto: {type(history).__name__}")
+        raise TypeError(f"history must be a tf.keras.callbacks.History, got: {type(history).__name__}")
     if not history.history:
-        raise ValueError("history.history vuoto")
+        raise ValueError("history.history is empty")
     if "loss" not in history.history:
         raise ValueError("history.history must contain the key 'loss'")
 
@@ -743,7 +743,7 @@ def plot_loss_curves(
     plt.savefig(output_path, format=plot_format, bbox_inches="tight", dpi=300)
     plt.close(fig)
 
-    logger.info("Plot loss salvato in %s", output_path)
+    logger.info("Loss plot saved to %s", output_path)
     return output_path
 
 def plot_sensing_error(
@@ -754,11 +754,11 @@ def plot_sensing_error(
 ) -> Path:
     
     if not isinstance(df, pd.DataFrame):
-        raise TypeError(f"df deve essere pd.DataFrame, ricevuto: {type(df).__name__}")
+        raise TypeError(f"df must be a pd.DataFrame, got: {type(df).__name__}")
     required = ("snr_db", "rmse_tau", "rmse_fd")
     for col in required:
         if col not in df.columns:
-            raise ValueError(f"df deve contenere la colonna '{col}'")
+            raise ValueError(f"df must contain the column '{col}'")
 
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -781,30 +781,30 @@ def plot_sensing_error(
     plt.savefig(output_path, format=plot_format, bbox_inches="tight", dpi=300)
     plt.close(fig)
 
-    logger.info("Plot sensing salvato in %s", output_path)
+    logger.info("Sensing plot saved to %s", output_path)
     return output_path
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
     
     parser = argparse.ArgumentParser(
-        description="Valutazione modello Dual-Head Ultra-CAN (ISAC in IoD)"
+        description="Evaluate a Dual-Head Ultra-CAN (ISAC in IoD) model"
     )
-    parser.add_argument("--config", required=True, help="path della config esperimento (YAML)")
+    parser.add_argument("--config", required=True, help="path to the experiment config (YAML)")
     parser.add_argument(
         "--model",
         choices=["conv1d", "qkv", "lstm", "mc_dlsk"],
         default="conv1d",
-        help="modello da valutare (default: conv1d)",
+        help="model to evaluate (default: conv1d)",
     )
     parser.add_argument(
         "--plot-format",
         default="pdf",
-        help="formato dei plot (default: pdf)",
+        help="plot format (default: pdf)",
     )
     parser.add_argument(
         "--allow-missing-model",
         action="store_true",
-        help="se specificato, costruisce il modello da zero se il checkpoint non esiste (altrimenti lancia FileNotFoundError)",
+        help="if set, builds the model from scratch when the checkpoint does not exist (otherwise raises FileNotFoundError)",
     )
     args = parser.parse_args(argv)
 
@@ -829,15 +829,15 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     data_dir = get_dataset_dir(config)
     if not data_dir.is_dir():
         raise FileNotFoundError(
-            f"Dataset non trovato in {data_dir}. Generare i dati tramite il runner "
-            "(src/experiments/runner.py) oppure scripts/generate_all_datasets.sh."
+            f"Dataset not found in {data_dir}. Generate the data through the runner "
+            "(src/experiments/runner.py) or scripts/generate_all_datasets.sh."
         )
     snr_grid = build_snr_grid(data_cfg["snr_range"], data_cfg["snr_step"])
     echoes = list(data_cfg["echoes"])
 
-    logger.info("Caricamento dataset di test da %s", data_dir)
+    logger.info("Loading test dataset from %s", data_dir)
     data = load_npz_files(data_dir, snr_grid, echoes, "test", config)
-    logger.info("Dataset test caricato: %d campioni", data["x"].shape[0])
+    logger.info("Test dataset loaded: %d samples", data["x"].shape[0])
     data["x_ref"] = build_reference_matrix(data["bit"], data["seed"], config)
 
     verify_snr_balance(data, snr_grid, echoes)
@@ -858,11 +858,11 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         checkpoint_candidates[0],
     )
     if model_path.is_file():
-        logger.info("Caricamento modello da %s", model_path)
+        logger.info("Loading model from %s", model_path)
         model = load_model(model_path)
     else:
         if args.allow_missing_model:
-            logger.warning("Modello non trovato in %s, costruisco da zero senza training", model_path)
+            logger.warning("Model not found in %s, building from scratch without training", model_path)
             if args.model == "conv1d":
                 model = build_dual_head_ultra_can(config)
             elif args.model == "qkv":
@@ -870,11 +870,11 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             elif args.model in ("lstm", "mc_dlsk"):
                 model = build_baseline(config, args.model)
             else:
-                raise ValueError(f"Modello non supportato: {args.model}")
+                raise ValueError(f"Model not supported: {args.model}")
         else:
             raise FileNotFoundError(
-                f"Modello non trovato: {model_path}. "
-                "Addestra il modello prima di valutarlo oppure usa --allow-missing-model per costruirlo da zero."
+                f"Model not found: {model_path}. "
+                "Train the model before evaluating it or use --allow-missing-model to build it from scratch."
             )
 
     results = evaluate_model(model, data, config)
@@ -895,21 +895,21 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 history.history = {col: history_df[col].tolist() for col in history_df.columns}
                 plot_loss_curves(history, plot_dir, args.plot_format, args.model)
             else:
-                logger.warning("history.csv non contiene la colonna 'loss', salto plot loss curves")
+                logger.warning("history.csv does not contain the 'loss' column, skipping the loss-curve plots")
         except Exception as e:
-            logger.warning("Impossibile caricare history per loss curves: %s", e)
+            logger.warning("Unable to load history for the loss curves: %s", e)
     else:
-        logger.info("history.csv non trovato, salto plot loss curves")
+        logger.info("history.csv not found, skipping the loss-curve plots")
 
     csv_path = plot_dir / "metrics.csv"
     df_ber.to_csv(csv_path, index=False)
-    logger.info("Metriche salvate in %s", csv_path)
+    logger.info("Metrics saved to %s", csv_path)
 
     npz_path = plot_dir / "evaluation_results.npz"
     np.savez(npz_path, **results)
-    logger.info("Risultati salvati in %s", npz_path)
+    logger.info("Results saved to %s", npz_path)
 
-    logger.info("Valutazione completata. Risultati in %s", plot_dir)
+    logger.info("Evaluation completed. Results in %s", plot_dir)
 
 if __name__ == "__main__":
     main()

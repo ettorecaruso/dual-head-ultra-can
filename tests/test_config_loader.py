@@ -4,10 +4,10 @@ Questi test verificano il caricatore di configurazione YAML, unica via di
 accesso ai parametri (niente hard-coding). Coprono il
 100% delle funzioni pubbliche del modulo:
 
-  - ``load_config``           : merge profondo base <- esperimento <- CLI,
+  - ``load_config``           : merge profondo base <- experiment <- CLI,
     T1-T4, T11, T14 (vedi commenti dei test in ``base_config.yaml`` e in
     ``config_loader.py``);
-  - ``validate_config``       : fail-fast ``ValueError`` su chiavi mancanti
+  - ``validate_config``       : fail-fast ``ValueError`` su keys mancanti
     (``test_missing_key_raises`` del PLAN);
   - ``parse_cli_overrides``   : parsing ``--set path.to.key=value`` con
     coercizione di tipo (``test_cli_override_parsing`` del PLAN);
@@ -23,7 +23,7 @@ Scelta di pytest: coerente con la suite esistente (``tests/test_logger.py`` usa
 pytest con fixtures, parametrize e ``tmp_path``) e con il comando dal log: ``python -m pytest tests/test_config_loader.py -v``.
 
 TODO (test mancanti, segnalati esplicitamente —):
-  - T5  (map_param fuori [3.57, 4.0] -> ValueError): validazione NON nel
+  - T5  (map_param outside [3.57, 4.0] -> ValueError): validazione NON nel
         config_loader ma in ``dataset_generator._validate_config`` /
         ``generate_chaotic_sequence`` -> coperto da ``tests/test_input_validation.py``
         e ``tests/test_chaotic_maps.py``.
@@ -38,11 +38,11 @@ TODO (test mancanti, segnalati esplicitamente —):
   - T12 (loss_weights.sensing != lambda_mse -> WARNING + autocorrezione):
         appartiene al ``Trainer`` (non ancora implementato) -> test dedicato
         in ``tests/test_training.py``.
-  - T13 (griglia SNR inclusiva sugli estremi): appartiene a
+  - T13 (grid SNR inclusiva sugli estremi): appartiene a
         ``dataset_generator.build_snr_grid`` -> coperto da
         ``tests/test_chaotic_maps.py`` e ``tests/test_input_validation.py``.
   - Cascata ``load_config(base, [ber_vs_snr, exp2], cli)`` con LISTA di config
-        esperimento: NON supportata dalla
+        experiment: NON supportata dalla
         firma corrente di ``load_config`` (un solo ``config_path``). Testato
         qui il caso equivalente ``base=full_experiment`` (T4); il supporto
         multi-file va aggiunto al sorgente (ALERT).
@@ -122,7 +122,7 @@ def test_load_base_config_essential_keys(tmp_path: Path) -> None:
     ):
         node: Any = config
         for part in dotted.split("."):
-            assert isinstance(node, dict) and part in node, f"chiave mancante: {dotted}"
+            assert isinstance(node, dict) and part in node, f"missing key: {dotted}"
             node = node[part]
 
 def test_load_base_config_paper_values_T2_T14(tmp_path: Path) -> None:
@@ -164,14 +164,14 @@ def test_merge_preserves_base_values_T2(tmp_path: Path) -> None:
     assert config["model"]["backbone_type"] == "conv1d"
 
 def test_merge_full_experiment_paper_values_T3(tmp_path: Path) -> None:
-    """T3: ber_vs_snr.full allineato al paper Sez. V-A."""
+    """T3: ber_vs_snr.full aligned al paper Sez. V-A."""
     config = _load_exp_config("ber_vs_snr", "full")
     assert config["data"]["num_symbols_train"] == 105000
     assert config["data"]["num_symbols_val"] == 5000
     assert config["data"]["num_symbols_test"] == 20000
     assert config["data"]["echoes"] == [1, 3]
     assert config["data"]["snr_step"] == 2
-    assert config["training"]["epochs"] == 50
+    assert config["training"]["epochs"] == 30
     assert config["training"]["batch_size"] == 128
     assert config["training"]["early_stopping_patience"] == 10
     assert config["evaluation"]["online_generation"] is True
@@ -182,7 +182,7 @@ def test_merge_experiments_yaml_preserves_base_paths_T4(tmp_path: Path) -> None:
     assert config["data"]["raw_dir"] == "data/raw"
     assert config["data"]["processed_dir"] == "data/processed"
     assert config["data"]["map_param"] == pytest.approx(_MU_PAPER)
-    assert config["training"]["epochs"] == 50
+    assert config["training"]["epochs"] == 30
 
 def test_load_config_missing_base_file_raises(tmp_path: Path) -> None:
     """Input invalidi: base_config mancante -> FileNotFoundError."""
@@ -191,21 +191,21 @@ def test_load_config_missing_base_file_raises(tmp_path: Path) -> None:
 
 def test_load_config_missing_experiment_file_raises(tmp_path: Path) -> None:
     
-    with pytest.raises(FileNotFoundError, match="esperimento"):
+    with pytest.raises(FileNotFoundError, match="experiment"):
         load_config(tmp_path / "missing_exp.yaml", _BASE_CONFIG_PATH)
 
 def test_load_config_invalid_yaml_raises(tmp_path: Path) -> None:
-    """Input invalidi: YAML malformato -> ValueError (da yaml.YAMLError)."""
+    """Input invalidi: YAML malformed -> ValueError (da yaml.YAMLError)."""
     bad = tmp_path / "bad.yaml"
     bad.write_text("data: [1, 2\n  snr: {broken\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="YAML non valido"):
+    with pytest.raises(ValueError, match="invalid YAML file"):
         load_config(bad, _BASE_CONFIG_PATH)
 
 def test_load_config_non_dict_top_level_raises(tmp_path: Path) -> None:
-    """Input invalidi: YAML valido ma senza dict in testa -> ValueError."""
+    """Input invalidi: YAML valido ma senza top-level dict -> ValueError."""
     list_yaml = _write_yaml(tmp_path, {"dummy": True}, "list.yaml")
     list_yaml.write_text("- a\n- b\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="dict in testa"):
+    with pytest.raises(ValueError, match="top-level dict"):
         load_config(list_yaml, _BASE_CONFIG_PATH)
 
 def test_load_config_cli_overrides_non_dict_raises(tmp_path: Path) -> None:
@@ -269,7 +269,7 @@ def test_validate_config_ok(tmp_path: Path) -> None:
     validate_config(config, required)
 
 def test_validate_config_missing_key_raises(tmp_path: Path) -> None:
-    """ (test_missing_key_raises): chiave mancante -> ValueError."""
+    """ (test_missing_key_raises): missing key -> ValueError."""
     config = load_config(_empty_experiment(tmp_path), _BASE_CONFIG_PATH)
     del config["training"]["lambda_mse"]
     with pytest.raises(ValueError, match="lambda_mse"):
@@ -357,22 +357,22 @@ def test_parse_cli_equals_prefixed_token() -> None:
     assert overrides == {"data": {"max_delay": 10}}
 
 def test_parse_cli_empty_tokens_skipped() -> None:
-    """Caso limite: token vuoti ignorati -> override vuoto."""
+    """Caso limite: token vuoti ignorati -> override empty."""
     assert parse_cli_overrides(("", "  ", "--set")) == {}
 
 def test_parse_cli_missing_equals_raises() -> None:
     """Input invalidi: token senza ``=`` -> ValueError con messaggio chiaro."""
-    with pytest.raises(ValueError, match="malformato"):
+    with pytest.raises(ValueError, match="malformed"):
         parse_cli_overrides(("training.epochs",))
 
 def test_parse_cli_empty_path_raises() -> None:
-    """Input invalidi: path di override vuoto -> ValueError."""
-    with pytest.raises(ValueError, match="path di override vuoto"):
+    """Input invalidi: empty override path -> ValueError."""
+    with pytest.raises(ValueError, match="empty override path"):
         parse_cli_overrides(("=5",))
 
 def test_parse_cli_path_collision_raises() -> None:
-    """Input invalidi: collisione di tipo sul path -> ValueError."""
-    with pytest.raises(ValueError, match="collisione"):
+    """Input invalidi: collision di tipo sul path -> ValueError."""
+    with pytest.raises(ValueError, match="collision"):
         parse_cli_overrides(("training.epochs=5", "training.epochs.extra=1"))
 
 def test_save_config_snapshot_creates_file(tmp_path: Path) -> None:

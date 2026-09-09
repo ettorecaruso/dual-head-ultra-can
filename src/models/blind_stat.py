@@ -24,7 +24,7 @@ def blind_features(y: np.ndarray) -> np.ndarray:
     """
     y = np.asarray(y)
     if y.ndim != 2 or not np.all(np.isfinite(y)):
-        raise ValueError("y deve essere (N, N_seq) finito")
+        raise ValueError("y must be finite with shape (N, N_seq)")
     re = y.real
     im = y.imag
     a = np.mean(re * re, axis=1)
@@ -115,7 +115,7 @@ def evaluate_on_test_data(
     bit = np.asarray(test_data["bit"]).astype(np.int64)
     snr = np.asarray(test_data["snr_db"]).astype(np.float64)
     if x.ndim != 2 or len(bit) != x.shape[0] or len(snr) != x.shape[0]:
-        raise ValueError("test_data incoerente per la valutazione blind")
+        raise ValueError("test_data inconsistent for blind evaluation")
 
     snr_range = list(config.get("evaluation", {}).get("snr_test_range", []))
     rows = []

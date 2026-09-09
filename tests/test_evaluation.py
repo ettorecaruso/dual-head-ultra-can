@@ -6,29 +6,29 @@ invalidi):
   ``src/evaluation/metrics.py``:
     - ``ber_from_logits``    : BER da logits (hard decision): perfetti -> 0 (T1),
         random -> ~0.5 (T2), multi-classe M=4, batch 1/1024, NaN/Inf, labels
-        fuori [0, M-1], shape non coincidenti, batch vuoto -> ValueError.
+        outside [0, M-1], shape non coincidenti, batch empty -> ValueError.
     - ``ber``                : BER da array di bit: identici -> 0, complementari
-        -> 1, random -> ~0.5, valori fuori {0,1}, NaN/Inf, shape diverse,
-        batch vuoto -> ValueError.
+        -> 1, random -> ~0.5, valori outside {0,1}, NaN/Inf, shape diverse,
+        batch empty -> ValueError.
     - ``mse_delay_doppler``  : MSE su tau/fD denormalizzati: pred == truth -> 0
-        (T3), pred random -> >0 finito, errori estremi (1e6), liste come input,
+        (T3), pred random -> >0 finite, errori estremi (1e6), liste come input,
         NaN/Inf, array vuoti, shape diverse -> ValueError.
     - ``rmse_from_mse``      : RMSE = sqrt(MSE) (T4): normali, mse=0, mse
-        negativo -> ValueError, clamp entro tolleranza, mse non finito ->
+        negativo -> ValueError, clamp entro tolleranza, mse not finite ->
         ValueError, mse non numerico -> TypeError.
     - ``bit_error_count``    : conteggio (errori, totale) per il criterio
         "almeno 100 errori" (paper Sez. V-A): normale, perfetto, NaN/Inf,
-        batch vuoto, labels fuori range -> ValueError.
+        batch empty, labels outside range -> ValueError.
 
   ``src/evaluation/evaluator.py``:
     - ``evaluate_model``     : valutazione per SNR (criterio 100 errori / 10^7
         campioni): oracolo -> BER=0/MSE=0, random -> ~0.5/>0, stop alla soglia
         errori, stop a max_symbols, aggregazione SNR, batch=1, data vuota,
-        chiave mancante, config non valida -> ValueError, logits NaN, sensing
-        fuori range, nessun SNR -> RuntimeError.
-    - ``compute_ber_curve``  : results -> DataFrame ordinato; chiave mancante.
+        missing key, config non valida -> ValueError, logits NaN, sensing
+        outside range, nessun SNR -> RuntimeError.
+    - ``compute_ber_curve``  : results -> DataFrame ordinato; missing key.
     - ``compute_sensing_rmse``: results -> DataFrame con rmse_tau/rmse_fd;
-        chiave mancante.
+        missing key.
     - ``plot_ber_vs_snr``    : crea file; colonna mancante.
     - ``plot_loss_curves``   : crea file; history vuota/senza 'loss'.
     - ``plot_sensing_error`` : crea file; colonna mancante.
@@ -144,7 +144,7 @@ class _AlwaysWrongModel(tf.keras.Model):
             mask: Maschera (non usata).
 
         Returns:
-            Dict ``{"comm": (B, 2), "sensing": (B, 2)}`` finito.
+            Dict ``{"comm": (B, 2), "sensing": (B, 2)}`` finite.
         """
         del training, mask
         bit = inputs[:, 0, 0]
@@ -177,7 +177,7 @@ class _RandomModel(tf.keras.Model):
             mask: Maschera (non usata).
 
         Returns:
-            Dict ``{"comm": (B, 2), "sensing": (B, 2)}`` finito.
+            Dict ``{"comm": (B, 2), "sensing": (B, 2)}`` finite.
         """
         del training, mask
         batch = tf.shape(inputs)[0]
@@ -203,7 +203,7 @@ class _NaNCommModel(tf.keras.Model):
             mask: Maschera (non usata).
 
         Returns:
-            Dict con ``"comm"`` contenente NaN e ``"sensing"`` finito.
+            Dict con ``"comm"`` contenente NaN e ``"sensing"`` finite.
         """
         del training, mask
         batch = tf.shape(inputs)[0]
@@ -226,7 +226,7 @@ class _OutOfRangeSensingModel(tf.keras.Model):
         training: Optional[bool] = None,
         mask: Optional[tf.Tensor] = None,
     ) -> Dict[str, tf.Tensor]:
-        """Forward: comm perfetto, sensing costante = 2.0 (fuori [0,1]).
+        """Forward: comm perfetto, sensing costante = 2.0 (outside [0,1]).
 
         Args:
             inputs: Features ``(B, N_seq, 1)``.
@@ -234,7 +234,7 @@ class _OutOfRangeSensingModel(tf.keras.Model):
             mask: Maschera (non usata).
 
         Returns:
-            Dict con ``"sensing"`` fuori range e ``"comm"`` valido.
+            Dict con ``"sensing"`` outside range e ``"comm"`` valido.
         """
         del training, mask
         batch = tf.shape(inputs)[0]
@@ -345,7 +345,7 @@ def test_ber_multi_class_qpsk() -> None:
 
 @pytest.mark.parametrize("batch_size", _BATCH_SIZES)
 def test_ber_from_logits_batch_sizes(batch_size: int) -> None:
-    """Batch 1/32/128 (template): BER corretto e finito su ogni dimensione."""
+    """Batch 1/32/128 (template): BER corretto e finite su ogni dimensione."""
     rng = np.random.default_rng(batch_size)
     labels = rng.integers(0, _M_BPSK, size=batch_size)
     logits = rng.normal(size=(batch_size, _M_BPSK))
@@ -368,17 +368,17 @@ def test_ber_from_logits_inf_raises() -> None:
         ber_from_logits(logits, labels)
 
 def test_ber_from_logits_labels_out_of_range_raises() -> None:
-    """Input invalido: labels fuori [0, M-1] -> ValueError."""
+    """Input invalido: labels outside [0, M-1] -> ValueError."""
     logits = np.random.default_rng(0).normal(size=(4, _M_BPSK))
     labels = np.array([0, 1, 2, 0])
-    with pytest.raises(ValueError, match="fuori"):
+    with pytest.raises(ValueError, match="outside"):
         ber_from_logits(logits, labels)
 
 def test_ber_from_logits_empty_raises() -> None:
-    """Input invalido: batch vuoto (B=0) -> ValueError."""
+    """Input invalido: batch empty (B=0) -> ValueError."""
     logits = np.zeros((0, _M_BPSK))
     labels = np.zeros((0,), dtype=np.int64)
-    with pytest.raises(ValueError, match="nessun campione"):
+    with pytest.raises(ValueError, match="no samples"):
         ber_from_logits(logits, labels)
 
 def test_ber_from_logits_shape_mismatch_raises() -> None:
@@ -413,7 +413,7 @@ def test_ber_random_bits_half() -> None:
     assert 0.5 - _BER_TOL <= ber_value <= 0.5 + _BER_TOL
 
 def test_ber_y_pred_out_of_range_raises() -> None:
-    """Input invalido: y_pred fuori {0,1} -> ValueError."""
+    """Input invalido: y_pred outside {0,1} -> ValueError."""
     bits = np.array([0, 1, 1])
     pred = np.array([0, 2, 1])
     with pytest.raises(ValueError, match="0/1"):
@@ -432,8 +432,8 @@ def test_ber_shape_mismatch_raises() -> None:
         ber(np.array([0, 1]), np.array([0, 1, 1]))
 
 def test_ber_empty_raises() -> None:
-    """Input invalido: batch vuoto -> ValueError."""
-    with pytest.raises(ValueError, match="nessun campione"):
+    """Input invalido: batch empty -> ValueError."""
+    with pytest.raises(ValueError, match="no samples"):
         ber(np.array([], dtype=np.int64), np.array([], dtype=np.int64))
 
 def test_mse_perfect_predictions() -> None:
@@ -445,7 +445,7 @@ def test_mse_perfect_predictions() -> None:
     assert mse_fd == 0.0
 
 def test_mse_random_predictions_positive() -> None:
-    """Caso normale: pred random -> MSE > 0 e finito."""
+    """Caso normale: pred random -> MSE > 0 e finite."""
     rng = np.random.default_rng(4)
     tau_pred = rng.uniform(0.0, 10.0, size=512)
     tau_true = rng.uniform(0.0, 10.0, size=512)
@@ -456,7 +456,7 @@ def test_mse_random_predictions_positive() -> None:
     assert mse_fd > 0.0 and np.isfinite(mse_fd)
 
 def test_mse_extreme_values_finite() -> None:
-    """Input limite: errori estremi (1e6) -> MSE finito e positivo."""
+    """Input limite: errori estremi (1e6) -> MSE finite e positivo."""
     tau_pred = np.full(8, _EXTREME_ERR)
     tau_true = np.zeros(8)
     fd_pred = np.full(8, _EXTREME_ERR)
@@ -493,7 +493,7 @@ def test_mse_inf_true_raises() -> None:
 
 def test_mse_empty_raises() -> None:
     """Input invalido: array vuoti -> ValueError."""
-    with pytest.raises(ValueError, match="nessun campione"):
+    with pytest.raises(ValueError, match="no samples"):
         mse_delay_doppler(np.array([]), np.array([]), np.array([]), np.array([]))
 
 def test_mse_shape_mismatch_raises() -> None:
@@ -533,17 +533,17 @@ def test_rmse_tiny_negative_clamped() -> None:
 
 def test_rmse_nan_raises() -> None:
     """Input invalido: mse=NaN -> ValueError ( Sez. 1.2)."""
-    with pytest.raises(ValueError, match="finito"):
+    with pytest.raises(ValueError, match="finite"):
         rmse_from_mse(float("nan"))
 
 def test_rmse_inf_raises() -> None:
     """Input invalido: mse=Inf -> ValueError ( Sez. 1.2)."""
-    with pytest.raises(ValueError, match="finito"):
+    with pytest.raises(ValueError, match="finite"):
         rmse_from_mse(float("inf"))
 
 def test_rmse_non_number_raises() -> None:
     """Input invalido: mse non numerico -> TypeError."""
-    with pytest.raises(TypeError, match="int o float"):
+    with pytest.raises(TypeError, match="int or float"):
         rmse_from_mse("4")
 
 def test_bit_error_count() -> None:
@@ -570,13 +570,13 @@ def test_bit_error_count_nan_logits_raises() -> None:
         bit_error_count(np.array([[float("nan"), 1.0]]), np.array([0]))
 
 def test_bit_error_count_empty_raises() -> None:
-    """Input invalido: batch vuoto -> ValueError."""
-    with pytest.raises(ValueError, match="nessun campione"):
+    """Input invalido: batch empty -> ValueError."""
+    with pytest.raises(ValueError, match="no samples"):
         bit_error_count(np.zeros((0, _M_BPSK)), np.zeros((0,), dtype=np.int64))
 
 def test_bit_error_count_labels_out_of_range_raises() -> None:
-    """Input invalido: labels fuori [0, M-1] -> ValueError."""
-    with pytest.raises(ValueError, match="fuori"):
+    """Input invalido: labels outside [0, M-1] -> ValueError."""
+    with pytest.raises(ValueError, match="outside"):
         bit_error_count(np.zeros((2, _M_BPSK)), np.array([0, 5]))
 
 def test_evaluate_model_basic(tiny_config: Dict[str, Any]) -> None:
@@ -722,7 +722,7 @@ def test_evaluate_model_empty_data_raises(tiny_config: Dict[str, Any]) -> None:
         max_doppler=_max_doppler_from(tiny_config),
     )
     config = _eval_config(tiny_config, snr_test_range=[0.0])
-    with pytest.raises(ValueError, match="non contiene campioni"):
+    with pytest.raises(ValueError, match="contains no samples"):
         evaluate_model(_OracleModel(), data, config)
 
 def test_evaluate_model_missing_key_raises(tiny_config: Dict[str, Any]) -> None:
@@ -735,7 +735,7 @@ def test_evaluate_model_missing_key_raises(tiny_config: Dict[str, Any]) -> None:
     )
     del data["bit"]
     config = _eval_config(tiny_config, snr_test_range=[0.0])
-    with pytest.raises(ValueError, match="manca delle chiavi"):
+    with pytest.raises(ValueError, match="missing the keys"):
         evaluate_model(_OracleModel(), data, config)
 
 def test_evaluate_model_invalid_config_raises(tiny_config: Dict[str, Any]) -> None:
@@ -783,7 +783,7 @@ def test_evaluate_model_sensing_out_of_range_clamped(
     assert np.all(np.isclose(results["mse_tau"], expected_mse_tau))
 
 def test_evaluate_model_no_matching_snr_raises(tiny_config: Dict[str, Any]) -> None:
-    """Input limite: nessun campione per gli SNR di test -> RuntimeError."""
+    """Input limite: no samples per gli SNR di test -> RuntimeError."""
     data = _make_eval_data(
         n_per_snr=10,
         snr_values=[0.0],
@@ -791,7 +791,7 @@ def test_evaluate_model_no_matching_snr_raises(tiny_config: Dict[str, Any]) -> N
         max_doppler=_max_doppler_from(tiny_config),
     )
     config = _eval_config(tiny_config, snr_test_range=[100.0])
-    with pytest.raises(RuntimeError, match="Nessun SNR valutato"):
+    with pytest.raises(RuntimeError, match="No SNR evaluated"):
         evaluate_model(_OracleModel(), data, config)
 
 def test_evaluate_model_non_model_raises(tiny_config: Dict[str, Any]) -> None:
@@ -835,7 +835,7 @@ def test_compute_ber_curve_missing_key_raises() -> None:
     """Input invalido: results senza 'ber' -> ValueError."""
     results = _sample_results()
     del results["ber"]
-    with pytest.raises(ValueError, match="manca delle chiavi"):
+    with pytest.raises(ValueError, match="missing the keys"):
         compute_ber_curve(results)
 
 def test_compute_ber_curve_non_dict_raises() -> None:
@@ -865,7 +865,7 @@ def test_compute_sensing_rmse_missing_key_raises() -> None:
     """Input invalido: results senza 'mse_tau' -> ValueError."""
     results = _sample_results()
     del results["mse_tau"]
-    with pytest.raises(ValueError, match="manca delle chiavi"):
+    with pytest.raises(ValueError, match="missing the keys"):
         compute_sensing_rmse(results)
 
 def _ber_df() -> pd.DataFrame:
@@ -918,7 +918,7 @@ def test_plot_loss_curves_creates_file(tmp_path: Path) -> None:
 def test_plot_loss_curves_empty_history_raises(tmp_path: Path) -> None:
     """Input invalido: history vuota -> ValueError."""
     empty_history = tf.keras.callbacks.History()
-    with pytest.raises(ValueError, match="vuoto"):
+    with pytest.raises(ValueError, match="empty"):
         plot_loss_curves(empty_history, tmp_path, "png", "conv1d")
 
 def test_plot_loss_curves_missing_loss_raises(tmp_path: Path) -> None:
@@ -1044,7 +1044,7 @@ def test_evaluate_model_online_floor_low_ber(tiny_config: Dict[str, Any]) -> Non
 
 
 def test_evaluate_model_online_invalid_config_raises(tiny_config: Dict[str, Any]) -> None:
-    """ONLINE: config con data.echoes vuoto -> ValueError (fail-fast)."""
+    """ONLINE: config con data.echoes empty -> ValueError (fail-fast)."""
     config = _eval_config(tiny_config, snr_test_range=[0.0])
     config["data"]["echoes"] = []
     with pytest.raises(ValueError):

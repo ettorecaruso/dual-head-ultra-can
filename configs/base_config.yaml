@@ -30,7 +30,7 @@ data:
 model:
   backbone_type: "conv1d"
   size: "full"
-  seeds:
+  seeds:  
     conv1d: 5
     qkv: 67
     lstm: 63

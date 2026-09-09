@@ -170,7 +170,7 @@ def main():
     ap.add_argument("--symbols", type=int, default=20000)
     ap.add_argument("--skip-figure", action="store_true")
     ap.add_argument("--only-figure", action="store_true",
-                    help="rigenera solo la figura dai risultati gia' presenti in output-dir")
+                    help="only regenerate the figure from the results already present in output-dir")
     args = ap.parse_args()
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

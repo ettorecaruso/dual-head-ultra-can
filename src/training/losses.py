@@ -15,7 +15,7 @@ def assert_finite(t: tf.Tensor, name: str) -> None:
     
     if not t.dtype.is_floating:
         logger.debug(
-            "assert_finite: dtype %s non floating, check saltato per %s",
+            "assert_finite: dtype %s is not floating, check skipped for %s",
             t.dtype,
             name,
         )
@@ -46,7 +46,7 @@ def comm_ce_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
 def comm_ce_loss_factory(label_smoothing: float = 0.0) -> Callable[[tf.Tensor, tf.Tensor], tf.Tensor]:
     
     if not isinstance(label_smoothing, (int, float)) or not (0.0 <= float(label_smoothing) < 1.0):
-        raise ValueError(f"label_smoothing deve essere in [0, 1), ricevuto: {label_smoothing!r}")
+        raise ValueError(f"label_smoothing must be in [0, 1), got: {label_smoothing!r}")
     smoothing = float(label_smoothing)
 
     def _comm_ce_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
@@ -88,7 +88,7 @@ def _mse_sensing_loss_core(y_true: tf.Tensor, y_pred: tf.Tensor, penalty: float)
         y_true_np = y_true.numpy()
         if np.any(y_true_np < -1e-7) or np.any(y_true_np > 1.0 + 1e-7):
             logger.warning(
-                "sensing labels fuori da [0,1]: min=%.4f, max=%.4f",
+                "sensing labels outside [0,1]: min=%.4f, max=%.4f",
                 np.min(y_true_np), np.max(y_true_np)
             )
 
@@ -114,7 +114,7 @@ def mse_sensing_loss_factory(
     
     if not isinstance(range_penalty, (int, float)) or not math.isfinite(float(range_penalty)) or float(range_penalty) < 0.0:
         raise ValueError(
-            f"range_penalty deve essere un numero finito >= 0, ricevuto: {range_penalty!r}"
+            f"range_penalty must be a finite number >= 0, got: {range_penalty!r}"
         )
     penalty = float(range_penalty)
 
@@ -132,11 +132,11 @@ def mse_sensing_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
 def combined_loss_factory(lambda_mse: float) -> Callable[[Dict[str, tf.Tensor], Dict[str, tf.Tensor]], tf.Tensor]:
     
     if not isinstance(lambda_mse, (int, float)):
-        raise TypeError(f"lambda_mse deve essere un numero, ricevuto: {type(lambda_mse).__name__}")
+        raise TypeError(f"lambda_mse must be a number, got: {type(lambda_mse).__name__}")
     if not tf.math.is_finite(lambda_mse):
-        raise ValueError(f"lambda_mse deve essere finito, ricevuto: {lambda_mse}")
+        raise ValueError(f"lambda_mse must be finite, got: {lambda_mse}")
     if lambda_mse < 0.0:
-        raise ValueError(f"lambda_mse deve essere >= 0, ricevuto: {lambda_mse}")
+        raise ValueError(f"lambda_mse must be >= 0, got: {lambda_mse}")
 
     logger.info("combined_loss_factory: lambda_mse = %s", lambda_mse)
 
@@ -148,7 +148,7 @@ def combined_loss_factory(lambda_mse: float) -> Callable[[Dict[str, tf.Tensor], 
             y_pred_comm = y_pred["comm"]
             y_pred_sensing = y_pred["sensing"]
         except KeyError as exc:
-            raise ValueError(f"Chiave mancante nei dizionari y_true/y_pred: {exc}")
+            raise ValueError(f"Missing key in the y_true/y_pred dicts: {exc}")
 
         assert_finite(y_pred_comm, "y_pred_comm")
         assert_finite(y_pred_sensing, "y_pred_sensing")

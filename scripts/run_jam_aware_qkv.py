@@ -65,11 +65,11 @@ def ensure_canonical_data(cfg: Dict, canon: Path) -> None:
 
     for split, subset in (("train", False), ("val", False), ("test", True)):
         if _missing(split, subset):
-            print(f"[data] genero split '{split}' in {canon.name} (puo' richiedere alcuni minuti)...")
+            print(f"[data] generating split '{split}' in {canon.name} (may take a few minutes)...")
             canon.mkdir(parents=True, exist_ok=True)
             t0 = time.time()
             generate_dataset(cfg, split, canon)
-            print(f"[data] split '{split}' generato ({time.time()-t0:.0f}s)")
+            print(f"[data] split '{split}' generated ({time.time()-t0:.0f}s)")
 
 
 def canonical_dir(cfg: Dict) -> Path:
@@ -109,9 +109,9 @@ def build_augmented_train(aug_dir: Path, canon: Path) -> Path:
     
     files = sorted(canon.glob("train_*.npz"))
     if not files:
-        raise FileNotFoundError(f"Nessun file train in {canon}")
+        raise FileNotFoundError(f"No train file in {canon}")
     if len(list(aug_dir.glob("train_*.npz"))) >= len(files):
-        print(f"[aug] train augmentato gia' presente in {aug_dir}")
+        print(f"[aug] augmented train already present in {aug_dir}")
         return aug_dir
     aug_dir.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
@@ -119,7 +119,7 @@ def build_augmented_train(aug_dir: Path, canon: Path) -> Path:
         _augment_one(f, aug_dir / f.name)
         if (i + 1) % 7 == 0:
             print(f"[aug] {i+1}/{len(files)} file ({time.time()-t0:.0f}s)")
-    print(f"[aug] train augmentato completato: {len(files)} file in {aug_dir} ({time.time()-t0:.0f}s)")
+    print(f"[aug] augmented train completed: {len(files)} files in {aug_dir} ({time.time()-t0:.0f}s)")
     return aug_dir
 
 
@@ -155,19 +155,19 @@ def _train(cfg: Dict, aug_dir: Path, canon: Path, out_dir: Path) -> Dict:
     trainer.restore_best_weights()
     best = out_dir / "best_model.keras"
     model.save(best)
-    print(f"[train] QKV jamming-aware: {len(history.history.get('loss', []))} epoche, best in {best} ({time.time()-t0:.0f}s)")
+    print(f"[train] QKV jamming-aware: {len(history.history.get('loss', []))} epochs, best in {best} ({time.time()-t0:.0f}s)")
     return {"model": model, "history": history, "path": best}
 
 
 def _probe(model, cfg, canon: Path, out_dir: Path) -> None:
     from src.data.data_loader import (build_reference_matrix, load_npz_files)
-    print("[probe] caricamento test subset e riferimento ISAC (240k campioni)...")
+    print("[probe] loading the test subset and the ISAC reference (240k samples)...")
     from src.experiments.jamming_interpretability import run_jamming_interpretability_probe
     echoes = [int(k) for k in cfg["data"]["echoes"]]
     test_data = load_npz_files(canon, SNR_EVAL, echoes, "test", cfg)
     t0 = time.time()
     test_data["x_ref"] = build_reference_matrix(test_data["bit"], test_data["seed"], cfg)
-    print(f"[probe] test pronto ({test_data[chr(120)].shape[0]} campioni) in {time.time()-t0:.0f}s; avvio griglia (log per condizione attivi)...")
+    print(f"[probe] test ready ({test_data[chr(120)].shape[0]} samples) in {time.time()-t0:.0f}s; starting the grid (per-condition logging enabled)...")
     run_jamming_interpretability_probe(model=model, arch="qkv", test_data=test_data, config=cfg,
                    out_dir=out_dir, jsr_values=JSR_FULL, jammer_types=JAMMERS,
                    ret_subset=3000, tag="jamming_aware_training")
@@ -178,20 +178,20 @@ def _compare(out_dir: Path) -> None:
     base = Path(_REPO) / "results/full/jamming_interpretability/qkv/conditions.csv"
     new = out_dir / "conditions.csv"
     if not base.exists() or not new.exists():
-        print("[compare] baseline o nuovo mancante; skip confronto")
+        print("[compare] baseline or new results missing; skipping the comparison")
         return
     a = pd.read_csv(base); b = pd.read_csv(new)
     m = a.merge(b, on=["jammer", "jsr_db"], suffixes=("_clean_trained", "_jam_aware"))
     cols = ["jammer", "jsr_db", "ber_clean_trained", "ber_jam_aware",
             "margin_mean_clean_trained", "margin_mean_jam_aware"]
     m[[c for c in cols if c in m.columns]].to_csv(out_dir / "comparison_clean_vs_jamaware.csv", index=False)
-    print(f"[compare] salvato {out_dir/'comparison_clean_vs_jamaware.csv'}")
+    print(f"[compare] saved {out_dir/'comparison_clean_vs_jamaware.csv'}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--epochs", type=int, default=None)
-    ap.add_argument("--skip-train", action="store_true", help="riusa best_model gia' addestrato")
+    ap.add_argument("--skip-train", action="store_true", help="reuse an already trained best_model")
     args = ap.parse_args()
 
     cfg = load_cfg()
@@ -208,17 +208,17 @@ def main() -> None:
 
     best = out_dir / "best_model.keras"
     if args.skip_train and best.exists():
-        print(f"[train] skip: riuso {best}")
+        print(f"[train] skip: reusing {best}")
         from src.utils.model_io import load_model
         model = load_model(best)
     else:
-        print(f"[train] avvio jamming-aware QKV (canon={canon.name}, aug={aug_dir.name})")
+        print(f"[train] starting jamming-aware QKV training (canon={canon.name}, aug={aug_dir.name})")
         model = _train(cfg, aug_dir, canon, out_dir)["model"]
 
-    print("[probe] valutazione griglia jamming_interpretability (clean + 3 jammer x 6 JSR)...")
+    print("[probe] evaluating jamming_interpretability grid (clean + 3 jammers x 6 JSR)...")
     _probe(model, cfg, canon, out_dir)
     _compare(out_dir)
-    print("FATTO ->", out_dir)
+    print("DONE ->", out_dir)
 
 
 if __name__ == "__main__":

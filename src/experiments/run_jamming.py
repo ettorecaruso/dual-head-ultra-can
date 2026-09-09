@@ -79,37 +79,37 @@ def apply_jamming(
 ) -> np.ndarray:
     
     if not isinstance(y, np.ndarray):
-        raise TypeError(f"y deve essere np.ndarray, ricevuto: {type(y).__name__}")
+        raise TypeError(f"y must be a np.ndarray, got: {type(y).__name__}")
     if jamming_type not in _VALID_JAMMING_TYPES:
         raise ValueError(
-            f"jamming_type non valido: {jamming_type!r} (attesi: {sorted(_VALID_JAMMING_TYPES)})"
+            f"invalid jamming_type: {jamming_type!r} (expected: {sorted(_VALID_JAMMING_TYPES)})"
         )
     if not np.isfinite(jsr_db):
-        raise ValueError(f"jsr_db deve essere finito, ricevuto: {jsr_db!r}")
+        raise ValueError(f"jsr_db must be finite, got: {jsr_db!r}")
     if not np.all(np.isfinite(y)):
-        raise ValueError("y contiene NaN/Inf")
+        raise ValueError("y contains NaN/Inf")
     if not isinstance(rng, np.random.Generator):
-        raise TypeError(f"rng deve essere np.random.Generator, ricevuto: {type(rng).__name__}")
+        raise TypeError(f"rng must be a np.random.Generator, got: {type(rng).__name__}")
     if not (0.0 < partial_band_fraction <= 1.0):
-        raise ValueError(f"partial_band_fraction deve essere in (0,1], ricevuto: {partial_band_fraction}")
+        raise ValueError(f"partial_band_fraction must be in (0,1], got: {partial_band_fraction}")
 
     if y.ndim == 1:
         y = y.reshape(1, -1)
     if y.ndim != 2:
-        raise ValueError(f"y deve avere shape (N, L) o (L,), ricevuta: {y.shape}")
+        raise ValueError(f"y must have shape (N, L) or (L,), got: {y.shape}")
 
     N, L = y.shape
     if L == 0:
-        raise ValueError("y non deve essere vuoto")
+        raise ValueError("y must not be empty")
 
     signal_power = float(np.mean(np.abs(y) ** 2))
     if signal_power <= _EPS:
-        logger.warning("Potenza segnale = %.3e <= eps, jamming non applicato", signal_power)
+        logger.warning("Signal power = %.3e <= eps, jamming not applied", signal_power)
         return y
 
     jsr_linear = 10.0 ** (jsr_db / 10.0)
     if not np.isfinite(jsr_linear) or jsr_linear < 0.0:
-        raise ValueError(f"JSR non valido: {jsr_db} dB -> {jsr_linear}")
+        raise ValueError(f"invalid JSR: {jsr_db} dB -> {jsr_linear}")
     jamming_power = signal_power * jsr_linear
 
     if jamming_type == "cw":
@@ -142,7 +142,7 @@ def apply_jamming(
 
     current_power = float(np.mean(np.abs(j) ** 2))
     if current_power <= _EPS:
-        logger.warning("Potenza jamming = %.3e <= eps, jamming impostato a zero", current_power)
+        logger.warning("Jamming power = %.3e <= eps, jamming set to zero", current_power)
         j = np.zeros_like(j)
     else:
         scale = np.sqrt(jamming_power / current_power)
@@ -151,11 +151,11 @@ def apply_jamming(
     y_jammed = y + j
 
     if not np.all(np.isfinite(y_jammed)):
-        raise RuntimeError(f"Segnale jammed non finito per {jamming_type} a JSR={jsr_db} dB")
+        raise RuntimeError(f"jammed signal not finite for {jamming_type} at JSR={jsr_db} dB")
 
     if logger.isEnabledFor(logging.DEBUG):
         actual_jsr = 10.0 * np.log10(np.mean(np.abs(j) ** 2) / signal_power) if signal_power > _EPS else -np.inf
-        logger.debug("Jamming %s: target JSR=%.1f dB, effettivo=%.2f dB", jamming_type, jsr_db, actual_jsr)
+        logger.debug("Jamming %s: target JSR=%.1f dB, actual=%.2f dB", jamming_type, jsr_db, actual_jsr)
 
     return y_jammed
 
@@ -169,22 +169,22 @@ def _load_or_build_model(
     if model_path is not None:
         model_path = Path(model_path)
         if not model_path.exists():
-            raise FileNotFoundError(f"Modello non trovato: {model_path}")
-        logger.info("Caricamento modello da %s", model_path)
+            raise FileNotFoundError(f"Model not found: {model_path}")
+        logger.info("Loading model from %s", model_path)
         try:
             model = load_model(model_path)
         except Exception as e:
-            raise ValueError(f"Errore nel caricamento del modello: {e}") from e
+            raise ValueError(f"Error loading the model: {e}") from e
 
         if model.input_shape is None:
-            raise RuntimeError("Il modello caricato non ha input_shape definita")
+            raise RuntimeError("The loaded model has no defined input_shape")
         dummy = tf.zeros((1,) + tuple(model.input_shape[1:]), dtype=model.inputs[0].dtype)
         outputs = model(dummy, training=False)
         for name, tensor in outputs.items():
-            tf.debugging.assert_all_finite(tensor, f"Output '{name}' non finito nel caricamento")
+            tf.debugging.assert_all_finite(tensor, f"Output '{name}' not finite when loading")
         return model
 
-    logger.info("Costruzione del modello %s da zero", model_type)
+    logger.info("Building model %s from scratch", model_type)
     builders = {
         "conv1d": build_dual_head_ultra_can,
         "qkv": build_dual_head_ultra_can_qkv,
@@ -192,7 +192,7 @@ def _load_or_build_model(
         "mc_dlsk": lambda cfg: build_baseline(cfg, "mc_dlsk"),
     }
     if model_type not in builders:
-        raise ValueError(f"Modello non supportato: {model_type!r}")
+        raise ValueError(f"Model not supported: {model_type!r}")
     model = builders[model_type](config)
 
     checkpoint_path = config.get("training", {}).get("checkpoint_path")
@@ -202,18 +202,18 @@ def _load_or_build_model(
             ckpt = _REPO_ROOT / ckpt
         if ckpt.exists():
             try:
-                logger.info("Caricamento checkpoint da %s", ckpt)
+                logger.info("Loading checkpoint from %s", ckpt)
                 model = load_model(ckpt)
-                logger.info("Checkpoint caricato con successo")
+                logger.info("Checkpoint loaded successfully")
             except Exception as e:
-                logger.warning("Caricamento checkpoint fallito: %s, proseguo con modello non addestrato", e)
+                logger.warning("Failed to load checkpoint: %s, continuing with an untrained model", e)
 
     if model.input_shape is None:
-        raise RuntimeError("Il modello non è buildato")
+        raise RuntimeError("The model is not built")
     dummy = tf.zeros((1,) + tuple(model.input_shape[1:]), dtype=model.inputs[0].dtype)
     outputs = model(dummy, training=False)
     for name, tensor in outputs.items():
-        tf.debugging.assert_all_finite(tensor, f"Output '{name}' non finito nel build")
+        tf.debugging.assert_all_finite(tensor, f"Output '{name}' not finite in build")
 
     return model
 
@@ -231,7 +231,7 @@ def evaluate_jamming(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    logger.info("Valutazione baseline...")
+    logger.info("Running baseline evaluation...")
     baseline_results = evaluate_model(model, test_data, config)
     baseline_ber_mean = float(np.mean(baseline_results["ber"]))
     baseline_df = pd.DataFrame({
@@ -244,12 +244,12 @@ def evaluate_jamming(
     })
     baseline_csv = output_dir / "baseline_metrics.csv"
     baseline_df.to_csv(baseline_csv, index=False)
-    logger.info("Baseline salvata in %s", baseline_csv)
-    logger.info("Baseline BER medio = %.6f", baseline_ber_mean)
+    logger.info("Baseline saved to %s", baseline_csv)
+    logger.info("Baseline mean BER = %.6f", baseline_ber_mean)
 
     invalid_types = [t for t in jammer_types if t not in _VALID_JAMMING_TYPES]
     if invalid_types:
-        raise ValueError(f"Tipi di jamming non validi: {invalid_types}. Attesi: {sorted(_VALID_JAMMING_TYPES)}")
+        raise ValueError(f"Invalid jamming types: {invalid_types}. Expected: {sorted(_VALID_JAMMING_TYPES)}")
 
     partial_band_fraction = config.get("jamming", {}).get("partial_band_fraction", _DEFAULT_PARTIAL_BAND_FRACTION)
     base_seed = int(config["general"].get("seed", 42))
@@ -259,7 +259,7 @@ def evaluate_jamming(
     all_dfs: Dict[str, pd.DataFrame] = {}
 
     for jt in jammer_types:
-        logger.info("Elaborazione jamming: %s", jt)
+        logger.info("Processing jamming: %s", jt)
         rows = []
         for idx, jsr_db in enumerate(jsr_values):
             seed = base_seed + (sum(ord(ch) for ch in jt) % 10000) + idx * 7
@@ -281,11 +281,11 @@ def evaluate_jamming(
                 mse_fd = float(np.mean(eval_res["mse_fd"]))
 
                 if not np.isfinite(ber_mean) or not (0.0 <= ber_mean <= 1.0):
-                    raise RuntimeError(f"BER non valida per {jt} JSR={jsr_db}: {ber_mean}")
+                    raise RuntimeError(f"invalid BER for {jt} at JSR={jsr_db}: {ber_mean}")
                 if not np.isfinite(mse_tau) or mse_tau < 0.0:
-                    raise RuntimeError(f"MSE_tau non valida: {mse_tau}")
+                    raise RuntimeError(f"invalid MSE_tau: {mse_tau}")
                 if not np.isfinite(mse_fd) or mse_fd < 0.0:
-                    raise RuntimeError(f"MSE_fd non valida: {mse_fd}")
+                    raise RuntimeError(f"invalid MSE_fd: {mse_fd}")
 
                 rows.append({
                     "jsr_db": jsr_db,
@@ -294,14 +294,14 @@ def evaluate_jamming(
                     "mse_fd": mse_fd,
                 })
             except Exception as e:
-                logger.error("Errore per JSR %.1f dB: %s", jsr_db, e)
+                logger.error("Error at JSR %.1f dB: %s", jsr_db, e)
                 rows.append({"jsr_db": jsr_db, "ber": np.nan, "mse_tau": np.nan, "mse_fd": np.nan})
 
         df = pd.DataFrame(rows)
         csv_path = output_dir / f"jamming_results_{jt}.csv"
         df.to_csv(csv_path, index=False)
         all_dfs[jt] = df
-        logger.info("Risultati per %s salvati in %s", jt, csv_path)
+        logger.info("Results for %s saved to %s", jt, csv_path)
 
         valid = df["ber"].notna()
         if valid.any():
@@ -321,7 +321,7 @@ def evaluate_jamming(
             baseline_ber_mean=baseline_ber_mean,
         )
     else:
-        logger.warning("Nessun risultato valido per generare i plot")
+        logger.warning("No valid results to generate the plots")
 
     return {
         "results": all_dfs,
@@ -361,7 +361,7 @@ def _plot_jamming_curves(
         )
     ax.set_xlabel("JSR (dB)")
     ax.set_ylabel("Bit Error Rate (BER)")
-    ax.set_title("BER vs JSR - Confronto tipi di jamming")
+    ax.set_title("BER vs JSR - comparison of jamming types")
     ax.grid(True, which="both", linestyle="--", alpha=0.6)
     ax.legend()
     ax.set_ylim([1e-6, 1.0])
@@ -369,7 +369,7 @@ def _plot_jamming_curves(
     overlay_path = output_dir / f"ber_vs_jsr_overlay.{plot_format}"
     plt.savefig(overlay_path, format=plot_format, bbox_inches="tight", dpi=300)
     plt.close(fig)
-    logger.info("Plot overlay salvato in %s", overlay_path)
+    logger.info("Overlay plot saved to %s", overlay_path)
 
     fig, ax = plt.subplots(figsize=(8, 6))
     for jt, data in results.items():
@@ -391,7 +391,7 @@ def _plot_jamming_curves(
                     label=f"Clean (BER={baseline_ber_mean:.4f})")
     ax.set_xlabel("JSR (dB)")
     ax.set_ylabel("Bit Error Rate (BER)")
-    ax.set_title(f"BER vs JSR - {model_name} (jammato vs clean)")
+    ax.set_title(f"BER vs JSR - {model_name} (jammed vs clean)")
     ax.grid(True, which="both", linestyle="--", alpha=0.6)
     ax.legend()
     ax.set_ylim([1e-6, 1.0])
@@ -399,7 +399,7 @@ def _plot_jamming_curves(
     clean_path = output_dir / f"ber_vs_jsr_{model_name}_vs_clean.{plot_format}"
     plt.savefig(clean_path, format=plot_format, bbox_inches="tight", dpi=300)
     plt.close(fig)
-    logger.info("Plot jammato vs clean salvato in %s", clean_path)
+    logger.info("Jammed vs clean plot saved to %s", clean_path)
 
     for jt, data in results.items():
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -413,18 +413,18 @@ def _plot_jamming_curves(
         single_path = output_dir / f"ber_vs_jsr_{jt}.{plot_format}"
         plt.savefig(single_path, format=plot_format, bbox_inches="tight", dpi=300)
         plt.close(fig)
-        logger.info("Plot separato per %s salvato in %s", jt, single_path)
+        logger.info("Separate plot for %s saved to %s", jt, single_path)
 
 
 def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Valutazione BER sotto jamming (Sez. V-A)")
-    parser.add_argument("--config", required=True, help="Path della config esperimento (YAML).")
+    parser = argparse.ArgumentParser(description="BER evaluation under jamming")
+    parser.add_argument("--config", required=True, help="Path to the experiment config (YAML).")
     parser.add_argument("--model", choices=["conv1d", "qkv", "lstm", "mc_dlsk"], default="conv1d")
-    parser.add_argument("--model-path", type=Path, default=None, help="Percorso di un checkpoint già addestrato.")
+    parser.add_argument("--model-path", type=Path, default=None, help="Path to an already-trained checkpoint.")
     parser.add_argument("--output-dir", default="results/full_experiment/jamming/jamming")
     parser.add_argument("--jsr-range", nargs=2, type=float, default=[0.0, 10.0], help="Min max JSR in dB")
-    parser.add_argument("--jsr-step", type=float, default=1.0, help="Passo JSR in dB")
-    parser.add_argument("--plot-format", default=None, help="Formato dei plot (default da config)")
+    parser.add_argument("--jsr-step", type=float, default=1.0, help="JSR step in dB")
+    parser.add_argument("--plot-format", default=None, help="Plot format (default from config)")
     return parser.parse_args(argv)
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
@@ -432,7 +432,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     config_path = Path(args.config)
     if not config_path.exists():
-        raise FileNotFoundError(f"File di config non trovato: {config_path}")
+        raise FileNotFoundError(f"Config file not found: {config_path}")
 
     config = load_config(config_path, DEFAULT_BASE_CONFIG_PATH)
     validate_config(config, _REQUIRED_KEYS)
@@ -457,7 +457,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     snr_grid = build_snr_grid(data_cfg["snr_range"], data_cfg["snr_step"])
     echoes = list(data_cfg["echoes"])
     test_data = load_npz_files(raw_dir, snr_grid, echoes, "test", config)
-    logger.info("Test set caricato: %d campioni", test_data["x"].shape[0])
+    logger.info("Test set loaded: %d samples", test_data["x"].shape[0])
     verify_snr_balance(test_data, snr_grid, echoes)
     test_data["x_ref"] = build_reference_matrix(test_data["bit"], test_data["seed"], config)
 
@@ -465,12 +465,12 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     jsr_step = args.jsr_step
     jsr_grid = np.arange(jsr_min, jsr_max + jsr_step / 2.0, jsr_step)
     jsr_grid = np.round(jsr_grid, decimals=6).tolist()
-    logger.info("Griglia JSR: %s", jsr_grid)
+    logger.info("JSR grid: %s", jsr_grid)
 
     jamming_types = config.get("jamming", {}).get("jamming_types", ["cw", "barrage", "partial_band"])
     jamming_types = [t for t in jamming_types if t in _VALID_JAMMING_TYPES]
     if not jamming_types:
-        logger.warning("Nessun tipo di jamming valido nella config, esco.")
+        logger.warning("No valid jamming type in the config, exiting.")
         return
 
     result = evaluate_jamming(
@@ -495,7 +495,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         json.dump(metadata, f, indent=2)
 
     save_config_snapshot(config, log_dir)
-    logger.info("Esperimento di jamming completato. Output in %s", output_dir)
+    logger.info("Jamming experiment completed. Output in %s", output_dir)
 
 if __name__ == "__main__":
     main()

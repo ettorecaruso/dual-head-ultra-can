@@ -1,27 +1,16 @@
-"""Logging strutturato per il progetto Dual-Head Ultra-CAN (ISAC in IoD).
+"""Structured logging for the Dual-Head Ultra-CAN project (ISAC in IoD).
 
-Modulo di utilità conforme alle linee guida del progetto:
-  - Docstring iniziale con lo scopo del modulo                     [questo blocco]
-  - Type hints su tutti i parametri e i ritorni
-  - Logging strutturato con livelli INFO e DEBUG
-  - Logger di modulo via ``logging.getLogger(__name__)``
-  - Docstring Google-style su ogni funzione pubblica (scopo, argomenti,
-    ritorni, eccezioni)
+Contents:
+  - ``get_logger``         : module logger, to call with ``__name__``.
+  - ``setup_logging``      : file handler (``<log_dir>/<experiment_name>.log``,
+    utf-8, append) plus console handler (stderr); idempotent.
+  - ``log_config_summary`` : INFO/DEBUG dump of the loaded config plus WARNING
+    on non-finite float values (NaN/Inf).
 
-Contenuto:
-  - ``get_logger``         : logger di modulo, da chiamare con ``__name__``.
-  - ``setup_logging``      : handler su file (``<log_dir>/<experiment_name>.log``,
-    utf-8, append) + handler su console (stderr); idempotente.
-  - ``log_config_summary`` : dump INFO/DEBUG della config caricata + WARNING
-    su valori float non finiti (NaN/Inf).
-
-Note:
-  - Dipendenze: nessuna (solo standard library)
-  - Nessuna formula del paper (Eq. (1)-(15)) è implementata in questo modulo:
-    utility pura, quindi non ci sono riferimenti matematici da commentare.
-  - Il livello di logging NON è hard-coded: i punti di ingresso devono passare
-    ``config["general"].get("log_level", "INFO")`` (chiave aggiunta a
-    ``base_config.yaml`` nella Fase 0, `` Sez. 7).
+Notes:
+  - Dependencies: none (standard library only).
+  - The logging level is not hard-coded: entry points must pass
+    ``config["general"].get("log_level", "INFO")``.
 """
 
 from __future__ import annotations
@@ -45,16 +34,16 @@ logger = logging.getLogger(__name__)
 def get_logger(name: str) -> logging.Logger:
     
     if not isinstance(name, str) or not name.strip():
-        raise ValueError(f"name deve essere una stringa non vuota, ricevuto: {name!r}")
+        raise ValueError(f"name must be a non-empty string, got: {name!r}")
     return logging.getLogger(name)
 
 def _resolve_level(level: str) -> int:
     
     if not isinstance(level, str):
-        raise ValueError(f"level deve essere una stringa, ricevuto: {type(level).__name__}")
+        raise ValueError(f"level must be a string, got: {type(level).__name__}")
     level_upper = level.strip().upper()
     if level_upper not in _LOG_LEVELS:
-        raise ValueError(f"level non valido: {level!r}. Ammessi: {sorted(_LOG_LEVELS)}")
+        raise ValueError(f"invalid level: {level!r}. Allowed: {sorted(_LOG_LEVELS)}")
     return getattr(logging, level_upper)
 
 def _find_file_handler(root_logger: logging.Logger, log_file: Path) -> logging.FileHandler | None:
@@ -90,24 +79,24 @@ def setup_logging(
 
     if not isinstance(experiment_name, str) or not experiment_name.strip():
         raise ValueError(
-            f"experiment_name deve essere una stringa non vuota, ricevuto: {experiment_name!r}"
+            f"experiment_name must be a non-empty string, got: {experiment_name!r}"
         )
     if "\x00" in experiment_name:
-        raise ValueError(f"experiment_name non può contenere caratteri NUL: {experiment_name!r}")
+        raise ValueError(f"experiment_name cannot contain NUL characters: {experiment_name!r}")
     if "/" in experiment_name or "\\" in experiment_name or ".." in experiment_name:
         raise ValueError(
-            f"experiment_name non può contenere separatori di percorso: {experiment_name!r}"
+            f"experiment_name cannot contain path separators: {experiment_name!r}"
         )
 
     try:
         log_dir_path = Path(log_dir).resolve()
     except TypeError as exc:
         raise TypeError(
-            f"log_dir deve essere Path o str, ricevuto: {type(log_dir).__name__}"
+            f"log_dir must be Path or str, got: {type(log_dir).__name__}"
         ) from exc
 
     if log_dir_path.exists() and not log_dir_path.is_dir():
-        raise ValueError(f"log_dir esiste ma non è una directory: {log_dir_path}")
+        raise ValueError(f"log_dir exists but is not a directory: {log_dir_path}")
 
     log_dir_path.mkdir(parents=True, exist_ok=True)
     experiment_name_clean = experiment_name.strip()
@@ -135,7 +124,7 @@ def setup_logging(
     console_handler.setFormatter(formatter)
 
     root_logger.info(
-        "Logging configurato: file=%s livello=%s",
+        "Logging configured: file=%s level=%s",
         log_file,
         logging.getLevelName(level_num),
     )
@@ -174,9 +163,9 @@ def _log_config_value(logger: logging.Logger, path: str, value: Any) -> None:
 def log_config_summary(config: dict, logger: logging.Logger) -> None:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere un dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
     if not isinstance(logger, logging.Logger):
-        raise TypeError(f"logger deve essere logging.Logger, ricevuto: {type(logger).__name__}")
+        raise TypeError(f"logger must be a logging.Logger, got: {type(logger).__name__}")
 
     general = config.get("general") or {}
     data = config.get("data") or {}
@@ -197,10 +186,10 @@ def log_config_summary(config: dict, logger: logging.Logger) -> None:
 
     for path, value in _iter_config_leaves(config, "config"):
         if isinstance(value, numbers.Real) and not math.isfinite(value):
-            logger.warning("CONFIG non-finito: %s = %s", path, value)
+            logger.warning("Non-finite config value: %s = %s", path, value)
 
     for path, value in _iter_config_items(config):
         _log_config_value(logger, path, value)
 
-    logger.debug("Riepilogo config completato (%d sezioni)", len(config))
+    logger.debug("Config summary completed (%d sections)", len(config))
 

@@ -234,7 +234,7 @@ def test_invalid_baseline_config_raises(
 def test_baseline_enabled_false_raises(tiny_config: Dict[str, Any]) -> None:
     """baselines.enabled=false -> ValueError (fail-fast)."""
     cfg = _with_override(tiny_config, "baselines.enabled", False)
-    with pytest.raises(ValueError, match="disabilitata"):
+    with pytest.raises(ValueError, match="disabled"):
         build_baseline(cfg, "lstm")
 
 def test_enabled_missing_or_not_bool_raises(tiny_config: Dict[str, Any]) -> None:
@@ -249,7 +249,7 @@ def test_enabled_missing_or_not_bool_raises(tiny_config: Dict[str, Any]) -> None
         build_baseline(cfg, "lstm")
 
 def test_mc_dlsk_invalid_dropout_raises(tiny_config: Dict[str, Any]) -> None:
-    """dropout fuori range in baselines.mc_dlsk -> ValueError (fail-fast)."""
+    """dropout outside range in baselines.mc_dlsk -> ValueError (fail-fast)."""
     cfg = _with_override(tiny_config, "baselines.mc_dlsk.dropout", 1.5)
     with pytest.raises(ValueError, match="dropout"):
         build_baseline(cfg, "mc_dlsk")
@@ -441,13 +441,13 @@ def test_matched_filter_template_mismatch_raises(tiny_config: Dict[str, Any]) ->
     """Template lunghezza diversa da y -> ValueError."""
     y = np.zeros((2, 20), dtype=np.complex128)
     template = np.zeros(10)
-    with pytest.raises(ValueError, match="allineato"):
+    with pytest.raises(ValueError, match="aligned"):
         matched_filter_demodulate(y, template)
 
 def test_energy_detector_empty_raises(tiny_config: Dict[str, Any]) -> None:
-    """y vuoto -> ValueError."""
+    """y empty -> ValueError."""
     y = np.zeros((0, 10), dtype=np.complex128)
-    with pytest.raises(ValueError, match="vuoto"):
+    with pytest.raises(ValueError, match="empty"):
         energy_detector_demodulate(y)
 
 def test_dcsk_demod_ref_explicit(tiny_config: Dict[str, Any]) -> None:
@@ -472,13 +472,13 @@ def test_dcsk_demod_ref_broadcast(tiny_config: Dict[str, Any]) -> None:
     assert np.array_equal(bits, np.array([0, 1]))
 
 def test_dcsk_demod_odd_length_raises(tiny_config: Dict[str, Any]) -> None:
-    """y a lunghezza dispari -> ValueError."""
+    """y a lunghezza diseven -> ValueError."""
     y_odd = np.zeros((2, 15), dtype=np.complex128)
-    with pytest.raises(ValueError, match="pari"):
+    with pytest.raises(ValueError, match="even"):
         dcsk_correlator_demodulate(y_odd)
 
 def test_dcsk_demod_complex_input(tiny_config: Dict[str, Any]) -> None:
-    """Input complesso (come da npz) -> output finito."""
+    """Input complesso (come da npz) -> output finite."""
     beta = int(tiny_config["baselines"]["dcsk_correlator"]["correlation_length"])
     y = np.random.default_rng(0).normal(size=(4, 2*beta)) + 1j * np.random.default_rng(1).normal(size=(4, 2*beta))
     bits = dcsk_correlator_demodulate(y)
@@ -514,7 +514,7 @@ def test_evaluate_classical_mf_missing_template_raises(tiny_config: Dict[str, An
         )
 
 def test_evaluate_classical_bits_true_invalid_raises(tiny_config: Dict[str, Any]) -> None:
-    """bits_true non 1D o valori fuori {0,1} -> ValueError."""
+    """bits_true non 1D o valori outside {0,1} -> ValueError."""
     with pytest.raises(ValueError, match="bits_true"):
         evaluate_classical(np.zeros((2, 10)), np.array([[0, 1]]), "dcsk", tiny_config)
     with pytest.raises(ValueError, match="0/1"):
@@ -549,7 +549,7 @@ def test_matched_filter_degenerate_template_warning(
     y = np.random.default_rng(0).normal(size=(2, beta)) + 1j * np.random.default_rng(1).normal(size=(2, beta))
     with caplog.at_level(logging.WARNING, logger="src.models.dcsk_correlator"):
         matched_filter_demodulate(y, template)
-    assert any("degenere" in r.getMessage() for r in caplog.records)
+    assert any("degenerate" in r.getMessage() for r in caplog.records)
 
 def test_baseline_micro_size_warning(
     tiny_config: Dict[str, Any], caplog: pytest.LogCaptureFixture

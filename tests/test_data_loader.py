@@ -4,7 +4,7 @@ Copre le funzioni pubbliche del modulo (12 test documentati in
 ``src/data/data_loader.py``): ``load_npz_files`` (roundtrip, combo mancante,
 dir vuota), ``normalize_targets`` (estremi -> [0, 1], tau_max=0 -> ValueError),
 ``build_tf_dataset`` (shape, finitezza, batch invalido, seed riproducibile) e
-``verify_snr_balance`` (uniforme OK, sbilanciato/atteso -> ValueError).
+``verify_snr_balance`` (uniforme OK, unbalanced/expected -> ValueError).
 
 I file ``.npz`` sintetici replicano il formato del generatore
 (``dataset_generator.generate_dataset``): ``<split>_snr<snr:g>_echo<k>.npz``.
@@ -91,12 +91,12 @@ def test_load_npz_files_roundtrip(tmp_path: Path, tiny_config: Dict[str, Any]) -
 def test_load_npz_files_missing_combo_raises(tmp_path: Path, tiny_config: Dict[str, Any]) -> None:
     """Input invalido: combinazione (SNR, K) mancante -> ValueError."""
     _write_npz(tmp_path, "train", 0.0, 1, n=4, config=tiny_config)
-    with pytest.raises(ValueError, match="griglia"):
+    with pytest.raises(ValueError, match="grid"):
         load_npz_files(tmp_path, [0.0, 5.0], [1], "train", tiny_config)
 
 def test_load_npz_files_empty_dir_raises(tmp_path: Path, tiny_config: Dict[str, Any]) -> None:
     """Input invalido: directory senza file per lo split -> FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="nessun file"):
+    with pytest.raises(FileNotFoundError, match="no valid .npz file"):
         load_npz_files(tmp_path, [0.0], [1], "train", tiny_config)
 
 def test_load_npz_files_wrong_split_raises(tmp_path: Path, tiny_config: Dict[str, Any]) -> None:
@@ -123,7 +123,7 @@ def test_normalize_targets_zero_max_raises(tiny_config: Dict[str, Any]) -> None:
 
 def test_normalize_targets_shape_mismatch_raises(tiny_config: Dict[str, Any]) -> None:
     """Input invalido: tau e f_d di lunghezza diversa -> ValueError."""
-    with pytest.raises(ValueError, match="stessa shape"):
+    with pytest.raises(ValueError, match="same shape"):
         normalize_targets(np.zeros(3), np.zeros(2), tau_max=10.0, fd_max=_MAX_DOPPLER)
 
 def _tiny_data_dict(n: int = 16, config: Dict[str, Any] | None = None) -> Dict[str, np.ndarray]:
@@ -199,16 +199,16 @@ def test_verify_snr_balance_unbalanced_raises(tiny_config: Dict[str, Any]) -> No
         "snr_db": np.array([0.0, 0.0, 0.0, 5.0, 5.0]),
         "k": np.array([1, 1, 1, 1, 1]),
     }
-    with pytest.raises(ValueError, match="sbilanciato"):
+    with pytest.raises(ValueError, match="unbalanced"):
         verify_snr_balance(data, [0.0, 5.0], [1])
 
 def test_verify_snr_balance_expected_mismatch_raises(tiny_config: Dict[str, Any]) -> None:
-    """Input invalido: conteggi uniformi ma != atteso -> ValueError."""
+    """Input invalido: conteggi uniformi ma != expected -> ValueError."""
     data = {
         "snr_db": np.array([0.0, 0.0, 0.0, 0.0, 5.0, 5.0, 5.0, 5.0]),
         "k": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
-    with pytest.raises(ValueError, match="atteso"):
+    with pytest.raises(ValueError, match="expected"):
         verify_snr_balance(data, [0.0, 5.0], [1], expected_per_combo=5)
 
 def test_verify_snr_balance_missing_combo_raises(tiny_config: Dict[str, Any]) -> None:
@@ -217,7 +217,7 @@ def test_verify_snr_balance_missing_combo_raises(tiny_config: Dict[str, Any]) ->
         "snr_db": np.array([0.0, 0.0, 5.0, 5.0]),
         "k": np.array([1, 1, 1, 1]),
     }
-    with pytest.raises(ValueError, match="sbilanciata"):
+    with pytest.raises(ValueError, match="unbalanced"):
         verify_snr_balance(data, [0.0, 5.0, 10.0], [1])
 
 

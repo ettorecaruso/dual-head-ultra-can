@@ -57,15 +57,15 @@ def _read_conv_dilations(
     raw = model_cfg.get("conv_dilations", list(_DEFAULT_CONV_DILATIONS))
     if not isinstance(raw, (list, tuple)) or len(raw) != n_layers:
         raise ValueError(
-            f"model.conv_dilations deve essere una lista di ESATTAMENTE "
-            f"{n_layers} interi >= 1, ricevuto: {raw!r}"
+            f"model.conv_dilations must be a list of EXACTLY "
+            f"{n_layers} integers >= 1, got: {raw!r}"
         )
     dilations: List[int] = []
     for d in raw:
         if isinstance(d, bool) or not isinstance(d, (int,)) or int(d) < 1:
             raise ValueError(
-                f"model.conv_dilations deve contenere solo interi >= 1, "
-                f"ricevuto: {raw!r}"
+                f"model.conv_dilations must contain only integers >= 1, "
+                f"got: {raw!r}"
             )
         dilations.append(int(d))
     return tuple(dilations)
@@ -83,22 +83,22 @@ def _expected_att_length(
     dilations_int = tuple(int(d) for d in dilations)
     if len(dilations_int) != 2 or any(d < 1 for d in dilations_int):
         raise ValueError(
-            f"dilations deve contenere ESATTAMENTE 2 interi >= 1, "
-            f"ricevuto: {dilations!r}"
+            f"dilations must contain EXACTLY 2 integers >= 1, "
+            f"got: {dilations!r}"
         )
     if padding == "same":
         return seq_len_int
     if padding != "valid":
         raise ValueError(
-            f"padding deve essere 'valid' o 'same', ricevuto: {padding!r}"
+            f"padding must be 'valid' or 'same', got: {padding!r}"
         )
     reduction = sum((kernel_int - 1) * d for d in dilations_int)
     att_len = seq_len_int - reduction
     if att_len <= 0:
         raise ValueError(
-            f"lunghezza H^att non valida ({att_len}): seq_len={seq_len_int}, "
+            f"invalid H^att length ({att_len}): seq_len={seq_len_int}, "
             f"kernel={kernel_int}, dilations={dilations_int} (conv 'valid' "
-            f"produrrebbe una lunghezza <= 0)"
+            f"would produce a length <= 0)"
         )
     return att_len
 
@@ -119,49 +119,49 @@ def _validate_backbone_config(
 ) -> Tuple[Dict[str, Any], int, int]:
     
     if not isinstance(config, dict):
-        raise TypeError(f"config deve essere dict, ricevuto: {type(config).__name__}")
+        raise TypeError(f"config must be a dict, got: {type(config).__name__}")
 
     model_cfg = config.get("model")
     if not isinstance(model_cfg, dict):
-        raise ValueError("sezione 'model' mancante o non dict nella config")
+        raise ValueError("'model' section missing or not a dict in config")
     data_cfg = config.get("data")
     if not isinstance(data_cfg, dict):
-        raise ValueError("sezione 'data' mancante o non dict nella config")
+        raise ValueError("'data' section missing or not a dict in config")
 
     _assert_config_finite(model_cfg)
 
     missing_model = [key for key in _BACKBONE_REQUIRED_KEYS if key not in model_cfg]
     if missing_model:
-        raise ValueError(f"chiavi mancanti in model: {missing_model}")
+        raise ValueError(f"missing keys in model: {missing_model}")
     missing_data = [key for key in _DATA_REQUIRED_KEYS if key not in data_cfg]
     if missing_data:
-        raise ValueError(f"chiavi mancanti in data: {missing_data}")
+        raise ValueError(f"missing keys in data: {missing_data}")
 
     backbone_type = str(model_cfg["backbone_type"])
     if backbone_type not in _VALID_BACKBONE_TYPES:
         raise ValueError(
-            f"model.backbone_type {backbone_type!r} non supportato da questo "
-            f"modulo (attesi: {list(_VALID_BACKBONE_TYPES)}); per "
-            "'qkv_attention' usare src/models/ultra_can_qkv.py"
+            f"model.backbone_type {backbone_type!r} not supported by this "
+            f"module (expected: {list(_VALID_BACKBONE_TYPES)}); for "
+            "'qkv_attention' use src/models/ultra_can_qkv.py"
         )
 
     size = str(model_cfg["size"])
     if size not in _VALID_SIZES:
         raise ValueError(
-            f"model.size deve essere uno di {list(_VALID_SIZES)}, "
-            f"ricevuto: {size!r}"
+            f"model.size must be one of {list(_VALID_SIZES)}, "
+            f"got: {size!r}"
         )
     if size == "micro":
         logger.warning(
-            "model.size='micro' (~100 params) e' la variante dell'Exp 2 "
-            "(pruning): il contratto e' 'full'"
+            "model.size='micro' is the reduced-size variant, but only the 'full' contract is supported"
+            ""
         )
 
     conv_filters = model_cfg["conv_filters"]
     if not isinstance(conv_filters, (list, tuple)) or len(conv_filters) != 2:
         raise ValueError(
-            "model.conv_filters deve essere una lista di ESATTAMENTE 2 interi "
-            f"positivi [F1, F2] (paper Sez. IV-A), ricevuto: {conv_filters!r}"
+            "model.conv_filters must be a list of EXACTLY 2 positive "
+            f"integers [F1, F2], got: {conv_filters!r}"
         )
     _as_positive_int(conv_filters[0], "model.conv_filters[0]")
     _as_positive_int(conv_filters[1], "model.conv_filters[1]")
@@ -171,8 +171,8 @@ def _validate_backbone_config(
     conv_padding = str(model_cfg["conv_padding"])
     if conv_padding not in _VALID_PADDINGS:
         raise ValueError(
-            f"model.conv_padding deve essere {list(_VALID_PADDINGS)} "
-            f"(ricevuto: {conv_padding!r})"
+            f"model.conv_padding must be one of {list(_VALID_PADDINGS)} "
+            f"(got: {conv_padding!r})"
         )
     _read_conv_dilations(model_cfg, n_layers=2)
 
@@ -180,21 +180,21 @@ def _validate_backbone_config(
     feature_mode = str(data_cfg["feature_mode"])
     if feature_mode not in _VALID_FEATURE_MODES:
         raise ValueError(
-            f"data.feature_mode deve essere uno di {list(_VALID_FEATURE_MODES)}, "
-            f"ricevuto: {feature_mode!r}"
+            f"data.feature_mode must be one of {list(_VALID_FEATURE_MODES)}, "
+            f"got: {feature_mode!r}"
         )
 
     if conv_kernel >= seq_len:
         raise ValueError(
-            f"model.conv_kernel ({conv_kernel}) deve essere < "
-            f"data.sequence_length ({seq_len}): conv 'valid' produrrebbe una "
-            "lunghezza <= 0"
+            f"model.conv_kernel ({conv_kernel}) must be < "
+            f"data.sequence_length ({seq_len}): conv 'valid' would produce a "
+            "length <= 0"
         )
 
     num_features = 1 if feature_mode == "real" else 2
 
     logger.debug(
-        "config backbone validata: conv_filters=%s, conv_kernel=%d, padding=%s, "
+        "backbone config validated: conv_filters=%s, conv_kernel=%d, padding=%s, "
         "seq_len=%d, feature_mode=%s, num_features=%d",
         list(conv_filters),
         conv_kernel,
@@ -212,13 +212,13 @@ def _smoke_check_forward(
 ) -> None:
     
     if not tf.executing_eagerly():
-        logger.debug("smoke check forward saltato (contesto non eager)")
+        logger.debug("smoke check forward skipped (non-eager context)")
         return
 
     input_shape = tuple(model.input_shape)
     if len(input_shape) != 3 or input_shape[1] is None or input_shape[2] is None:
         raise ValueError(
-            f"shape input attesa (None, L, F), ricevuta: {input_shape!r}"
+            f"expected input shape (None, L, F), got: {input_shape!r}"
         )
 
     for batch_size in batch_sizes:
@@ -228,7 +228,7 @@ def _smoke_check_forward(
             or batch_size <= 0
         ):
             raise ValueError(
-                f"batch_size deve essere un intero positivo, ricevuto: {batch_size!r}"
+                f"batch_size must be a positive integer, got: {batch_size!r}"
             )
         dummy = tf.zeros(
             (batch_size,) + tuple(input_shape[1:]),
@@ -244,16 +244,16 @@ def _smoke_check_forward(
         for key, expected_shape in expected.items():
             if key not in outputs_map:
                 raise ValueError(
-                    f"{key}: output '{key}' non presente nel modello "
-                    f"(disponibili: {sorted(outputs_map.keys())})"
+                    f"{key}: output '{key}' not present in the model "
+                    f"(available: {sorted(outputs_map.keys())})"
                 )
             tensor = outputs_map[key]
             actual = tensor.shape.as_list()
             expected_list = list(expected_shape)
             if not expected_list or expected_list[0] is not None:
                 raise ValueError(
-                    f"{key}: expected deve avere None come dimensione batch "
-                    f"(es. (None, D1, ...)), ricevuto: {expected_list}"
+                    f"{key}: expected must have None as the batch dimension "
+                    f"(e.g. (None, D1, ...)), got: {expected_list}"
                 )
             if (
                 len(actual) != len(expected_list)
@@ -261,11 +261,11 @@ def _smoke_check_forward(
                 or actual[1:] != expected_list[1:]
             ):
                 raise ValueError(
-                    f"{key}: output shape attesa {expected_list}, "
-                    f"ricevuta: {actual}"
+                    f"{key}: expected output shape {expected_list}, "
+                    f"got: {actual}"
                 )
             tf.debugging.assert_all_finite(
-                tensor, message=f"{key}: output contiene NaN/Inf"
+                tensor, message=f"{key}: output contains NaN/Inf"
             )
         logger.debug(
             "smoke check OK (batch=%d): %s",
@@ -337,9 +337,9 @@ def _build_backbone_graph(
 
     if tuple(h_att.shape) != (None, att_len, f2):
         raise ValueError(
-            f"H^att shape attesa (None, {att_len}, {f2}) (conv "
+            f"expected H^att shape (None, {att_len}, {f2}) (conv "
             f"{seq_len} -> {seq_len - (conv_kernel - 1)} -> {att_len}), "
-            f"ricevuta: {tuple(h_att.shape)}"
+            f"got: {tuple(h_att.shape)}"
         )
     return h_att
 
@@ -353,12 +353,12 @@ def build_backbone(
     if input_tensor is not None:
         if tuple(input_tensor.shape[1:]) != (seq_len, num_features):
             raise ValueError(
-                f"input_tensor shape attesa (None, {seq_len}, {num_features}), "
-                f"ricevuta: {tuple(input_tensor.shape)}"
+                f"expected input_tensor shape (None, {seq_len}, {num_features}), "
+                f"got: {tuple(input_tensor.shape)}"
             )
         h_att = _build_backbone_graph(config, input_tensor, seq_len, num_features)
         logger.debug(
-            "backbone '%s' (layer condivisi): H^att=(None,%d,%d)",
+            "backbone '%s' (shared layers): H^att=(None,%d,%d)",
             _BACKBONE_NAME,
             _att_len_from_config(model_cfg, seq_len),
             int(model_cfg["conv_filters"][1]),
@@ -380,7 +380,7 @@ def build_backbone(
         },
     )
     logger.info(
-        "backbone '%s' costruita: input=(None,%d,%d), H^att=(None,%d,%d), params=%d",
+        "backbone '%s' built: input=(None,%d,%d), H^att=(None,%d,%d), params=%d",
         _BACKBONE_NAME,
         seq_len,
         num_features,
@@ -396,7 +396,7 @@ def build_dual_head_ultra_can(config: Dict[str, Any]) -> tf.keras.Model:
 
     model_cfg = config.get("model")
     if not isinstance(model_cfg, dict):
-        raise ValueError("sezione 'model' mancante o non dict nella config")
+        raise ValueError("'model' section missing or not a dict in config")
     conv_filters = model_cfg["conv_filters"]
     conv_kernel = int(model_cfg["conv_kernel"])
     seq_len = int(config["data"]["sequence_length"])
@@ -427,20 +427,20 @@ def build_dual_head_ultra_can(config: Dict[str, Any]) -> tf.keras.Model:
 
     if tuple(h_att.shape) != (None, att_len, f2):
         raise ValueError(
-            f"H^att shape attesa (None, {att_len}, {f2}), "
-            f"ricevuta: {tuple(h_att.shape)}"
+            f"expected H^att shape (None, {att_len}, {f2}), "
+            f"got: {tuple(h_att.shape)}"
         )
     if tuple(v.shape) != (None, f2):
-        raise ValueError(f"v shape attesa (None, {f2}), ricevuta: {tuple(v.shape)}")
+        raise ValueError(f"expected v shape (None, {f2}), got: {tuple(v.shape)}")
     if tuple(comm.shape) != (None, modulation_order):
         raise ValueError(
-            f"comm shape attesa (None, {modulation_order}), "
-            f"ricevuta: {tuple(comm.shape)}"
+            f"expected comm shape (None, {modulation_order}), "
+            f"got: {tuple(comm.shape)}"
         )
     if tuple(sensing.shape) != (None, _SENSING_OUTPUT_UNITS):
         raise ValueError(
-            f"sensing shape attesa (None, {_SENSING_OUTPUT_UNITS}), "
-            f"ricevuta: {tuple(sensing.shape)}"
+            f"expected sensing shape (None, {_SENSING_OUTPUT_UNITS}), "
+            f"got: {tuple(sensing.shape)}"
         )
 
     model = tf.keras.Model(
@@ -457,7 +457,7 @@ def build_dual_head_ultra_can(config: Dict[str, Any]) -> tf.keras.Model:
         },
     )
     logger.info(
-        "modello '%s' costruito: comm=%d params, sensing=%d params, TOT=%d params",
+        "model '%s' built: comm=%d params, sensing=%d params, TOTAL=%d params",
         _MODEL_NAME,
         count_trainable_params(comm_head),
         count_trainable_params(sensing_head),
@@ -469,18 +469,18 @@ def count_trainable_params(model: tf.keras.Model) -> int:
     
     if not isinstance(model, tf.keras.Model):
         raise TypeError(
-            f"model deve essere tf.keras.Model, ricevuto: {type(model).__name__}"
+            f"model must be a tf.keras.Model, got: {type(model).__name__}"
         )
     return num_params(model)
 
 def main(argv: Optional[Sequence[str]] = None) -> None:
     
     parser = argparse.ArgumentParser(
-        description="Smoke test modello Dual-Head Ultra-CAN (ISAC in IoD), "
+        description="Smoke test for the Dual-Head Ultra-CAN (ISAC in IoD) model"
         ""
     )
     parser.add_argument(
-        "--config", required=True, help="path della config esperimento (YAML)"
+        "--config", required=True, help="path to the experiment config (YAML)"
     )
     args = parser.parse_args(argv)
 
@@ -490,7 +490,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     )
     general = config.get("general")
     if not isinstance(general, dict):
-        raise ValueError("sezione 'general' mancante o non dict nella config")
+        raise ValueError("'general' section missing or not a dict in config")
     experiment_name = str(general.get("experiment_name", "ultra_can_isac"))
     log_dir = _REPO_ROOT / "results" / experiment_name / "logs"
     setup_logging(
@@ -502,8 +502,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
     model = build_dual_head_ultra_can(config)
     logger.info(
-        "modello Dual-Head Ultra-CAN pronto: %s (TOT=%d params, "
-        "footprint ~%.0f kB a 4 byte/param)",
+        "Dual-Head Ultra-CAN model ready: %s (TOTAL=%d params, "
+        "footprint ~%.0f kB at 4 bytes/param)",
         model.name,
         count_trainable_params(model),
         count_trainable_params(model) * 4.0 / 1024.0,

@@ -2,8 +2,8 @@
 Test dell'Esperimento 4 (jamming) — pipeline fixata.
 
 Verificano:
-  1. la griglia JSR deriva dalla config (``jsr_range``/``jsr_step``), non dal
-     default -10..20 (fix del run che partiva fuori dal range del paper);
+  1. la grid JSR deriva dalla config (``jsr_range``/``jsr_step``), non dal
+     default -10..20 (fix del run che partiva outside dal range del paper);
   2. a basso JSR il jammer è una piccola perturbazione: la curva BER "jamata"
      si sovrappone bene alla baseline per conv1d e qkv;
   3. il BER cresce (non cala) all'aumentare del JSR (robustezza monotona).
@@ -60,7 +60,7 @@ def _train_and_evaluate(config: Dict[str, Any], model_type: str) -> float:
     return float(np.mean(results["ber"]))
 
 def test_jsr_grid_from_config() -> None:
-    """La griglia JSR deriva da jsr_range/jsr_step (fix chiave jsr_values)."""
+    """La grid JSR deriva da jsr_range/jsr_step (fix chiave jsr_values)."""
     from src.experiments.pipeline import _build_jsr_values
 
     assert _build_jsr_values({"jsr_range": [0, 10], "jsr_step": 2}) == [0.0, 2.0, 4.0, 6.0, 8.0, 10.0]
