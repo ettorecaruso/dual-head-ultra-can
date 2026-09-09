@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import sys
 from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[1]
+if str(REPO) not in sys.path:
+    sys.path.insert(0, str(REPO))
 
 import numpy as np
 import pandas as pd
@@ -22,7 +27,6 @@ from src.data.dataset_generator import (
 )
 from src.models.blind_stat import blind_features, fit_lda, blind_decide
 
-REPO = Path(__file__).resolve().parent
 SEQLEN = 100
 MU = 3.9
 SNR_GRID = [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 20]

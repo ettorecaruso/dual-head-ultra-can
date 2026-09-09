@@ -83,9 +83,17 @@ def prepare_dataset(config: dict, no_regen: bool = False) -> Path:
 
 def load_datasets(
     config: Dict[str, Any],
-    data_dir: Path
-) -> Tuple[Dict[str, np.ndarray], tf.data.Dataset, tf.data.Dataset, Dict[str, np.ndarray]]:
-    
+    data_dir: Path,
+    include_test: bool = True,
+) -> Tuple[Dict[str, np.ndarray], tf.data.Dataset, tf.data.Dataset, Optional[Dict[str, np.ndarray]]]:
+    """Load train/val (and test when ``include_test``) splits from ``data_dir``.
+
+    The test split is the largest in the full configurations (e.g. 20k symbols
+    per (SNR, echo) combination) and is *not* required when the evaluation runs
+    with ``evaluation.online_generation: true`` (samples are synthesised on the
+    fly). Skipping it halves the resident memory of the data pipeline in the
+    ``full`` runs on Colab.
+    """
     from src.data.dataset_generator import build_snr_grid
     from src.data.data_loader import load_npz_files, verify_snr_balance, build_tf_dataset
 
@@ -93,8 +101,9 @@ def load_datasets(
     snr_grid = build_snr_grid(data_cfg["snr_range"], data_cfg["snr_step"])
     echoes = list(data_cfg["echoes"])
 
+    splits = ["train", "val"] + (["test"] if include_test else [])
     data_dicts = {}
-    for split in ("train", "val", "test"):
+    for split in splits:
         data = load_npz_files(data_dir, snr_grid, echoes, split, config)
         verify_snr_balance(data, snr_grid, echoes)
         data["x_ref"] = build_reference_matrix(data["bit"], data["seed"], config)
@@ -117,7 +126,37 @@ def load_datasets(
         shuffle=False,
         seed=seed,
     )
-    return data_dicts["train"], train_ds, val_ds, data_dicts["test"]
+    return (
+        data_dicts["train"],
+        train_ds,
+        val_ds,
+        data_dicts["test"] if include_test else None,
+    )
+
+def load_test_data(config: Dict[str, Any], data_dir: Path) -> Dict[str, np.ndarray]:
+    """Load only the static test split (with reference matrix) for a config.
+
+    Used by the jamming runner after the training step so that the large test
+    split is not resident in memory twice (once in ``run_single_experiment``
+    and once for the jamming evaluation).
+    """
+    from src.data.dataset_generator import build_snr_grid
+    from src.data.data_loader import (
+        load_npz_files,
+        verify_snr_balance,
+        build_reference_matrix,
+    )
+
+    data_cfg = config["data"]
+    snr_grid = build_snr_grid(data_cfg["snr_range"], data_cfg["snr_step"])
+    echoes = list(data_cfg["echoes"])
+    test_data = load_npz_files(data_dir, snr_grid, echoes, "test", config)
+    verify_snr_balance(test_data, snr_grid, echoes)
+    test_data["x_ref"] = build_reference_matrix(
+        test_data["bit"], test_data["seed"], config
+    )
+    logger.info("Static test set loaded: %d samples", test_data["x"].shape[0])
+    return test_data
 
 def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
     
@@ -205,6 +244,13 @@ def train_and_evaluate(
     if config.get("evaluation", {}).get("online_generation", False):
         eval_results = evaluate_model_online(model, config)
     else:
+        if test_data is None:
+            raise RuntimeError(
+                "train_and_evaluate: offline evaluation requires the static test "
+                "split, but test_data is None (load_datasets was called with "
+                "include_test=False). Use include_test=True when "
+                "evaluation.online_generation is disabled."
+            )
         eval_results = evaluate_model(model, test_data, config)
     df_ber = compute_ber_curve(eval_results)
 
@@ -246,7 +292,12 @@ def run_single_experiment(
     
     data_dir = prepare_dataset(config, no_regen)
 
-    train_data, train_ds, val_ds, test_data = load_datasets(config, data_dir)
+    online_eval = bool(
+        (config.get("evaluation") or {}).get("online_generation", False)
+    )
+    train_data, train_ds, val_ds, test_data = load_datasets(
+        config, data_dir, include_test=not online_eval
+    )
 
     model = build_model(config, model_type)
 

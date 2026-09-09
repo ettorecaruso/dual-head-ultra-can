@@ -463,8 +463,18 @@ def run_ber_vs_snr(
         scenario_config = pipeline._apply_scenario_config(config, scenario)
 
         data_dir = pipeline.prepare_dataset(scenario_config, no_regen)
+        online_eval = bool(
+            (scenario_config.get("evaluation") or {}).get("online_generation", False)
+        )
+        # The static test split is only needed for the offline evaluation and for
+        # the model-free receivers (blind_stat/dcsk). Full runs use online
+        # evaluation, so the test split (the largest one) is not loaded for the
+        # DL-only runs: this keeps the Colab RAM footprint well below the limit.
+        needs_test = (not online_eval) or any(
+            a in ("blind_stat", "dcsk") for a in architectures
+        )
         train_data, train_ds, val_ds, test_data = pipeline.load_datasets(
-            scenario_config, data_dir
+            scenario_config, data_dir, include_test=needs_test
         )
 
         scenario_curves: Dict[str, pd.DataFrame] = {}
@@ -731,9 +741,12 @@ def run_jamming(
     logger.info("Models to test: %s", models_to_test)
 
     data_dir = pipeline.prepare_dataset(config, no_regen)
-    train_data, train_ds, val_ds, test_data = pipeline.load_datasets(
-        config, data_dir
-    )
+    # The static test split is needed only for the jamming evaluation, while the
+    # training (run_single_experiment below) loads train/val only when the
+    # evaluation is online. Loading the test split once here (instead of through
+    # load_datasets with train+val) avoids keeping two full copies of the largest
+    # split in RAM during training.
+    test_data = pipeline.load_test_data(config, data_dir)
 
     results: Dict[str, Any] = {"models": {}}
     visualize_layers = bool(jamming_cfg.get("visualize_layers", False))
