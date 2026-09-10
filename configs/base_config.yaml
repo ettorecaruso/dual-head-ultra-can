@@ -32,7 +32,7 @@ model:
   size: "full"
   seeds:  
     conv1d: 5
-    qkv: 67
+    qkv: 21
     lstm: 63
     mc_dlsk: 80
   conv_filters: [32, 64]

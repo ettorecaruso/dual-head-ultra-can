@@ -8,42 +8,9 @@ env/
 *.egg-info/
 .ipynb_checkpoints/
 
-# Generated datasets
-/data/raw/*
-/data/processed/*
-!/data/raw/.gitkeep
-!/data/processed/.gitkeep
-
-# Heavy run artifacts (models, logs, plots)
-/results/**/best_model.keras
-/results/**/best_weights.weights.h5
-/results/**/logs/*
-!/results/**/logs/config_used.yaml
-/results/**/plots/*
-/figures/*.pdf
-
-# Curated result tables are kept for out-of-the-box figure regeneration
-!results/**/metrics.csv
-!results/**/conditions.csv
-!results/**/per_snr.csv
-!results/**/comparison_clean_vs_jamaware.csv
-!results/**/operating_region_table.csv
-!results/**/ber_vs_k.csv
-!results/**/ber_vs_doppler.csv
-!results/**/jamming_results_*.csv
-!results/**/baseline_metrics.csv
-!results/**/weight_table.tex
-!results/**/final_report.md
-!results/**/run_metadata.json
-/results/full/SUMMARY.json
-/results/full/SUMMARY.txt
 
 # Local working files (never versioned)
 .clinerules
-comandi.txt
-paper_context_completo.txt
-.marco*
-marco-siino-commlett-c877014/
 
 # IDE / OS
 .vscode/
