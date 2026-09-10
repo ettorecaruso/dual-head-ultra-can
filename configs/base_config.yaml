@@ -1,0 +1,149 @@
+general:
+  seed: 42
+  model_seed: 42
+  experiment_name: "ultra_can_isac"
+  log_level: "INFO"
+data:
+  sequence_length: 100
+  map_type: "logistic"
+  map_param: 3.9
+  fc_hz: 2.4e9
+  fs_hz: 1.0e7
+  snr_range: [-5, 20]
+  snr_step: 2
+  echoes: [1, 3]
+  max_delay: 33
+  max_doppler: 0.00008
+  feature_mode: "iq"
+  feature_norm: "none"
+  num_symbols_train: 5040
+  num_symbols_val: 1000
+  num_symbols_test: 2000
+  alpha_min: 0.05
+  alpha_max: 0.3
+  alpha_tau_coupling: false
+  alpha_floor: 0.001
+  rician_kappa_db: 10
+  doppler_direct_max: 0.00001
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+model:
+  backbone_type: "conv1d"
+  size: "full"
+  seeds:  
+    conv1d: 21
+    qkv: 15
+    lstm: 63
+    mc_dlsk: 80
+  conv_filters: [32, 64]
+  conv_kernel: 3
+  conv_padding: "same"
+  conv_dilations: [1, 1]
+  pool_projection: true
+  attention_mode: "attention_pool"
+  attention_heads: 8
+  attention_dim: 64
+  positional_encoding: true
+  qkv_residual: true
+  attention_checks: false
+  store_attention_weights: false
+  attention_residual: true
+  attention_temperature: 1.0
+  dropout_rate: 0.3
+  communication_head:
+    units: 128
+    activation: "relu"
+    modulation_order: 2
+  sensing_head:
+    units: 32
+    activation: "relu"
+    output_units: 2
+    output_activation: "linear"
+    use_max_pool_feature: false
+    use_position_feature: true
+    use_reference_profile: true
+    profile_max_lag: 33
+training:
+  epochs: 5
+  batch_size: 64
+  learning_rate: 0.001
+  optimizer: "adam"
+  lambda_mse: 2
+  loss_weights:
+    comm: 1.0
+    sensing: 2
+  label_smoothing: 0.1
+  lr_schedule: "cosine"
+  sensing_range_penalty: 0.0
+  early_stopping_patience: 10
+evaluation:
+  snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 20]
+  num_symbols_per_snr: 1000
+  bit_error_threshold: 100
+  max_symbols_per_snr: 2000000
+  online_generation: false
+  eval_batch_symbols: 100000
+  eval_predict_batch_size: 1024
+jamming:
+  enable: false
+  jamming_types: ["cw", "barrage", "partial_band"]
+  jsr_range: [-10, 10]
+  jsr_step: 2
+visualization:
+  attention_maps: true
+  save_plots: true
+  plot_format: "pdf"
+  num_samples: 5
+channel:
+  model: "aerial_multiecho"
+  direct_fading: "rician"
+  echo_fading: "rayleigh"
+  add_awgn: true
+  echo_only_mode: false
+baselines:
+  enabled: true
+  lstm:
+    units: [77]
+    dropout: 0.3
+    size: "full"
+  mc_dlsk:
+    units: [50]
+    dropout: 0.3
+    size: "full"
+  dcsk_correlator:
+    correlation_length: 50
+    threshold: 0.0
+experiments:
+  ber_vs_snr:
+    architectures: [conv1d, qkv, lstm, mc_dlsk, blind_stat]
+    scenarios:
+      - {name: "k1_doppler_full",     echoes: [1], max_doppler: 0.00008}
+      - {name: "k3_doppler_full",     echoes: [3], max_doppler: 0.00008}
+      - {name: "k3_doppler_limited",  echoes: [3], max_doppler: 0.00004}
+  classical_receivers:
+    no_dl_models: ["dcsk_correlator", "matched_filter", "energy_detector"]
+    deterministic: true
+  jamming:
+    jamming_types: ["cw", "barrage", "partial_band"]
+    jsr_range: [-10, 10]
+    jsr_step: 2
+    visualize_layers: true
+  final_report:
+    output: "weight_table.tex"
+    include_classical: true
+sweep_k:
+  min: 1
+  max: 10
+  step: 1
+sweep_doppler:
+  min: 0.0
+  max: 0.003
+  num_points: 12
+echo_only:
+  doppler_fixed: 0.00004
+  doppler_direct_fixed: 0.00001
+  k_fixed: 3
+  tau_offset: 7
+  alpha_base: 0.2
+  alpha_variation: 0.5
+  snr_db: -12
