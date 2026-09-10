@@ -31,8 +31,8 @@ model:
   backbone_type: "conv1d"
   size: "full"
   seeds:  
-    conv1d: 5
-    qkv: 21
+    conv1d: 21
+    qkv: 15
     lstm: 63
     mc_dlsk: 80
   conv_filters: [32, 64]
