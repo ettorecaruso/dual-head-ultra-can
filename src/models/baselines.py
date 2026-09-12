@@ -36,6 +36,7 @@ from src.utils.config_loader import (
     load_config,
 )
 from src.utils.logger import log_config_summary, setup_logging
+from src.utils.model_names import canonical_model_name
 
 logger = logging.getLogger(__name__)
 
@@ -392,6 +393,11 @@ def build_mc_dlsk_baseline(config: Dict[str, Any]) -> tf.keras.Model:
 
 def build_baseline(config: Dict[str, Any], name: str) -> tf.keras.Model:
     
+    try:
+        name = canonical_model_name(name)
+    except (TypeError, ValueError):
+        pass
+
     if not isinstance(name, str) or name not in _VALID_BASELINE_NAMES:
         raise ValueError(
             f"invalid baseline: {name!r} (expected: {list(_VALID_BASELINE_NAMES)})"

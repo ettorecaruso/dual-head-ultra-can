@@ -35,6 +35,7 @@ from src.training.trainer import Trainer
 from src.utils.config_loader import save_config_snapshot, validate_config
 from src.utils.dataset_utils import get_dataset_dir
 from src.utils.logger import get_logger
+from src.utils.model_names import canonical_model_name
 
 logger = get_logger(__name__)
 
@@ -160,6 +161,8 @@ def load_test_data(config: Dict[str, Any], data_dir: Path) -> Dict[str, np.ndarr
 
 def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
     
+
+    model_type = canonical_model_name(model_type)
 
     if model_type == "qkv":
         config["model"]["backbone_type"] = "qkv_attention"

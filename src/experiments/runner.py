@@ -37,6 +37,7 @@ from src.utils.config_loader import (
 from src.utils.dataset_utils import get_dataset_dir
 from src.utils.logger import get_logger, log_config_summary, setup_logging
 from src.utils.model_io import load_model
+from src.utils.model_names import canonical_model_name
 
 logger = get_logger(__name__)
 
@@ -1230,6 +1231,13 @@ def _build_echo_only_dataset(
 def main(argv: Optional[Sequence[str]] = None) -> None:
     """Run the requested experiments in sequence."""
     args = parse_args(argv)
+
+    if isinstance(args.model, str) and args.model.strip():
+        args.model = ",".join(
+            canonical_model_name(part)
+            for part in args.model.split(",")
+            if part.strip()
+        )
 
     exp_names = parse_experiment_list(args.experiments)
     logger.info("Experiments to run: %s", exp_names)
