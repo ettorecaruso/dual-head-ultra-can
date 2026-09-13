@@ -887,7 +887,7 @@ def run_jamming_interpretability(
         models_to_test = [m for m in models_to_test if m in wanted]
     jsr_values = [float(v) for v in (jamming_interpretability_cfg.get("jsr_values") or [-10.0, -6.0, -2.0, 2.0, 6.0, 10.0])]
     jammer_types = list(jamming_interpretability_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
-    snr_eval = [float(v) for v in (jamming_interpretability_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 20.0])]
+    snr_eval = [float(v) for v in (jamming_interpretability_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 21.0])]
     ret_subset = int(jamming_interpretability_cfg.get("ret_subset", 3000))
 
     logger.info("Experiment jamming_interpretability (models=%s)", models_to_test)

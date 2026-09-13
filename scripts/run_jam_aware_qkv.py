@@ -24,7 +24,7 @@ _REPO = next(
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
-SNR_EVAL = [-1.0, 3.0, 7.0, 11.0, 15.0, 20.0]
+SNR_EVAL = [-1.0, 3.0, 7.0, 11.0, 15.0, 21.0]
 JSR_FULL = [-10.0, -6.0, -2.0, 2.0, 6.0, 10.0]
 JAMMERS = ["cw", "barrage", "partial_band"]
 JSR_AUG = [-6.0, -2.0, 2.0]

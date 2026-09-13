@@ -9,7 +9,7 @@ defaults: &defaults
     map_param: 3.9
     fc_hz: 2.4e9
     fs_hz: 1.0e7
-    snr_range: [-5, 20]
+    snr_range: [-5, 21]
     snr_step: 2
     echoes: [1, 3]
     max_delay: 33
@@ -65,7 +65,7 @@ defaults: &defaults
       sensing: 2
     early_stopping_patience: 10
   evaluation:
-    snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 20]
+    snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
     num_symbols_per_snr: 1000
     bit_error_threshold: 100
     max_symbols_per_snr: 2000000
@@ -148,11 +148,11 @@ ber_vs_snr:
       num_symbols_train: 105000
       num_symbols_val: 5000
       num_symbols_test: 20000
-      snr_range: [-5, 20]
+      snr_range: [-5, 21]
       snr_step: 2
       echoes: [1, 3]
     evaluation:
-      snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 20]
+      snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
       online_generation: true
     experiments:
       ber_vs_snr:
@@ -236,7 +236,7 @@ jamming:
       num_symbols_train: 105000
       num_symbols_val: 5000
       num_symbols_test: 20000
-      snr_range: [-5, 20]
+      snr_range: [-5, 21]
       snr_step: 2
       echoes: [1, 3]
     jamming:
@@ -329,17 +329,17 @@ jamming_interpretability:
       num_symbols_train: 105000
       num_symbols_val: 5000
       num_symbols_test: 20000
-      snr_range: [-5, 20]
+      snr_range: [-5, 21]
       snr_step: 2
       echoes: [1, 3]
     evaluation:
-      snr_test_range: [-1, 3, 7, 11, 15, 20]
+      snr_test_range: [-1, 3, 7, 11, 15, 21]
     experiments:
       jamming_interpretability:
         models: [conv1d, qkv, lstm, mc_dlsk]
         jamming_types: ["cw", "barrage", "partial_band"]
         jsr_values: [-10, -6, -2, 2, 6, 10]
-        snr_eval: [-1, 3, 7, 11, 15, 20]
+        snr_eval: [-1, 3, 7, 11, 15, 21]
         ret_subset: 3000
     visualization:
       plot_format: "pdf"
@@ -359,7 +359,7 @@ jamming_interpretability:
       num_symbols_train: 5040
       num_symbols_val: 1000
       num_symbols_test: 600
-      snr_range: [-5, 20]
+      snr_range: [-5, 21]
       snr_step: 2
       echoes: [1, 3]
     evaluation:

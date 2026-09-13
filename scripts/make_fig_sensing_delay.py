@@ -6,14 +6,19 @@ curve per architecture.  Inputs are read from ``results/full/ber_vs_snr`` and
 fall back to ``results_old/full/ber_vs_snr``.
 """
 from pathlib import Path
+import argparse
+import sys
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
 SCENARIO = "k1_doppler_full"
 ARCHS = ["conv1d", "qkv", "lstm", "mc_dlsk"]
 LABELS = {
@@ -22,13 +27,29 @@ LABELS = {
     "lstm": "LSTM-OFDM-DCSK",
     "mc_dlsk": "MC-DLCSK",
 }
-STYLES = {
-    "conv1d": dict(color="#1f77b4", marker="o"),
-    "qkv": dict(color="#d62728", marker="s"),
-    "lstm": dict(color="#2ca02c", marker="^"),
-    "mc_dlsk": dict(color="#9467bd", marker="D"),
+# "plotly_white" curve language (M. Siino's notebooks): plotly palette,
+# big markers (plotly size=8), width=1.5 lines, dash+symbol cycled, no
+# white marker edge.
+PLOTLY_COLORS = {
+    "conv1d": "#636EFA",
+    "qkv": "#EF553B",
+    "lstm": "#00CC96",
+    "mc_dlsk": "#AB63FA",
 }
-LINE = dict(lw=1.0, ms=3.8, mec="white", mew=0.6)
+PLOTLY_MARKERS = {"conv1d": "o", "qkv": "s", "lstm": "D", "mc_dlsk": "+"}
+PLOTLY_DASHES = {
+    "conv1d": "-",
+    "qkv": (0, (6, 2)),
+    "lstm": (0, (1, 1.6)),
+    "mc_dlsk": (0, (4, 1.2, 1, 1.2)),
+}
+LINE_W = 1.5
+MARKER_SIZE = 6.5
+
+
+def _model_kwargs(arch: str) -> dict:
+    return dict(color=PLOTLY_COLORS[arch], marker=PLOTLY_MARKERS[arch],
+                ls=PLOTLY_DASHES[arch], lw=LINE_W, ms=MARKER_SIZE)
 
 
 def _results_root() -> Path:
@@ -45,28 +66,68 @@ RESULTS = _results_root() / "ber_vs_snr" / SCENARIO
 def _apply_style() -> None:
     plt.rcParams.update(
         {
-            "font.size": 9,
-            "axes.titlesize": 9.5,
-            "axes.labelsize": 9.5,
-            "xtick.labelsize": 8.5,
-            "ytick.labelsize": 8.5,
-            "legend.fontsize": 7.5,
-            "axes.linewidth": 0.8,
-            "axes.edgecolor": "#333333",
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "font.size": 11.5,
+            "axes.titlesize": 11.5,
+            "axes.labelsize": 11.5,
+            "xtick.labelsize": 9.5,
+            "ytick.labelsize": 10.5,
+            "legend.fontsize": 10.5,
+            "axes.edgecolor": "black",
+            "axes.linewidth": 1.0,
             "axes.grid": True,
-            "grid.color": "#dcdcdc",
-            "grid.linewidth": 0.6,
+            "grid.color": "#D3D3D3",
+            "grid.linewidth": 1.0,
             "legend.frameon": True,
-            "legend.framealpha": 0.92,
-            "legend.edgecolor": "#c8c8c8",
-            "lines.solid_capstyle": "round",
+            "legend.framealpha": 0.8,
+            "legend.edgecolor": "gray",
+            "legend.facecolor": "white",
+            "xtick.direction": "out",
+            "ytick.direction": "out",
+            "lines.linewidth": LINE_W,
+            "lines.markersize": MARKER_SIZE,
         }
     )
 
 
-def _despine(ax) -> None:
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
+def _x_ticks(values):
+    """Label the SNR axis with the interior points only.
+
+    The first and last SNR values sit on the axis corners (their labels collide
+    with the frame), and the last two points (19, 20 dB) are only 1 dB apart.
+    Dropping the extremes leaves evenly spaced ticks.
+    """
+    values = sorted(values)
+    return values[1:-1] if len(values) > 2 else values
+
+
+def _outer_frame(fig, axes) -> None:
+    """Close the outer border across the gaps between panels."""
+    from matplotlib.patches import Rectangle
+
+    pos = [ax.get_position() for ax in axes]
+    x0 = min(p.x0 for p in pos)
+    x1 = max(p.x1 for p in pos)
+    y0 = min(p.y0 for p in pos)
+    y1 = max(p.y1 for p in pos)
+    fig.add_artist(Rectangle((x0, y0), x1 - x0, y1 - y0,
+                             transform=fig.transFigure, fill=False,
+                             edgecolor="black", linewidth=1.0,
+                             clip_on=False, zorder=10))
+
+
+def _siino_frame(ax, x_step: float = 2.0) -> None:
+    """plotly_white frame: black box, light major grid, dotted minor grid."""
+    ax.set_axisbelow(True)
+    ax.grid(True, which="major", axis="both", color="#D3D3D3", lw=1.0)
+    ax.grid(True, which="minor", axis="both", color="#D3D3D3", lw=1.0, ls=":")
+    ax.xaxis.set_major_locator(mticker.MultipleLocator(x_step))
+    for spine in ax.spines.values():
+        spine.set_visible(True)
+        spine.set_color("black")
+        spine.set_linewidth(1.0)
+    ax.tick_params(direction="out", color="black")
 
 
 def _load() -> dict:
@@ -78,52 +139,106 @@ def _load() -> dict:
     return curves
 
 
-def main() -> None:
+def plot_sensing_plotly() -> None:
+    """Same delay figures rendered with Plotly (paper-notebook look)."""
+    from plotly.subplots import make_subplots
+
+    import plotly_style as ps
+
+    curves = _load()
+    if not curves:
+        print("[warn] no metrics found under", RESULTS)
+        return
+
+    xs = sorted({float(v) for df in curves.values() for v in df["snr_db"]})
+    ticks = ps.interior_ticks(xs)
+    has_rmse = any("mse_tau" in df.columns for df in curves.values())
+    cols = 2 if has_rmse else 1
+
+    fig = make_subplots(rows=1, cols=cols, horizontal_spacing=0.09,
+                        subplot_titles=["Delay correlation", "Delay RMSE"][:cols])
+    for arch, df in curves.items():
+        fig.add_trace(ps.scatter(df["snr_db"], df["corr_tau"], LABELS[arch], arch),
+                      row=1, col=1)
+        if cols == 2 and "mse_tau" in df.columns:
+            rmse = np.sqrt(np.clip(df["mse_tau"].to_numpy(dtype=float), 0.0, None))
+            fig.add_trace(ps.scatter(df["snr_db"], rmse, LABELS[arch], arch,
+                                     showlegend=False), row=1, col=2)
+    fig.update_layout(template="plotly_white", width=1140, height=480,
+                      font=dict(size=13), legend=ps.legend("lower right"),
+                      margin=dict(l=70, r=20, t=50, b=60),
+                      shapes=[ps.frame_shape()])
+    fig.update_yaxes(ps.linear_yaxis("corr(τ̂, τ)"), row=1, col=1)
+    if cols == 2:
+        fig.update_yaxes(ps.linear_yaxis("RMSE of τ̂ (samples)"), row=1, col=2)
+    for col in range(1, cols + 1):
+        fig.update_xaxes(ps.xaxis(ticks), row=1, col=col)
+    ps.write(fig, REPO / "figures" / "plotly" / "sensing_delay_single.pdf",
+             REPO / "figures" / "plotly" / "sensing_delay_single.html")
+
+
+def main(argv=None) -> None:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--engine", choices=["matplotlib", "plotly"],
+                    default="matplotlib",
+                    help="plotly reproduces the paper-notebook look (PDF + HTML)")
+    args = ap.parse_args(argv)
+    if args.engine == "plotly":
+        plot_sensing_plotly()
+        return
+
     _apply_style()
     curves = _load()
     if not curves:
         print("[warn] no metrics found under", RESULTS)
         return
 
-    fig, (ax_corr, ax_rmse) = plt.subplots(1, 2, figsize=(8.8, 3.7))
+    fig, (ax_corr, ax_rmse) = plt.subplots(1, 2, figsize=(11.4, 4.8))
     corr_all, rmse_all = [], []
     for arch, df in curves.items():
         ax_corr.plot(df["snr_db"], df["corr_tau"], label=LABELS[arch],
-                     **STYLES[arch], **LINE)
+                     **_model_kwargs(arch))
         corr_all.extend(df["corr_tau"].to_numpy(dtype=float))
         if "mse_tau" in df.columns:
             rmse = np.sqrt(np.clip(df["mse_tau"].to_numpy(dtype=float), 0.0, None))
             ax_rmse.plot(df["snr_db"], rmse, label=LABELS[arch],
-                         **STYLES[arch], **LINE)
+                         **_model_kwargs(arch))
             rmse_all.extend(rmse.tolist())
 
-    ax_corr.set_title("Delay correlation", pad=6)
+    ax_corr.set_title("Delay correlation", pad=8)
     ax_corr.set_xlabel("SNR (dB)")
     ax_corr.set_ylabel(r"corr($\hat{\tau}$, $\tau$)")
     ax_corr.set_ylim((min(corr_all) - 0.05) if corr_all else 0.0, 1.0)
 
-    ax_rmse.set_title("Delay RMSE", pad=6)
+    ax_rmse.set_title("Delay RMSE", pad=8)
     ax_rmse.set_xlabel("SNR (dB)")
     ax_rmse.set_ylabel(r"RMSE of $\hat{\tau}$ (samples)")
     if rmse_all:
         ax_rmse.set_ylim(0.0, max(rmse_all) * 1.10)
 
     for ax in (ax_corr, ax_rmse):
-        ax.grid(True, which="major", axis="both")
-        ax.grid(True, which="minor", axis="both", alpha=0.4)
+        _siino_frame(ax)
         ax.margins(x=0.03)
-        _despine(ax)
 
-    ax_corr.legend(loc="lower right", handlelength=2.6, borderpad=0.5,
-                   labelspacing=0.35)
-    ax_rmse.legend(loc="upper right", handlelength=2.6, borderpad=0.5,
-                   labelspacing=0.35)
+    xs = sorted({float(v) for df in curves.values() for v in df["snr_db"]})
+    if xs:
+        for ax in (ax_corr, ax_rmse):
+            ax.set_xlim(xs[0], xs[-1])
+            ax.set_xticks(_x_ticks(xs))
+
+    ax_corr.legend(loc="lower right", title="Models", framealpha=0.8,
+                   edgecolor="gray", facecolor="white", borderpad=0.6,
+                   labelspacing=0.4, handlelength=2.6)
+    ax_rmse.legend(loc="upper right", title="Models", framealpha=0.8,
+                   edgecolor="gray", facecolor="white", borderpad=0.6,
+                   labelspacing=0.4, handlelength=2.6)
 
     fig.tight_layout()
+    _outer_frame(fig, (ax_corr, ax_rmse))
     out_dir = REPO / "figures"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "sensing_delay_single.pdf"
-    fig.savefig(out, bbox_inches="tight", pad_inches=0.03)
+    fig.savefig(out, bbox_inches="tight", pad_inches=0.12)
     plt.close(fig)
     print("saved", out)
 
