@@ -172,9 +172,7 @@ def build_model(config: Dict[str, Any], model_type: str) -> tf.keras.Model:
     general = config.get("general") or {}
     model_cfg = config.get("model") or {}
     _seed = int(
-        (model_cfg.get("seeds") or {}).get(
-            model_type, general.get("model_seed", general.get("seed", 42))
-        )
+        (model_cfg.get("seeds") or {}).get(model_type, general.get("seed", 42))
     )
     random.seed(_seed)
     np.random.seed(_seed)

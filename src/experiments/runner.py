@@ -61,13 +61,6 @@ def _log_rss(tag: str) -> None:
 _EXPERIMENT_ORDER = ("ber_vs_snr", "classical_receivers", "jamming",
                      "jamming_interpretability", "final_report")
 
-_LEGACY_NUMERIC_IDS = {
-    "1": "ber_vs_snr",
-    "2": "classical_receivers",
-    "3": "jamming",
-    "4": "jamming_interpretability",
-    "5": "final_report",
-}
 _VALID_MODELS = ("conv1d", "qkv", "lstm", "mc_dlsk")
 _DEFAULT_MODEL = None
 _DEFAULT_MODE = "fast"
@@ -101,15 +94,16 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python src/experiments/runner.py --experiments 1 --mode fast
-  python src/experiments/runner.py --experiments 1,2,3 --mode full --model qkv
+  python src/experiments/runner.py --experiments ber_vs_snr --mode fast
+  python src/experiments/runner.py --experiments ber_vs_snr,jamming --mode full --model qkv
   python src/experiments/runner.py --experiments all --mode full --no-regen
         """,
     )
     parser.add_argument(
         "--experiments",
         required=True,
-        help="Experiment identifiers to run, comma separated (e.g. 1,2,3) or 'all'",
+        help="Experiment identifiers to run, comma separated "
+             "(e.g. ber_vs_snr,jamming) or 'all'",
     )
     parser.add_argument(
         "--mode",
@@ -149,8 +143,7 @@ Examples:
 def parse_experiment_list(experiments_arg: str) -> List[str]:
     """Map a --experiments CLI value to an ordered list of experiment names.
 
-    Accepts experiment names (e.g. "jamming"), legacy numeric ids (e.g. "3")
-    or "all".
+    Accepts experiment names (e.g. "jamming") or "all".
 
     Args:
         experiments_arg: Comma-separated experiment identifiers or "all".
@@ -172,10 +165,8 @@ def parse_experiment_list(experiments_arg: str) -> List[str]:
     for token in parts:
         if token in _EXPERIMENT_ORDER:
             names.append(token)
-        elif token in _LEGACY_NUMERIC_IDS:
-            names.append(_LEGACY_NUMERIC_IDS[token])
         else:
-            valid = ", ".join(list(_EXPERIMENT_ORDER) + list(_LEGACY_NUMERIC_IDS))
+            valid = ", ".join(_EXPERIMENT_ORDER)
             raise ValueError(f"Invalid experiment identifier {token!r}. Valid: {valid}")
     return list(dict.fromkeys(names))
 
@@ -539,7 +530,7 @@ def run_ber_vs_snr(
         del train_data, train_ds, val_ds, test_data
         gc.collect()
         tf.keras.backend.clear_session()
-        _log_rss(f"ber_vs_snr {scenario_name} fine scenario")
+        _log_rss(f"ber_vs_snr {scenario_name} scenario done")
 
     logger.info("ber_vs_snr experiment completed.")
     return results

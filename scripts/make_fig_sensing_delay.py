@@ -4,7 +4,7 @@
 One panel is produced: the delay correlation, one curve per architecture.  The
 delay-RMSE panel is not used by the paper (the caption and the text discuss the
 correlation only), so it is not drawn.  Inputs are read from
-``results/full/ber_vs_snr`` and fall back to ``results_old/full/ber_vs_snr``.
+``results/full/ber_vs_snr``.
 """
 from pathlib import Path
 import argparse
@@ -54,10 +54,7 @@ def _model_kwargs(arch: str) -> dict:
 
 
 def _results_root() -> Path:
-    """Locate the results tree, tolerating the ``results_old`` archive."""
-    for candidate in (REPO / "results" / "full", REPO / "results_old" / "full"):
-        if candidate.is_dir():
-            return candidate
+    """Locate the results tree produced by the runner (``results/full``)."""
     return REPO / "results" / "full"
 
 

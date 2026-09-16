@@ -82,10 +82,7 @@ SCENARIO_SLUGS = {
 
 
 def _results_root() -> Path:
-    """Locate the results tree, tolerating the ``results_old`` archive."""
-    for candidate in (REPO / "results" / "full", REPO / "results_old" / "full"):
-        if candidate.is_dir():
-            return candidate
+    """Locate the results tree produced by the runner (``results/full``)."""
     return REPO / "results" / "full"
 
 

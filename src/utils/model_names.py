@@ -5,14 +5,14 @@ The codebase uses short internal keys for the four DL receivers
 on-disk contract: they appear in ``base_config.yaml`` (``model.seeds.<key>``),
 in every result folder (``results/full/ber_vs_snr/<scenario>/<key>/``) and in
 the tables/figures.  The *canonical scientific name* of the fourth one is
-**MC-DLCSK**, so ``mc_dlsk`` is only a legacy abbreviation.
+**MC-DLCSK**, while ``mc_dlsk`` is only the internal key used on disk.
 
 This module keeps the two concepts apart:
 
   - ``canonical_model_name``: maps any spelling used by a human or a CLI
     (``mc_dlcsk``, ``MC-DLCSK``, ``mc-dlsk``, ``mc_dlsk``, ``ultra-can``, ...)
     to the internal key used by configs/result paths/seeds dict, so that
-    ``--model mc_dlcsk`` behaves exactly like the historical ``mc_dlsk``.
+    ``--model mc_dlcsk`` behaves exactly like ``--model mc_dlsk``.
   - ``display_model_name``: maps an internal key to the label printed in
     tables and figures (``MC-DLCSK``, ``Ultra-CAN (QKV)``, ...).
 

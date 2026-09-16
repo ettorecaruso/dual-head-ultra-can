@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Operating-region BER figure (SNR >= 5 dB, log scale, publication style).
 
-Produces a combined three-panel figure, one panel per K scenario with the
-legend repeated in every panel, plus one standalone figure per scenario.
-Inputs are read from ``results/full/ber_vs_snr`` and fall back to
-``results_old/full/ber_vs_snr``.
+Produces a combined three-panel figure (one panel per K scenario) with a single
+shared legend below the panels, plus one standalone figure per scenario.
+Inputs are read from ``results/full/ber_vs_snr``.
 """
 from pathlib import Path
 import argparse
@@ -62,10 +61,7 @@ Y_TOP = 1.2e-3
 
 
 def _results_root() -> Path:
-    """Locate the results tree, tolerating the ``results_old`` archive."""
-    for candidate in (REPO / "results" / "full", REPO / "results_old" / "full"):
-        if candidate.is_dir():
-            return candidate
+    """Locate the results tree produced by the runner (``results/full``)."""
     return REPO / "results" / "full"
 
 

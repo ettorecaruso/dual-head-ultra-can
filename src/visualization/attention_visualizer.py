@@ -428,7 +428,7 @@ def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
         "--jsr_db",
         type=float,
         default=5.0,
-        help="JSR in dB per il jamming (default: 5.0)",
+        help="JSR in dB for the jamming comparison (default: 5.0)",
     )
     parser.add_argument(
         "--jamming_type",

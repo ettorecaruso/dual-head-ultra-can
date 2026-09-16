@@ -145,7 +145,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
             raise ValueError(f"data.{key} must be finite and > 0, got: {value!r}")
 
     if float(data["max_doppler"]) >= 0.5:
-        raise ValueError("data.max_doppler must be < 0.5 (guardia anti-aliasing)")
+        raise ValueError("data.max_doppler must be < 0.5 (anti-aliasing guard)")
     if float(data["doppler_direct_max"]) > float(data["max_doppler"]):
         raise ValueError("data.doppler_direct_max must be <= data.max_doppler")
 
@@ -161,7 +161,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
         raise ValueError(f"data.snr_range must be [min, max], got: {snr_range!r}")
     snr_min, snr_max = float(snr_range[0]), float(snr_range[1])
     if not (math.isfinite(snr_min) and math.isfinite(snr_max)) or snr_min >= snr_max:
-        raise ValueError(f"data.snr_range invalido: {snr_range!r}")
+        raise ValueError(f"data.snr_range invalid: {snr_range!r}")
 
     snr_step = float(data["snr_step"])
     if not math.isfinite(snr_step) or snr_step <= 0.0:
@@ -201,7 +201,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
         raise ValueError(f"general.seed must be an int >= 0, got: {seed!r}")
 
     logger.debug(
-        "config validata: seq_len=%d, map_type=%s, mu=%s, max_delay=%d, max_doppler=%s",
+        "validated config: seq_len=%d, map_type=%s, mu=%s, max_delay=%d, max_doppler=%s",
         sequence_length, map_type, map_param, max_delay, data["max_doppler"],
     )
 
@@ -306,7 +306,7 @@ def sample_echo_parameters(
     if not all(math.isfinite(e.f_doppler) and math.isfinite(e.alpha) for e in echoes):
         raise ValueError("echo parameters not finite during sampling")
     logger.debug(
-        "campionati %d echi: tau=%s, fD=%s, alpha=%s",
+        "sampled %d echoes: tau=%s, fD=%s, alpha=%s",
         k, [e.tau for e in echoes], [e.f_doppler for e in echoes], [e.alpha for e in echoes],
     )
     return echoes
@@ -899,10 +899,10 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     )
     parser.add_argument("--config", required=True, help="path to the experiment config (YAML)")
     parser.add_argument(
-        "--splits", default="train,val,test", help="split da generare, separati da virgola"
+        "--splits", default="train,val,test", help="splits to generate, comma-separated"
     )
     parser.add_argument(
-        "--output-dir", default=None, help="override della dir di output (default: data.raw_dir)"
+        "--output-dir", default=None, help="override the output directory (default: data.raw_dir)"
     )
     args = parser.parse_args(argv)
 

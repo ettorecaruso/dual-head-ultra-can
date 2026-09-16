@@ -144,12 +144,12 @@ def load_npz_files(
         try:
             f_split, snr, k = _parse_npz_name(path)
         except ValueError as exc:
-            logger.warning("file ignorato: %s", exc)
+            logger.warning("file skipped: %s", exc)
             continue
         if f_split != split:
             continue
         if (snr, k) in files_by_combo:
-            logger.warning("combinazione (snr=%s, k=%d) duplicata: ignorato %s", snr, k, path.name)
+            logger.warning("duplicate combination (snr=%s, k=%d): skipped %s", snr, k, path.name)
             continue
         files_by_combo[(snr, k)] = path
 
@@ -179,7 +179,7 @@ def load_npz_files(
             missing_keys = _NPZ_KEYS - set(npz.files)
             if missing_keys:
                 raise ValueError(
-                    f"chiavi mancanti in {path.name}: {sorted(missing_keys)}"
+                    f"missing keys in {path.name}: {sorted(missing_keys)}"
                 )
             x_file = np.asarray(npz["x"])
             bit_file = np.asarray(npz["bit"])
@@ -288,7 +288,7 @@ def normalize_targets(
 
     targets = np.stack([tau_norm, f_d_norm], axis=-1).astype(np.float32)
     logger.debug(
-        "target normalizzati: shape=%s, tau_norm in [%.4f, %.4f], f_d_norm in [%.4f, %.4f]",
+        "normalised targets: shape=%s, tau_norm in [%.4f, %.4f], f_d_norm in [%.4f, %.4f]",
         targets.shape,
         float(np.min(tau_norm)),
         float(np.max(tau_norm)),
@@ -603,14 +603,14 @@ def _validate_config(config: Dict[str, Any]) -> None:
         ):
             raise ValueError(f"data.{key} must be finite and > 0, got: {value!r}")
     if float(data["max_doppler"]) >= 0.5:
-        raise ValueError("data.max_doppler must be < 0.5 (guardia anti-aliasing)")
+        raise ValueError("data.max_doppler must be < 0.5 (anti-aliasing guard)")
 
     snr_range = data.get("snr_range")
     if not isinstance(snr_range, (list, tuple)) or len(snr_range) != 2:
         raise ValueError(f"data.snr_range must be [min, max], got: {snr_range!r}")
     snr_min, snr_max = float(snr_range[0]), float(snr_range[1])
     if not (math.isfinite(snr_min) and math.isfinite(snr_max)) or snr_min >= snr_max:
-        raise ValueError(f"data.snr_range invalido: {snr_range!r}")
+        raise ValueError(f"data.snr_range invalid: {snr_range!r}")
 
     snr_step = data.get("snr_step")
     if (
@@ -644,7 +644,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
         )
 
     logger.debug(
-        "config validata: seq_len=%d, feature_mode=%s, max_delay=%d, max_doppler=%s, batch_size=%d",
+        "validated config: seq_len=%d, feature_mode=%s, max_delay=%d, max_doppler=%s, batch_size=%d",
         sequence_length,
         feature_mode,
         int(data["max_delay"]),
@@ -658,12 +658,12 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     )
     parser.add_argument("--config", required=True, help="path to the experiment config (YAML)")
     parser.add_argument(
-        "--splits", default="train,val,test", help="split da validare, separati da virgola"
+        "--splits", default="train,val,test", help="splits to load, comma-separated"
     )
     parser.add_argument(
         "--data-dir",
         default=None,
-        help="override della directory dei dati (default: data.raw_dir)",
+        help="override the data directory (default: data.raw_dir)",
     )
     args = parser.parse_args(argv)
 
