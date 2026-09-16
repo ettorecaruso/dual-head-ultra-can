@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Delay-estimation figure (single-echo scenario, publication style).
 
-Two panels are produced: delay correlation and delay RMSE in samples, one
-curve per architecture.  Inputs are read from ``results/full/ber_vs_snr`` and
-fall back to ``results_old/full/ber_vs_snr``.
+One panel is produced: the delay correlation, one curve per architecture.  The
+delay-RMSE panel is not used by the paper (the caption and the text discuss the
+correlation only), so it is not drawn.  Inputs are read from
+``results/full/ber_vs_snr`` and fall back to ``results_old/full/ber_vs_snr``.
 """
 from pathlib import Path
 import argparse
@@ -152,27 +153,17 @@ def plot_sensing_plotly() -> None:
 
     xs = sorted({float(v) for df in curves.values() for v in df["snr_db"]})
     ticks = ps.interior_ticks(xs)
-    has_rmse = any("mse_tau" in df.columns for df in curves.values())
-    cols = 2 if has_rmse else 1
 
-    fig = make_subplots(rows=1, cols=cols, horizontal_spacing=0.09,
-                        subplot_titles=["Delay correlation", "Delay RMSE"][:cols])
+    fig = make_subplots(rows=1, cols=1, subplot_titles=["Delay correlation"])
     for arch, df in curves.items():
         fig.add_trace(ps.scatter(df["snr_db"], df["corr_tau"], LABELS[arch], arch),
                       row=1, col=1)
-        if cols == 2 and "mse_tau" in df.columns:
-            rmse = np.sqrt(np.clip(df["mse_tau"].to_numpy(dtype=float), 0.0, None))
-            fig.add_trace(ps.scatter(df["snr_db"], rmse, LABELS[arch], arch,
-                                     showlegend=False), row=1, col=2)
-    fig.update_layout(template="plotly_white", width=1140, height=480,
+    fig.update_layout(template="plotly_white", width=610, height=520,
                       font=dict(size=13), legend=ps.legend("lower right"),
                       margin=dict(l=70, r=20, t=50, b=60),
                       shapes=[ps.frame_shape()])
     fig.update_yaxes(ps.linear_yaxis("corr(τ̂, τ)"), row=1, col=1)
-    if cols == 2:
-        fig.update_yaxes(ps.linear_yaxis("RMSE of τ̂ (samples)"), row=1, col=2)
-    for col in range(1, cols + 1):
-        fig.update_xaxes(ps.xaxis(ticks), row=1, col=col)
+    fig.update_xaxes(ps.xaxis(ticks), row=1, col=1)
     ps.write(fig, REPO / "figures" / "plotly" / "sensing_delay_single.pdf",
              REPO / "figures" / "plotly" / "sensing_delay_single.html")
 
@@ -193,54 +184,43 @@ def main(argv=None) -> None:
         print("[warn] no metrics found under", RESULTS)
         return
 
-    fig, (ax_corr, ax_rmse) = plt.subplots(1, 2, figsize=(11.4, 4.8))
-    corr_all, rmse_all = [], []
+    fig, ax_corr = plt.subplots(figsize=(5.8, 4.6))
+    corr_all = []
     for arch, df in curves.items():
         ax_corr.plot(df["snr_db"], df["corr_tau"], label=LABELS[arch],
                      **_model_kwargs(arch))
         corr_all.extend(df["corr_tau"].to_numpy(dtype=float))
-        if "mse_tau" in df.columns:
-            rmse = np.sqrt(np.clip(df["mse_tau"].to_numpy(dtype=float), 0.0, None))
-            ax_rmse.plot(df["snr_db"], rmse, label=LABELS[arch],
-                         **_model_kwargs(arch))
-            rmse_all.extend(rmse.tolist())
 
     ax_corr.set_title("Delay correlation", pad=8)
     ax_corr.set_xlabel("SNR (dB)")
     ax_corr.set_ylabel(r"corr($\hat{\tau}$, $\tau$)")
     ax_corr.set_ylim((min(corr_all) - 0.05) if corr_all else 0.0, 1.0)
 
-    ax_rmse.set_title("Delay RMSE", pad=8)
-    ax_rmse.set_xlabel("SNR (dB)")
-    ax_rmse.set_ylabel(r"RMSE of $\hat{\tau}$ (samples)")
-    if rmse_all:
-        ax_rmse.set_ylim(0.0, max(rmse_all) * 1.10)
-
-    for ax in (ax_corr, ax_rmse):
-        _siino_frame(ax)
-        ax.margins(x=0.03)
+    _siino_frame(ax_corr)
+    ax_corr.margins(x=0.03)
 
     xs = sorted({float(v) for df in curves.values() for v in df["snr_db"]})
     if xs:
-        for ax in (ax_corr, ax_rmse):
-            ax.set_xlim(xs[0], xs[-1])
-            ax.set_xticks(_x_ticks(xs))
+        ax_corr.set_xlim(xs[0], xs[-1])
+        ax_corr.set_xticks(_x_ticks(xs))
 
     ax_corr.legend(loc="lower right", title="Models", framealpha=0.8,
                    edgecolor="gray", facecolor="white", borderpad=0.6,
                    labelspacing=0.4, handlelength=2.6)
-    ax_rmse.legend(loc="upper right", title="Models", framealpha=0.8,
-                   edgecolor="gray", facecolor="white", borderpad=0.6,
-                   labelspacing=0.4, handlelength=2.6)
 
     fig.tight_layout()
-    _outer_frame(fig, (ax_corr, ax_rmse))
+    _outer_frame(fig, (ax_corr,))
     out_dir = REPO / "figures"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "sensing_delay_single.pdf"
     fig.savefig(out, bbox_inches="tight", pad_inches=0.12)
-    plt.close(fig)
     print("saved", out)
+    # Final deliverables live next to the results when that tree exists.
+    mirror = REPO / "results" / "figures" / out.name
+    if mirror.parent.is_dir():
+        fig.savefig(mirror, bbox_inches="tight", pad_inches=0.12)
+        print("saved", mirror)
+    plt.close(fig)
 
 
 if __name__ == "__main__":

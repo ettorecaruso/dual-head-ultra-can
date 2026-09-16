@@ -41,18 +41,6 @@ def load(name: str, folder: str):
     return tf.keras.models.load_model(path, compile=False)
 
 
-def timeit(fn, warmup=100, reps=600, trials=5):
-    for _ in range(warmup):
-        fn()
-    per = []
-    for _ in range(trials):
-        t0 = time.perf_counter()
-        for _ in range(reps):
-            fn()
-        per.append((time.perf_counter() - t0) / reps * 1e6)
-    return per
-
-
 def stats(vals):
     return {'mean_us': round(statistics.mean(vals), 1),
             'median_us': round(statistics.median(vals), 1),
@@ -72,21 +60,51 @@ def make_unrolled(model, x):
     return many
 
 
-out = {}
+# All models are measured round-robin inside every trial: thermal drift and
+# background load then affect the four architectures equally, instead of
+# penalising whichever model happens to be measured last.
+TRIALS = 5
+BATCH1_REPS = 10      # each call runs 20 unrolled single-burst forwards
+BATCH32_REPS = 8      # each call runs 5 unrolled batch-32 forwards
+
+loaded, funcs = {}, {}
 for name, folder in MODELS:
     model = load(name, folder)
     x1 = tf.constant(np.random.randn(1, 100, 3).astype(np.float32))
     x32 = tf.constant(np.random.randn(32, 100, 3).astype(np.float32))
-    f1 = make_unrolled(model, x1)
-    f32 = make_unrolled(model, x32)
-    t1 = [v / 20.0 for v in timeit(lambda: f1(20), warmup=5, reps=10, trials=5)]
-    t32 = [v / (5.0 * 32.0) for v in timeit(lambda: f32(5), warmup=3, reps=8, trials=5)]
-    row = {'batch1': stats(t1), 'batch32_amortized': stats(t32)}
+    loaded[name] = model
+    funcs[name] = (make_unrolled(model, x1), make_unrolled(model, x32))
+
+for name, _ in MODELS:                      # warm-up outside the timed loop
+    f1, f32 = funcs[name]
+    for _ in range(5):
+        f1(20)
+    for _ in range(3):
+        f32(5)
+
+t1 = {name: [] for name, _ in MODELS}
+t32 = {name: [] for name, _ in MODELS}
+for trial in range(TRIALS):
+    order = MODELS[trial % len(MODELS):] + MODELS[:trial % len(MODELS)]
+    for name, _ in order:
+        f1, f32 = funcs[name]
+        t0 = time.perf_counter()
+        for _ in range(BATCH1_REPS):
+            f1(20)
+        t1[name].append((time.perf_counter() - t0) / (BATCH1_REPS * 20.0) * 1e6)
+        t0 = time.perf_counter()
+        for _ in range(BATCH32_REPS):
+            f32(5)
+        t32[name].append((time.perf_counter() - t0) / (BATCH32_REPS * 5.0 * 32.0) * 1e6)
+
+out = {}
+for name, _ in MODELS:
+    row = {'batch1': stats(t1[name]), 'batch32_amortized': stats(t32[name])}
     out[name] = row
     print(name)
     print('  batch=1 (static unroll) us:', row['batch1'])
     print('  batch=32 amortised/burst us:', row['batch32_amortized'])
-    del model
+    del loaded[name]
 
 dest = REPO / 'results' / 'full' / 'final_report' / 'latency_results.json'
 dest.parent.mkdir(parents=True, exist_ok=True)

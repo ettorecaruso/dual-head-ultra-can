@@ -1,0 +1,66 @@
+{
+  "Ultra-CAN (Conv1D)": {
+    "batch1": {
+      "mean_us": 186.2,
+      "median_us": 171.3,
+      "min_us": 167.6,
+      "max_us": 243.7,
+      "stdev_us": 29.0
+    },
+    "batch32_amortized": {
+      "mean_us": 63.8,
+      "median_us": 59.7,
+      "min_us": 55.2,
+      "max_us": 85.4,
+      "stdev_us": 11.1
+    }
+  },
+  "Ultra-CAN-QKV": {
+    "batch1": {
+      "mean_us": 572.7,
+      "median_us": 527.2,
+      "min_us": 497.1,
+      "max_us": 793.8,
+      "stdev_us": 111.3
+    },
+    "batch32_amortized": {
+      "mean_us": 688.0,
+      "median_us": 667.5,
+      "min_us": 646.5,
+      "max_us": 801.4,
+      "stdev_us": 57.5
+    }
+  },
+  "LSTM-OFDM-DCSK": {
+    "batch1": {
+      "mean_us": 2706.9,
+      "median_us": 2693.4,
+      "min_us": 2509.0,
+      "max_us": 3041.6,
+      "stdev_us": 184.8
+    },
+    "batch32_amortized": {
+      "mean_us": 260.2,
+      "median_us": 256.8,
+      "min_us": 239.3,
+      "max_us": 286.5,
+      "stdev_us": 15.4
+    }
+  },
+  "MC-DLCSK": {
+    "batch1": {
+      "mean_us": 5176.0,
+      "median_us": 5129.0,
+      "min_us": 4985.2,
+      "max_us": 5392.8,
+      "stdev_us": 150.0
+    },
+    "batch32_amortized": {
+      "mean_us": 354.0,
+      "median_us": 350.2,
+      "min_us": 346.1,
+      "max_us": 371.9,
+      "stdev_us": 9.5
+    }
+  }
+}

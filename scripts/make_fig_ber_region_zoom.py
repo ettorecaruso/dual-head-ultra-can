@@ -171,8 +171,13 @@ def _curve(scenario: str) -> dict:
     return curves
 
 
-def _draw_panel(ax, curves: dict, title: str, legend_title=None) -> None:
-    """One operating-region panel with the plotly_white look."""
+def _draw_panel(ax, curves: dict, title: str) -> None:
+    """One operating-region panel with the plotly_white look.
+
+    The legend is deliberately *not* drawn inside the panel: with 5 entries it
+    would sit on top of the curves (in the multi-echo scenario MC-DLCSK runs
+    along the top of the panel, exactly where an "upper right" legend goes).
+    """
     _siino_axis(ax, Y_BOTTOM, Y_TOP)
     ax.axhspan(Y_BOTTOM, TARGET, color="#F0FBF5", zorder=0)
     ax.axhline(TARGET, color="#00CC96", lw=1.2, ls="--", zorder=1,
@@ -189,9 +194,19 @@ def _draw_panel(ax, curves: dict, title: str, legend_title=None) -> None:
     if xs:
         ax.set_xlim(xs[0], xs[-1])
         ax.set_xticks(_x_ticks(xs))
-    ax.legend(loc="upper right", title=legend_title, framealpha=0.8,
-              edgecolor="gray", facecolor="white", borderpad=0.6,
-              labelspacing=0.4, handlelength=2.6)
+
+
+def _legend_below(ax, ncol: int, y: float = -0.17) -> None:
+    """Single legend under the panel, outside the axes (never on a curve)."""
+    handles, labels, seen = [], [], set()
+    for handle, label in zip(*ax.get_legend_handles_labels()):
+        if label not in seen:
+            seen.add(label)
+            handles.append(handle)
+            labels.append(label)
+    ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, y),
+              ncol=ncol, framealpha=0.8, edgecolor="gray", facecolor="white",
+              borderpad=0.6, labelspacing=0.4, handlelength=2.6)
 
 
 def _save(fig, stem: str) -> None:
@@ -200,6 +215,11 @@ def _save(fig, stem: str) -> None:
     out = fig_dir / f"{stem}.pdf"
     fig.savefig(out, bbox_inches="tight", pad_inches=0.12)
     print("saved", out)
+    # Final deliverables live next to the results when that tree exists.
+    mirror = REPO / "results" / "figures" / f"{stem}.pdf"
+    if mirror.parent.is_dir():
+        fig.savefig(mirror, bbox_inches="tight", pad_inches=0.12)
+        print("saved", mirror)
 
 
 def plot_region_zoom_plotly() -> None:
@@ -288,6 +308,9 @@ def main(argv=None) -> None:
         _draw_panel(ax, curves.get(scenario, {}), title)
     axes[0].set_ylabel("BER")
     fig.tight_layout()
+    # Legend added *after* tight_layout: a wide legend anchored outside the axes
+    # would otherwise make tight_layout squeeze the panels and open white gaps.
+    _legend_below(axes[1], ncol=5)
     _outer_frame(fig, axes)
     _save(fig, "ber_region_zoom")
     plt.close(fig)
@@ -296,9 +319,10 @@ def main(argv=None) -> None:
         if not curves.get(scenario):
             continue
         fig, ax = plt.subplots(figsize=(6.1, 6.1))
-        _draw_panel(ax, curves[scenario], title, legend_title="Models")
+        _draw_panel(ax, curves[scenario], title)
         ax.set_ylabel("BER")
         fig.tight_layout()
+        _legend_below(ax, ncol=2)
         _save(fig, f"ber_region_zoom_{slug}")
         plt.close(fig)
 

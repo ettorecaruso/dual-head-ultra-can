@@ -1,0 +1,24 @@
+{
+  "experiment": "jamming_interpretability",
+  "arch": "qkv",
+  "timestamp": "2026-09-16T12:04:54",
+  "tensorflow_version": "2.20.0",
+  "jsr_grid": [
+    -10.0,
+    -6.0,
+    -2.0,
+    2.0,
+    6.0,
+    10.0
+  ],
+  "jammer_types": [
+    "cw",
+    "barrage",
+    "partial_band"
+  ],
+  "n_test_samples": 240000,
+  "ret_subset": 3000,
+  "batch_size": 1024,
+  "n_conditions": 19,
+  "tag": "jamming_aware_training"
+}

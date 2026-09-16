@@ -275,9 +275,13 @@ def copy_stored_metrics(scenario, out_dir):
         shutil.copyfile(src, dest / "metrics.csv")
 
 
-def _draw_panel(ax, curves: dict, title: str, y_lo: float, y_hi: float,
-                legend_title=None) -> None:
-    """Draw one BER panel with the plotly_white look and its own legend."""
+def _draw_panel(ax, curves: dict, title: str, y_lo: float, y_hi: float) -> None:
+    """Draw one BER panel with the plotly_white look.
+
+    The legend is drawn by :func:`_legend_below`, outside the axes: with 5
+    entries a corner legend would cross the curves (they run through the lower
+    left of every panel) in all three scenarios.
+    """
     _siino_axis(ax, y_lo, y_hi)
     ax.axhline(0.5, color="#D3D3D3", lw=1.0, ls=":", zorder=0)
     for model in MODELS:
@@ -296,17 +300,31 @@ def _draw_panel(ax, curves: dict, title: str, y_lo: float, y_hi: float,
     if xs:
         ax.set_xlim(xs[0], xs[-1])
         ax.set_xticks(_x_ticks(xs))
-    ax.legend(loc="lower left", title=legend_title, framealpha=0.8,
-              edgecolor="gray", facecolor="white", borderpad=0.6,
-              labelspacing=0.4, handlelength=2.6)
+
+
+def _legend_below(ax, ncol: int, y: float = -0.17) -> None:
+    """Single legend under the panel, outside the axes (never on a curve)."""
+    handles, labels, seen = [], [], set()
+    for handle, label in zip(*ax.get_legend_handles_labels()):
+        if label not in seen:
+            seen.add(label)
+            handles.append(handle)
+            labels.append(label)
+    ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, y),
+              ncol=ncol, framealpha=0.8, edgecolor="gray", facecolor="white",
+              borderpad=0.6, labelspacing=0.4, handlelength=2.6)
 
 
 def _save(fig, out_dir, stem: str) -> None:
     fig_dir = REPO / "figures"
-    for target in (fig_dir / f"{stem}.pdf", Path(out_dir) / "plots" / f"{stem}.pdf"):
+    targets = [fig_dir / f"{stem}.pdf", Path(out_dir) / "plots" / f"{stem}.pdf"]
+    mirror = REPO / "results" / "figures" / f"{stem}.pdf"
+    if mirror.parent.is_dir():  # final deliverables tree, when present
+        targets.append(mirror)
+    for target in targets:
         target.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(target, bbox_inches="tight", pad_inches=0.12)
-    print("saved", fig_dir / f"{stem}.pdf")
+        print("saved", target)
 
 
 def plot_full_range(out_dir) -> None:
@@ -322,13 +340,16 @@ def plot_full_range(out_dir) -> None:
     y_lo = min(_decade_floor(c) for c in available)
     y_hi = 1.0
 
-    # Combined three-panel figure, legend repeated on every panel.
+    # Combined three-panel figure, one shared legend under the panels.
     fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=True)
     for ax, scenario in zip(axes, SCENARIOS):
         _draw_panel(ax, curves.get(scenario, {}), SCENARIO_TITLES[scenario],
                     y_lo, y_hi)
     axes[0].set_ylabel("BER")
     fig.tight_layout()
+    # Legend added *after* tight_layout: a wide legend anchored outside the axes
+    # would otherwise make tight_layout squeeze the panels and open white gaps.
+    _legend_below(axes[1], ncol=5)
     _outer_frame(fig, axes)
     _save(fig, out_dir, "ber_full_linear")
     plt.close(fig)
@@ -339,10 +360,10 @@ def plot_full_range(out_dir) -> None:
             continue
         fig, ax = plt.subplots(figsize=(6.1, 6.1))
         _draw_panel(ax, curves[scenario], SCENARIO_TITLES[scenario],
-                    _decade_floor(curves[scenario]), y_hi,
-                    legend_title="Models")
+                    _decade_floor(curves[scenario]), y_hi)
         ax.set_ylabel("BER")
         fig.tight_layout()
+        _legend_below(ax, ncol=2)
         _save(fig, out_dir, f"ber_full_{SCENARIO_SLUGS[scenario]}")
         plt.close(fig)
 
