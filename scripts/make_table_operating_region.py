@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """Operating-region metrics table."""
 from pathlib import Path
 

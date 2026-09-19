@@ -18,7 +18,6 @@ import pandas as pd
 REPO = Path(__file__).resolve().parents[1]
 RESULTS = REPO / 'results' / 'full'
 OUT = REPO / 'figures' / 'jamming_layer_retention.pdf'
-# Final deliverables live here when the run keeps figures next to the results.
 MIRROR = REPO / 'results' / 'figures' / 'jamming_layer_retention.pdf'
 
 BAR_COLOR = '#4c72b0'

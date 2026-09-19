@@ -44,9 +44,6 @@ LEGEND = {
     "mc_dlsk": "MC-DLCSK",
     "blind_stat": "Blind statistical",
 }
-# "plotly_white" curve language, reproducing M. Siino's paper notebooks:
-# plotly default palette, big markers (plotly size=8), width=1.5 lines,
-# dash styles and symbols cycled per model, no white marker edge.
 PLOTLY_COLORS = {
     "conv1d": "#636EFA",
     "qkv": "#EF553B",
@@ -316,7 +313,7 @@ def _save(fig, out_dir, stem: str) -> None:
     fig_dir = REPO / "figures"
     targets = [fig_dir / f"{stem}.pdf", Path(out_dir) / "plots" / f"{stem}.pdf"]
     mirror = REPO / "results" / "figures" / f"{stem}.pdf"
-    if mirror.parent.is_dir():  # final deliverables tree, when present
+    if mirror.parent.is_dir():  
         targets.append(mirror)
     for target in targets:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -337,21 +334,17 @@ def plot_full_range(out_dir) -> None:
     y_lo = min(_decade_floor(c) for c in available)
     y_hi = 1.0
 
-    # Combined three-panel figure, one shared legend under the panels.
     fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=True)
     for ax, scenario in zip(axes, SCENARIOS):
         _draw_panel(ax, curves.get(scenario, {}), SCENARIO_TITLES[scenario],
                     y_lo, y_hi)
     axes[0].set_ylabel("BER")
     fig.tight_layout()
-    # Legend added *after* tight_layout: a wide legend anchored outside the axes
-    # would otherwise make tight_layout squeeze the panels and open white gaps.
     _legend_below(axes[1], ncol=5)
     _outer_frame(fig, axes)
     _save(fig, out_dir, "ber_full_linear")
     plt.close(fig)
 
-    # Standalone square figure per scenario (plotly-style 1:1 canvas).
     for scenario in SCENARIOS:
         if not curves.get(scenario):
             continue
@@ -400,7 +393,6 @@ def plot_full_range_plotly(out_dir) -> None:
                                      "blind_stat", symbol="x",
                                      showlegend=showlegend), **kw)
 
-    # ---- combined three-panel figure ------------------------------------
     fig = make_subplots(rows=1, cols=len(scenarios), shared_yaxes=True,
                         horizontal_spacing=0.04,
                         subplot_titles=[SCENARIO_TITLES[s] for s in scenarios])
@@ -418,7 +410,6 @@ def plot_full_range_plotly(out_dir) -> None:
     ps.write(fig, out_dir / "plots" / "plotly" / "ber_full_linear.pdf",
              out_dir / "plots" / "plotly" / "ber_full_linear.html")
 
-    # ---- one square figure per K ----------------------------------------
     for scenario in scenarios:
         floor = _decade_floor(curves[scenario])
         fig = go.Figure()

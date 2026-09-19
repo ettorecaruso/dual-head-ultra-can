@@ -26,9 +26,6 @@ LABELS = {
     "lstm": "LSTM-OFDM-DCSK",
     "mc_dlsk": "MC-DLCSK",
 }
-# "plotly_white" curve language (M. Siino's notebooks): plotly palette,
-# big markers (plotly size=8), width=1.5 lines, dash+symbol cycled, no
-# white marker edge.
 PLOTLY_COLORS = {
     "conv1d": "#636EFA",
     "qkv": "#EF553B",
@@ -304,8 +301,6 @@ def main(argv=None) -> None:
         _draw_panel(ax, curves.get(scenario, {}), title)
     axes[0].set_ylabel("BER")
     fig.tight_layout()
-    # Legend added *after* tight_layout: a wide legend anchored outside the axes
-    # would otherwise make tight_layout squeeze the panels and open white gaps.
     _legend_below(axes[1], ncol=5)
     _outer_frame(fig, axes)
     _save(fig, "ber_region_zoom")

@@ -1,16 +1,8 @@
-#!/usr/bin/env python3
-"""Shared Plotly helpers reproducing M. Siino's ``plotly_white`` figures.
 
-Used by the ``make_fig_*`` scripts when they are invoked with
-``--engine plotly`` (static PDF via kaleido + interactive HTML).  The default
-engine stays matplotlib so the existing PDF pipeline is untouched.
-"""
 from __future__ import annotations
 
 import math
 
-# Plotly default qualitative palette + the symbols/dashes cycled in the
-# paper notebooks (circle/diamond/square/cross, solid/dash/dot/dashdot).
 PLOTLY_COLORS = {
     "conv1d": "#636EFA",
     "qkv": "#EF553B",

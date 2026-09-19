@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Jamming-aware training of the QKV receiver."""
+
 from __future__ import annotations
 
 import argparse

@@ -35,9 +35,6 @@ fig, axes = plt.subplots(1, 3, figsize=(7.4, 2.6), sharey=True)
 clean = pd.read_csv(CLEAN / 'conditions.csv')
 aware = pd.read_csv(AWARE / 'conditions.csv')
 
-# Logarithmic BER axis: the useful dynamic range spans about three decades
-# (clean-region floor ~3e-3 up to the 0.5 saturation level), which a linear
-# axis compresses into the bottom sliver of the panel.
 bers = [float(v) for df in (clean, aware)
         for v in df['ber'].to_numpy(dtype=float) if v > 0]
 y_lo = 10.0 ** np.floor(np.log10(min(bers)))
@@ -58,13 +55,10 @@ for ax, jammer in zip(axes, JAMMERS):
     ax.grid(alpha=0.3, which='both')
 axes[0].set_ylabel('BER', fontsize=8)
 fig.tight_layout()
-# Same standard as the other multi-panel figures: one shared legend *below* the
-# panels, added after tight_layout so that it cannot squeeze the axes.
 _legend_below(axes[1], ncol=2)
 OUT.parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(OUT, bbox_inches='tight', pad_inches=0.12)
 print('saved', OUT)
-# Final deliverables live next to the results when that tree exists.
 if MIRROR.parent.is_dir():
     fig.savefig(MIRROR, bbox_inches='tight', pad_inches=0.12)
     print('saved', MIRROR)

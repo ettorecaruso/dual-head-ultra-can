@@ -28,9 +28,6 @@ LABELS = {
     "lstm": "LSTM-OFDM-DCSK",
     "mc_dlsk": "MC-DLCSK",
 }
-# "plotly_white" curve language (M. Siino's notebooks): plotly palette,
-# big markers (plotly size=8), width=1.5 lines, dash+symbol cycled, no
-# white marker edge.
 PLOTLY_COLORS = {
     "conv1d": "#636EFA",
     "qkv": "#EF553B",
