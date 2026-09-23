@@ -169,7 +169,8 @@ def _probe(model, cfg, canon: Path, out_dir: Path) -> None:
     print(f"[probe] test ready ({test_data[chr(120)].shape[0]} samples) in {time.time()-t0:.0f}s; starting the grid (per-condition logging enabled)...")
     run_jamming_interpretability_probe(model=model, arch="qkv", test_data=test_data, config=cfg,
                    out_dir=out_dir, jsr_values=JSR_FULL, jammer_types=JAMMERS,
-                   ret_subset=3000, tag="jamming_aware_training")
+                   ret_subset=3000, tag="jamming_aware_training",
+                   n_realizations=int((cfg.get("jamming") or {}).get("n_realizations", 1)))
 
 
 def _compare(out_dir: Path) -> None:

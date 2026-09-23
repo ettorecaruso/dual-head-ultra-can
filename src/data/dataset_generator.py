@@ -52,6 +52,12 @@ _SPREAD_EPS = 1e-9
 _SPLITS = frozenset({"train", "val", "test"})
 _SEED_HIGH = 2**63 - 1
 
+_ECHO_FADING_TYPES = frozenset({"none", "rayleigh", "rician"})
+_NUM_ECHOES_MODES = frozenset({"fixed", "poisson"})
+_CHANNEL_HOLD_MODES = frozenset({"per_symbol", "per_slot"})
+_POISSON_ECHOES_MEAN_DEFAULT = 2.0
+_FADING_POWER_EPS = 1e-12
+
 _BERNOULLI_MULTIPLIER = 5
 _BERNOULLI_MASK = (1 << 64) - 1
 _BERNOULLI_SCALE = float(1 << 64)
@@ -105,6 +111,78 @@ _REQUIRED_DATA_KEYS: Tuple[str, ...] = (
     "num_symbols_test", "raw_dir", "processed_dir",
     "rician_kappa_db", "doppler_direct_max",
 )
+
+def _channel_section(config: Dict[str, Any]) -> Dict[str, Any]:
+    channel = config.get("channel")
+    if channel is None:
+        return {}
+    if not isinstance(channel, dict):
+        raise ValueError(f"'channel' section must be a dict, got: {type(channel).__name__}")
+    return channel
+
+def channel_echo_fading(config: Dict[str, Any]) -> str:
+    return str(_channel_section(config).get("echo_fading", "none")).strip().lower()
+
+def channel_echo_fading_kappa_db(config: Dict[str, Any]) -> float:
+    value = _channel_section(config).get("echo_fading_kappa_db")
+    if value is None:
+        return 0.0
+    return float(value)
+
+def channel_direct_kappa_db(config: Dict[str, Any]) -> float:
+    value = _channel_section(config).get("direct_fading_kappa_db")
+    if value is None:
+        return float(config["data"]["rician_kappa_db"])
+    return float(value)
+
+def channel_num_echoes_mode(config: Dict[str, Any]) -> str:
+    return str(_channel_section(config).get("num_echoes_model", "fixed")).strip().lower()
+
+def channel_poisson_echoes_mean(config: Dict[str, Any]) -> float:
+    channel = _channel_section(config)
+    return float(channel.get("poisson_echoes_mean", _POISSON_ECHOES_MEAN_DEFAULT))
+
+def channel_hold_mode(config: Dict[str, Any]) -> str:
+    return str(_channel_section(config).get("hold_mode", "per_symbol")).strip().lower()
+
+def channel_hold_dwell(config: Dict[str, Any]) -> int:
+    cfg = config.get("frequency_hopping") or {}
+    if not isinstance(cfg, dict):
+        return 1
+    return max(1, int(cfg.get("dwell_bursts", 1)))
+
+def _validate_channel_config(config: Dict[str, Any]) -> None:
+    channel = _channel_section(config)
+    if not channel:
+        return
+    echo_fading = channel_echo_fading(config)
+    if echo_fading not in _ECHO_FADING_TYPES:
+        raise ValueError(
+            f"channel.echo_fading must be one of {sorted(_ECHO_FADING_TYPES)}, got: {echo_fading!r}"
+        )
+    kappa_db = channel_echo_fading_kappa_db(config)
+    if not math.isfinite(kappa_db) or kappa_db < 0.0:
+        raise ValueError(f"channel.echo_fading_kappa_db must be finite and >= 0, got: {kappa_db!r}")
+    direct_kappa_db = channel_direct_kappa_db(config)
+    if not math.isfinite(direct_kappa_db) or direct_kappa_db < 0.0:
+        raise ValueError(
+            f"channel.direct_fading_kappa_db must be finite and >= 0, got: {direct_kappa_db!r}"
+        )
+    num_echoes_mode = channel_num_echoes_mode(config)
+    if num_echoes_mode not in _NUM_ECHOES_MODES:
+        raise ValueError(
+            f"channel.num_echoes_model must be one of {sorted(_NUM_ECHOES_MODES)}, "
+            f"got: {num_echoes_mode!r}"
+        )
+    if num_echoes_mode == "poisson":
+        mean = channel_poisson_echoes_mean(config)
+        if not math.isfinite(mean) or mean <= 0.0:
+            raise ValueError(f"channel.poisson_echoes_mean must be finite and > 0, got: {mean!r}")
+    hold_mode = channel_hold_mode(config)
+    if hold_mode not in _CHANNEL_HOLD_MODES:
+        raise ValueError(
+            f"channel.hold_mode must be one of {sorted(_CHANNEL_HOLD_MODES)}, got: {hold_mode!r}"
+        )
 
 def _validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(config, dict):
@@ -199,6 +277,8 @@ def _validate_config(config: Dict[str, Any]) -> None:
     seed = general["seed"]
     if not isinstance(seed, (int,)) or isinstance(seed, bool) or seed < 0:
         raise ValueError(f"general.seed must be an int >= 0, got: {seed!r}")
+
+    _validate_channel_config(config)
 
     logger.debug(
         "validated config: seq_len=%d, map_type=%s, mu=%s, max_delay=%d, max_doppler=%s",
@@ -311,6 +391,24 @@ def sample_echo_parameters(
     )
     return echoes
 
+def sample_echo_counts(
+    n: int,
+    rng: np.random.Generator,
+    config: Dict[str, Any],
+) -> np.ndarray:
+    if isinstance(n, bool) or int(n) <= 0:
+        raise ValueError(f"n must be an int > 0, got: {n!r}")
+    n = int(n)
+    max_delay = int(config["data"]["max_delay"])
+    mean = channel_poisson_echoes_mean(config)
+    if not math.isfinite(mean) or mean <= 0.0:
+        raise ValueError(f"channel.poisson_echoes_mean must be finite and > 0, got: {mean!r}")
+    counts = rng.poisson(mean, size=n).astype(np.int64)
+    counts = np.clip(counts, 0, max_delay)
+    if not np.all(np.isfinite(counts)) or np.any(counts < 0):
+        raise RuntimeError("poisson echo counts not valid")
+    return counts
+
 def sample_direct_path(rng: np.random.Generator, config: Dict[str, Any]) -> DirectPathParams:
     data = config["data"]
     kappa_db = float(data["rician_kappa_db"])
@@ -338,6 +436,8 @@ def apply_aerial_channel(
     echoes: List[EchoParams],
     snr_db: float,
     rng: np.random.Generator,
+    *,
+    echo_fading: Optional[Tuple[str, float]] = None,
 ) -> Tuple[np.ndarray, float]:
     if not isinstance(echoes, list):
         raise TypeError(f"echoes must be list[EchoParams], got: {type(echoes).__name__}")
@@ -345,13 +445,32 @@ def apply_aerial_channel(
     if x_arr.ndim != 1 or x_arr.size == 0:
         raise ValueError(f"x must be a non-empty 1D vector, got: shape={x_arr.shape}")
     if not np.all(np.isfinite(x_arr)):
-        raise ValueError("x contiene NaN/Inf")
+        raise ValueError("x contains NaN/Inf")
     if not (math.isfinite(f_dc) and 0.0 <= f_dc < 0.5):
         raise ValueError(f"f_dc must be in [0, 0.5), got: {f_dc!r}")
     if not (math.isfinite(h_c.real) and math.isfinite(h_c.imag)):
         raise ValueError(f"h_c not finite: {h_c!r}")
     if not math.isfinite(float(snr_db)):
         raise ValueError(f"snr_db must be finite, got: {snr_db!r}")
+
+    fading_kind = "none"
+    fading_kappa_db = 0.0
+    if echo_fading is not None:
+        if not isinstance(echo_fading, (tuple, list)) or len(echo_fading) != 2:
+            raise ValueError(
+                f"echo_fading must be a (kind, kappa_db) pair, got: {echo_fading!r}"
+            )
+        fading_kind = str(echo_fading[0]).strip().lower()
+        fading_kappa_db = float(echo_fading[1])
+        if fading_kind not in _ECHO_FADING_TYPES:
+            raise ValueError(
+                f"echo_fading kind must be one of {sorted(_ECHO_FADING_TYPES)}, "
+                f"got: {fading_kind!r}"
+            )
+        if not math.isfinite(fading_kappa_db) or fading_kappa_db < 0.0:
+            raise ValueError(
+                f"echo_fading kappa_db must be finite and >= 0, got: {fading_kappa_db!r}"
+            )
 
     n_samples = x_arr.size
     n_idx = np.arange(n_samples, dtype=np.float64)
@@ -370,13 +489,23 @@ def apply_aerial_channel(
             f"sum of alpha_k^2 = {echo_power:.6f} >= 1: normalization Eq. (4) is impossible"
         )
 
+    if echoes and fading_kind in ("rayleigh", "rician"):
+        alpha_arr = np.asarray([[float(e.alpha) for e in echoes]], dtype=np.float64)
+        mask_arr = np.ones_like(alpha_arr, dtype=bool)
+        faded = _apply_echo_fading(
+            alpha_arr, mask_arr, fading_kind, fading_kappa_db, rng
+        )
+        echo_amplitudes: List[complex] = [complex(v) for v in faded[0]]
+    else:
+        echo_amplitudes = [float(e.alpha) for e in echoes]
+
     h_c_eff = h_c * math.sqrt(1.0 - echo_power)
 
     y_clean = h_c_eff * x_arr * np.exp(1j * 2.0 * math.pi * f_dc * n_idx)
-    for echo in echoes:
+    for index, echo in enumerate(echoes):
         x_delayed = np.zeros(n_samples, dtype=np.float64)
         x_delayed[echo.tau:] = x_arr[: n_samples - echo.tau]
-        y_clean = y_clean + echo.alpha * x_delayed * np.exp(
+        y_clean = y_clean + echo_amplitudes[index] * x_delayed * np.exp(
             1j * 2.0 * math.pi * echo.f_doppler * n_idx
         )
 
@@ -692,12 +821,80 @@ def generate_transmitted_batch_fast(
     return _center_normalize_batch(out)
 
 
+def _apply_echo_fading(
+    alphas: np.ndarray,
+    valid: np.ndarray,
+    echo_fading: str,
+    kappa_db: float,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    alphas = np.asarray(alphas, dtype=np.float64)
+    if alphas.ndim != 2:
+        raise ValueError(f"alphas must be 2D (N, K), got: {alphas.shape}")
+    n, k = alphas.shape
+    if k == 0:
+        return np.zeros((n, 0), dtype=np.complex128)
+    if echo_fading == "rayleigh":
+        gains = (
+            rng.standard_normal((n, k)) + 1j * rng.standard_normal((n, k))
+        ) / math.sqrt(2.0)
+    elif echo_fading == "rician":
+        kappa_lin = 10.0 ** (kappa_db / 10.0)
+        los = math.sqrt(kappa_lin / (kappa_lin + 1.0))
+        scat = math.sqrt(1.0 / (kappa_lin + 1.0))
+        theta = rng.uniform(0.0, 2.0 * math.pi, size=(n, k))
+        diffuse = (
+            rng.standard_normal((n, k)) + 1j * rng.standard_normal((n, k))
+        ) / math.sqrt(2.0)
+        gains = los * np.exp(1j * theta) + scat * diffuse
+    else:
+        raise ValueError(f"invalid echo_fading: {echo_fading!r}")
+
+    mask = np.asarray(valid, dtype=bool)
+    if mask.shape != gains.shape:
+        mask = np.ones(gains.shape, dtype=bool)
+
+    faded = alphas * gains
+    nominal = np.sum(np.where(mask, alphas ** 2, 0.0), axis=1, keepdims=True)
+    realized = np.sum(np.where(mask, np.abs(faded) ** 2, 0.0), axis=1, keepdims=True)
+    scale = np.sqrt(nominal / np.where(realized < _FADING_POWER_EPS, 1.0, realized))
+    faded = faded * scale
+    faded = np.where(mask, faded, 0.0)
+    if not np.all(np.isfinite(faded)):
+        raise RuntimeError("echo fading output not finite (NaN/Inf)")
+    return faded
+
+def _slot_representatives(slot_ids: np.ndarray, n: int) -> np.ndarray:
+    arr = np.asarray(slot_ids)
+    if arr.ndim != 1 or arr.shape[0] != n:
+        raise ValueError(f"slot_ids must have shape ({n},), got: {arr.shape}")
+    if not np.issubdtype(arr.dtype, np.integer):
+        raise ValueError(f"slot_ids must be integers, got: {arr.dtype}")
+    if n == 0:
+        return np.zeros(0, dtype=np.int64)
+    if np.any(arr < 0):
+        raise ValueError("slot_ids must be non-negative")
+    order = np.argsort(arr, kind="stable")
+    ordered = arr[order]
+    first = np.empty(ordered.shape, dtype=bool)
+    first[0] = True
+    if ordered.size > 1:
+        first[1:] = ordered[1:] != ordered[:-1]
+    first_positions = order[first]
+    unique_first = arr[first_positions]
+    positions = np.searchsorted(unique_first, arr)
+    reps = first_positions[positions].astype(np.int64)
+    if not np.all(arr[reps] == arr):
+        raise RuntimeError("slot representative mapping is inconsistent")
+    return reps
+
 def apply_channel_batch(
     x_norm: np.ndarray,
     k: int,
     snr_db: float,
     config: Dict[str, Any],
     rng: np.random.Generator,
+    slot_ids: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     x_arr = np.asarray(x_norm, dtype=np.float64)
     if x_arr.ndim != 2:
@@ -714,37 +911,60 @@ def apply_channel_batch(
     max_doppler = float(data["max_doppler"])
     alpha_min = float(data["alpha_min"])
     alpha_max = float(data["alpha_max"])
-    kappa_db = float(data["rician_kappa_db"])
+    kappa_db = channel_direct_kappa_db(config)
     doppler_direct_max = float(data["doppler_direct_max"])
-    if k > max_delay:
-        raise ValueError(
-            f"k ({k}) > max_delay ({max_delay}): cannot sample "
-            f"{k} distinct integer delays in [1, max_delay]"
-        )
+    echo_fading = channel_echo_fading(config)
+    echo_fading_kappa_db = channel_echo_fading_kappa_db(config)
+    hold_mode = channel_hold_mode(config)
+    poisson_echoes = channel_num_echoes_mode(config) == "poisson"
 
     n = int(x_arr.shape[0])
+    if int(x_arr.shape[1]) != seq_len:
+        raise ValueError(
+            f"x_norm second dimension must equal sequence_length={seq_len}, "
+            f"got: {x_arr.shape[1]}"
+        )
+    if poisson_echoes:
+        counts = sample_echo_counts(n, rng, config)
+        k_max = int(counts.max()) if counts.size else 0
+    else:
+        counts = np.full(n, k, dtype=np.int64)
+        k_max = k
+    if k_max > max_delay:
+        raise ValueError(
+            f"k ({k_max}) > max_delay ({max_delay}): cannot sample "
+            f"{k_max} distinct integer delays in [1, max_delay]"
+        )
+    if hold_mode == "per_slot" and slot_ids is None:
+        raise ValueError("channel.hold_mode is 'per_slot' but slot_ids is None")
+
     n_idx = np.arange(seq_len, dtype=np.float64)[None, :]
     n_idx_i = np.arange(seq_len, dtype=np.int64)[None, :]
 
-    if k > 0:
+    if k_max > 0:
         pool = np.tile(np.arange(1, max_delay + 1, dtype=np.int64)[None, :], (n, 1))
-        taus = rng.permuted(pool, axis=1)[:, :k]
-        dopplers = rng.uniform(0.0, max_doppler, size=(n, k))
+        taus = rng.permuted(pool, axis=1)[:, :k_max]
+        dopplers = rng.uniform(0.0, max_doppler, size=(n, k_max))
         if bool(data.get("alpha_tau_coupling", False)):
             floor = float(data.get("alpha_floor", _ALPHA_COUPLING_FLOOR))
             alphas = np.clip(alpha_max / np.maximum(taus.astype(np.float64), 1.0),
                              floor, alpha_max)
         else:
             alphas = 10.0 ** rng.uniform(
-                math.log10(alpha_min), math.log10(alpha_max), size=(n, k)
+                math.log10(alpha_min), math.log10(alpha_max), size=(n, k_max)
             )
-        echo_power = np.sum(alphas ** 2, axis=1)
+        valid = np.arange(k_max, dtype=np.int64)[None, :] < counts[:, None]
+        if bool(np.all(valid)):
+            echo_power = np.sum(alphas ** 2, axis=1)
+        else:
+            echo_power = np.sum(np.where(valid, alphas ** 2, 0.0), axis=1)
         if np.any(echo_power >= 1.0 - _POWER_EPS):
             raise ValueError("sum of alpha_k^2 >= 1: normalization Eq. (4) is impossible")
     else:
         taus = np.empty((n, 0), dtype=np.int64)
         dopplers = np.empty((n, 0), dtype=np.float64)
         alphas = np.empty((n, 0), dtype=np.float64)
+        valid = np.zeros((n, 0), dtype=bool)
         echo_power = np.zeros(n, dtype=np.float64)
 
     kappa_lin = 10.0 ** (kappa_db / 10.0)
@@ -756,18 +976,44 @@ def apply_channel_batch(
     )
     f_dc = rng.uniform(0.0, doppler_direct_max, size=n)
 
+    if echo_fading == "none":
+        amplitudes = alphas
+        dominance = alphas
+    else:
+        amplitudes = _apply_echo_fading(
+            alphas, valid, echo_fading, echo_fading_kappa_db, rng
+        )
+        dominance = np.abs(amplitudes)
+
+    if hold_mode == "per_slot":
+        reps = _slot_representatives(slot_ids, n)
+        taus = taus[reps]
+        dopplers = dopplers[reps]
+        alphas = alphas[reps]
+        amplitudes = amplitudes[reps]
+        dominance = dominance[reps]
+        valid = valid[reps]
+        counts = counts[reps]
+        echo_power = echo_power[reps]
+        h_c = h_c[reps]
+        f_dc = f_dc[reps]
+
     h_c_eff = h_c * np.sqrt(1.0 - echo_power)
 
     y = h_c_eff[:, None] * x_arr * np.exp(1j * 2.0 * math.pi * f_dc[:, None] * n_idx)
-    for j in range(k):
+    for j in range(k_max):
         delay_idx = n_idx_i - taus[:, j, None]
-        valid = delay_idx >= 0
+        delay_valid = delay_idx >= 0
         clip_idx = np.clip(delay_idx, 0, seq_len - 1)
         x_delayed = np.where(
-            valid, np.take_along_axis(x_arr, clip_idx, axis=1), 0.0
+            delay_valid, np.take_along_axis(x_arr, clip_idx, axis=1), 0.0
         )
         phase = np.exp(1j * 2.0 * math.pi * dopplers[:, j, None] * n_idx)
-        y = y + alphas[:, j, None] * x_delayed * phase
+        term = amplitudes[:, j, None] * x_delayed * phase
+        if bool(np.all(valid[:, j])):
+            y = y + term
+        else:
+            y = y + np.where(valid[:, j, None], term, 0.0)
 
     signal_power = np.mean(np.abs(y) ** 2, axis=1)
     if np.any(signal_power <= 0.0) or not np.all(np.isfinite(signal_power)):
@@ -781,10 +1027,15 @@ def apply_channel_batch(
     if not np.all(np.isfinite(y)):
         raise RuntimeError("channel output not finite (NaN/Inf)")
 
-    if k > 0:
-        dom_idx = np.argmax(alphas, axis=1)
+    if k_max > 0:
+        dominance_masked = np.where(valid, dominance, -np.inf)
+        dom_idx = np.argmax(dominance_masked, axis=1)
         tau_labels = taus[np.arange(n), dom_idx].astype(np.float64)
         f_d_labels = dopplers[np.arange(n), dom_idx].astype(np.float64)
+        no_echo = counts <= 0
+        if bool(np.any(no_echo)):
+            tau_labels[no_echo] = 0.0
+            f_d_labels[no_echo] = 0.0
     else:
         tau_labels = np.zeros(n, dtype=np.float64)
         f_d_labels = np.zeros(n, dtype=np.float64)
@@ -798,6 +1049,8 @@ def generate_test_batch(
     snr_db: float,
     k: int,
     rng: np.random.Generator,
+    slot_ids: Optional[np.ndarray] = None,
+    slot_offset: int = 0,
 ) -> Dict[str, np.ndarray]:
     if isinstance(num_symbols, bool) or int(num_symbols) <= 0:
         raise ValueError(
@@ -806,11 +1059,19 @@ def generate_test_batch(
     n = int(num_symbols)
     if isinstance(k, bool) or int(k) < 0:
         raise ValueError(f"k must be an int >= 0, got: {k!r}")
+    if isinstance(slot_offset, bool) or int(slot_offset) < 0:
+        raise ValueError(f"slot_offset must be an int >= 0, got: {slot_offset!r}")
+
+    if slot_ids is None and channel_hold_mode(config) == "per_slot":
+        dwell = channel_hold_dwell(config)
+        slot_ids = (int(slot_offset) + np.arange(n, dtype=np.int64)) // dwell
 
     bits = rng.integers(0, 2, size=n, dtype=np.int64)
     seeds = rng.integers(0, _SEED_HIGH, size=n, dtype=np.int64)
     x_ref = generate_transmitted_batch_fast(config, bits, rng)
-    y, tau, f_d = apply_channel_batch(x_ref, int(k), float(snr_db), config, rng)
+    y, tau, f_d = apply_channel_batch(
+        x_ref, int(k), float(snr_db), config, rng, slot_ids=slot_ids
+    )
     return {
         "x": y,
         "bit": bits,
@@ -910,8 +1171,15 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     config = load_config(config_path=config_path, base_config_path=DEFAULT_BASE_CONFIG_PATH)
     _validate_config(config)
 
+    from src.utils.dataset_utils import get_dataset_dir
+
     experiment_name = str(config["general"].get("experiment_name", "ultra_can_isac"))
-    log_dir = _REPO_ROOT / "results" / experiment_name / "logs"
+    output_dir = Path(args.output_dir) if args.output_dir else get_dataset_dir(config)
+    log_dir = (
+        output_dir / "logs"
+        if args.output_dir
+        else _REPO_ROOT / "results" / experiment_name / "logs"
+    )
     setup_logging(
         log_dir=log_dir,
         level=str(config["general"].get("log_level", "INFO")),
@@ -927,9 +1195,6 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         if split not in _SPLITS:
             raise ValueError(f"invalid split: {split!r} (expected: {sorted(_SPLITS)})")
 
-    from src.utils.dataset_utils import get_dataset_dir
-
-    output_dir = Path(args.output_dir) if args.output_dir else get_dataset_dir(config)
     logger.info(
         "starting the dataset generation: splits=%s, output_dir=%s, seed=%s",
         splits, output_dir, config["general"]["seed"],

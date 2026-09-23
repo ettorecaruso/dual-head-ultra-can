@@ -38,8 +38,10 @@ Experiments are named after the action they perform:
 |---|---|---|
 | `ber_vs_snr` | Communication & sensing benchmark | `metrics.csv` per (scenario, architecture) |
 | `classical_receivers` | Classical receivers (no figures) | `ber_vs_k.csv`, `ber_vs_doppler.csv` |
-| `jamming` | Jamming robustness | BER-vs-JSR tables per architecture |
-| `jamming_interpretability` | Interpretability probe | `conditions.csv`, `per_snr.csv` |
+| `jamming` | Jamming robustness | BER-vs-JSR tables per architecture, mean over `jamming.n_realizations` jammer realizations with the std envelope |
+| `jamming_interpretability` | Interpretability probe | `conditions.csv`, `per_snr.csv`, `conditions_realizations.csv` |
+| `frequency_agility` | Frequency agility under jamming | `frequency_agility_vs_jsr.csv`, `frequency_agility_vs_dwell.csv` |
+| `channel_generalization` | Cross-channel generalization | `summary.csv` per architecture, `generalization_table.tex` |
 | `final_report` | SWaP-C + conclusions | `weight_table.tex`, `final_report.md` |
 
 ```bash
@@ -69,7 +71,16 @@ python scripts/make_table_operating_region.py       # operating-region table (po
 python scripts/make_fig_layer_retention.py          # jamming_layer_retention.pdf
 python scripts/run_jam_aware_qkv.py                 # jamming-aware training (long)
 python scripts/make_fig_jamming_aware_control.py    # jamming_aware_control.pdf
+python scripts/make_fig_frequency_agility.py         # frequency_agility.pdf + per-arch gain
+python scripts/make_table_channel_generalization.py  # generalization_table.tex
 python scripts/latency_bench.py                     # single-burst latency (CPU)
+```
+
+Diagnostics and checkpoint-only re-evaluation (no retraining, no GPU):
+
+```bash
+python scripts/diagnose_jamming_mc.py               # CW single-realization artifact vs Monte Carlo
+python scripts/rerun_jamming_mc.py                  # re-run the jamming grid on the stored checkpoints
 ```
 
 All figure scripts resolve their inputs under `results/` and write PDFs into

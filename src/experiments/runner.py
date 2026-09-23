@@ -59,7 +59,8 @@ def _log_rss(tag: str) -> None:
     logger.info("RSS [%s] = %.2f GB", tag, rss_gb)
 
 _EXPERIMENT_ORDER = ("ber_vs_snr", "classical_receivers", "jamming",
-                     "jamming_interpretability", "final_report")
+                     "jamming_interpretability", "frequency_agility",
+                     "channel_generalization", "final_report")
 
 _VALID_MODELS = ("conv1d", "qkv", "lstm", "mc_dlsk")
 _DEFAULT_MODEL = None
@@ -880,10 +881,15 @@ def run_jamming_interpretability(
     jammer_types = list(jamming_interpretability_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
     snr_eval = [float(v) for v in (jamming_interpretability_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 21.0])]
     ret_subset = int(jamming_interpretability_cfg.get("ret_subset", 3000))
+    n_realizations = int(
+        jamming_interpretability_cfg.get(
+            "n_realizations", (config.get("jamming") or {}).get("n_realizations", 1)
+        )
+    )
 
     logger.info("Experiment jamming_interpretability (models=%s)", models_to_test)
-    logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d",
-                snr_eval, jsr_values, jammer_types, ret_subset)
+    logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d realizations=%d",
+                snr_eval, jsr_values, jammer_types, ret_subset, n_realizations)
 
     data_dir = pipeline.prepare_dataset(config, no_regen)
     echoes = [int(k) for k in config["data"]["echoes"]]
@@ -924,6 +930,7 @@ def run_jamming_interpretability(
             jsr_values=jsr_values,
             jammer_types=jammer_types,
             ret_subset=ret_subset,
+            n_realizations=n_realizations,
         )
         results["models"][arch] = arch_res
 
@@ -966,6 +973,109 @@ def _find_trained_model(
             return ckpt_path
     logger.debug("No checkpoint found for '%s' among: %s", arch, candidates)
     return None
+
+def _resolve_arch_checkpoint(
+    config: Dict[str, Any],
+    arch: str,
+    output_dir: Path,
+    preferred_scenario: str,
+) -> Optional[Path]:
+    candidate = (
+        output_dir.parent / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras"
+    )
+    if candidate.is_file():
+        return candidate
+    return _find_trained_model(config, arch, output_dir)
+
+def run_frequency_agility(
+    config: Dict[str, Any],
+    mode: str,
+    model_type: Optional[str],
+    no_regen: bool,
+    output_dir: Path,
+) -> Dict[str, Any]:
+    
+    from src.experiments.frequency_agility import evaluate_frequency_agility
+
+    fa_cfg = (config.get("experiments") or {}).get("frequency_agility") or {}
+    models_to_test = list(fa_cfg.get("models") or ["conv1d", "qkv", "lstm", "mc_dlsk"])
+    if model_type is not None:
+        wanted = {model_type} if isinstance(model_type, str) else set(model_type)
+        models_to_test = [m for m in models_to_test if m in wanted]
+    preferred_scenario = str(fa_cfg.get("model_scenario", "k3_doppler_full"))
+
+    if not bool((config.get("frequency_hopping") or {}).get("enable", True)):
+        logger.warning("frequency_hopping.enable is false: skipping frequency_agility")
+        return {"models": {}}
+
+    logger.info("=" * 60)
+    logger.info("frequency_agility experiment (models=%s)", models_to_test)
+    logger.info("=" * 60)
+
+    results: Dict[str, Any] = {"models": {}}
+    for arch in models_to_test:
+        ckpt_path = _resolve_arch_checkpoint(config, arch, output_dir, preferred_scenario)
+        if ckpt_path is None:
+            logger.warning("frequency_agility %s: checkpoint not found, skipping", arch)
+            continue
+        logger.info("frequency_agility %s: model loaded from %s", arch, ckpt_path)
+        model = load_model(ckpt_path)
+        results["models"][arch] = evaluate_frequency_agility(
+            model=model,
+            config=config,
+            output_dir=output_dir / arch,
+            arch=arch,
+        )
+        del model
+        gc.collect()
+        tf.keras.backend.clear_session()
+        _log_rss(f"frequency_agility {arch}")
+
+    logger.info("frequency_agility experiment completed. Output in %s", output_dir)
+    return results
+
+def run_channel_generalization(
+    config: Dict[str, Any],
+    mode: str,
+    model_type: Optional[str],
+    no_regen: bool,
+    output_dir: Path,
+) -> Dict[str, Any]:
+    
+    from src.experiments.channel_generalization import evaluate_channel_generalization
+
+    cg_cfg = (config.get("experiments") or {}).get("channel_generalization") or {}
+    models_to_test = list(cg_cfg.get("models") or ["conv1d", "qkv", "lstm", "mc_dlsk"])
+    if model_type is not None:
+        wanted = {model_type} if isinstance(model_type, str) else set(model_type)
+        models_to_test = [m for m in models_to_test if m in wanted]
+    preferred_scenario = str(cg_cfg.get("model_scenario", "k3_doppler_full"))
+
+    logger.info("=" * 60)
+    logger.info("channel_generalization experiment (models=%s)", models_to_test)
+    logger.info("=" * 60)
+
+    results: Dict[str, Any] = {"models": {}}
+    for arch in models_to_test:
+        ckpt_path = _resolve_arch_checkpoint(config, arch, output_dir, preferred_scenario)
+        if ckpt_path is None:
+            logger.warning("channel_generalization %s: checkpoint not found, skipping", arch)
+            continue
+        logger.info("channel_generalization %s: model loaded from %s", arch, ckpt_path)
+        model = load_model(ckpt_path)
+        results["models"][arch] = evaluate_channel_generalization(
+            model=model,
+            config=config,
+            output_dir=output_dir / arch,
+            arch=arch,
+        )
+        del model
+        gc.collect()
+        tf.keras.backend.clear_session()
+        _log_rss(f"channel_generalization {arch}")
+
+    logger.info("channel_generalization experiment completed. Output in %s", output_dir)
+    return results
 
 def run_final_report(
     config: Dict[str, Any],
@@ -1238,7 +1348,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         invalid = [m for m in parts if m not in _VALID_MODELS]
         if invalid:
             raise ValueError(f"Invalid models in --model: {invalid}")
-        if set(exp_names) - {"jamming_interpretability"}:
+        if set(exp_names) - {"jamming_interpretability", "frequency_agility",
+                             "channel_generalization"}:
             raise ValueError(
                 "--model with multiple architectures is allowed only with "
                 "--experiments jamming_interpretability"
@@ -1262,6 +1373,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         "classical_receivers": run_classical_receivers,
         "jamming": run_jamming,
         "jamming_interpretability": run_jamming_interpretability,
+        "frequency_agility": run_frequency_agility,
+        "channel_generalization": run_channel_generalization,
         "final_report": run_final_report,
     }
 

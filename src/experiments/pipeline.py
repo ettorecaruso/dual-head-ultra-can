@@ -350,6 +350,7 @@ def evaluate_with_jamming(
         jammer_types=jammer_types,
         output_dir=output_dir,
         model_name=model_name,
+        n_realizations=int(jamming_cfg.get("n_realizations", 1)),
     )
 
     logger.info("Jamming evaluation completed. Results saved to %s", output_dir)

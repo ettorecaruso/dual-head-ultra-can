@@ -35,8 +35,29 @@ fig, axes = plt.subplots(1, 3, figsize=(7.4, 2.6), sharey=True)
 clean = pd.read_csv(CLEAN / 'conditions.csv')
 aware = pd.read_csv(AWARE / 'conditions.csv')
 
-bers = [float(v) for df in (clean, aware)
-        for v in df['ber'].to_numpy(dtype=float) if v > 0]
+
+def _band(df, sign):
+    if 'ber_std' not in df:
+        return None
+    std = np.nan_to_num(df['ber_std'].to_numpy(dtype=float), nan=0.0)
+    ber = df['ber'].to_numpy(dtype=float)
+    return np.clip(ber + sign * std, 1e-9, 1.0)
+
+
+def _draw_band(ax, df, color):
+    lower = _band(df, -1.0)
+    upper = _band(df, +1.0)
+    if lower is None or upper is None:
+        return
+    ax.fill_between(df['jsr_db'].to_numpy(dtype=float), lower, upper,
+                    color=color, alpha=0.18, linewidth=0)
+
+
+bers = []
+for df in (clean, aware):
+    lower = _band(df, -1.0)
+    source = df['ber'].to_numpy(dtype=float) if lower is None else lower
+    bers.extend(float(v) for v in source if v > 0)
 y_lo = 10.0 ** np.floor(np.log10(min(bers)))
 y_hi = 1.0
 
@@ -45,8 +66,10 @@ for ax, jammer in zip(axes, JAMMERS):
     a = aware[aware.jammer == jammer].sort_values('jsr_db')
     ax.plot(c['jsr_db'], c['ber'], color='#c44e52', ls='-', marker='o', ms=3, lw=1.4,
             label='Clean-trained')
+    _draw_band(ax, c, '#c44e52')
     ax.plot(a['jsr_db'], a['ber'], color='#4c72b0', ls='--', marker='s', ms=3, lw=1.4,
             label='Jamming-aware')
+    _draw_band(ax, a, '#4c72b0')
     ax.set_yscale('log')
     ax.set_ylim(y_lo, y_hi)
     ax.set_title(TITLES[jammer], fontsize=8)

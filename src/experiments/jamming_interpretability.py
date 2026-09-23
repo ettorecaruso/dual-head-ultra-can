@@ -208,6 +208,36 @@ def _run_condition(
     return res, per_snr, clean_out
 
 
+def _aggregate_rows(
+    rows: List[Dict[str, Any]],
+    keys: Sequence[str],
+    std_fields: Sequence[str],
+) -> List[Dict[str, Any]]:
+    grouped: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
+    for row in rows:
+        grouped.setdefault(tuple(row[key] for key in keys), []).append(row)
+    aggregated: List[Dict[str, Any]] = []
+    for group_key, group in grouped.items():
+        agg: Dict[str, Any] = dict(zip(keys, group_key))
+        fields = [
+            field
+            for field, value in group[0].items()
+            if field not in keys
+            and isinstance(value, (int, float, np.floating, np.integer))
+            and not isinstance(value, bool)
+        ]
+        for field in fields:
+            values = np.asarray([float(row[field]) for row in group], dtype=np.float64)
+            finite = np.isfinite(values)
+            agg[field] = float(values[finite].mean()) if bool(finite.any()) else float("nan")
+            if field in std_fields:
+                agg[f"{field}_std"] = (
+                    float(values[finite].std(ddof=0)) if bool(finite.any()) else float("nan")
+                )
+        agg["n_realizations"] = len(group)
+        aggregated.append(agg)
+    return aggregated
+
 def run_jamming_interpretability_probe(
     model: tf.keras.Model,
     arch: str,
@@ -218,9 +248,10 @@ def run_jamming_interpretability_probe(
     jammer_types: Sequence[str],
     ret_subset: int = 3000,
     tag: Optional[str] = None,
+    n_realizations: int = 1,
 ) -> Dict[str, Any]:
     
-    from src.experiments.run_jamming import apply_jamming
+    from src.experiments.run_jamming import sample_jammer_waveform, _add_jammer_at_jsr
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -238,48 +269,100 @@ def run_jamming_interpretability_probe(
     tau_max = float(config["data"]["max_delay"])
     fd_max = float(config["data"]["max_doppler"])
     base_seed = int(config["general"].get("seed", 42))
+    n_realizations = int(n_realizations)
+    if n_realizations < 1:
+        raise ValueError(f"n_realizations must be >= 1, got: {n_realizations}")
 
     cond_rows: List[Dict[str, Any]] = []
     per_snr_rows: List[Dict[str, Any]] = []
+    realization_rows: List[Dict[str, Any]] = []
     clean_store: Optional[Dict[str, np.ndarray]] = None
 
     def _save() -> None:
         pd.DataFrame(cond_rows).to_csv(out_dir / "conditions.csv", index=False)
         pd.DataFrame(per_snr_rows).to_csv(out_dir / "per_snr.csv", index=False)
+        if realization_rows:
+            pd.DataFrame(realization_rows).to_csv(
+                out_dir / "conditions_realizations.csv", index=False
+            )
 
-    def _go(jammer: str, jsr_db: float, is_clean: bool) -> None:
-        nonlocal clean_store
-        t0c = time.time()
-        if is_clean:
-            xx, tag = x, "clean"
-        else:
-            seed = base_seed + (sum(ord(ch) for ch in jammer) % 10000) + int(jsr_db) * 7
-            xx = apply_jamming(x, jammer, float(jsr_db), np.random.default_rng(seed))
-            tag = jammer
-        res, per_snr, clean_out = _run_condition(
-            model, probe, cap, arch, xx, bit, tau, f_d, snr_db, x_ref,
-            clean_store, ret_idx, tau_max, fd_max, capture_clean=is_clean,
-        )
-        if is_clean:
-            clean_store = clean_out
-        res.update({"arch": arch, "jammer": tag,
-                    "jsr_db": float("nan") if is_clean else float(jsr_db)})
-        cond_rows.append(res)
-        for r in per_snr:
-            r.update({"arch": arch, "jammer": tag, "jsr_db": res["jsr_db"]})
-            per_snr_rows.append(r)
-        _save()
-        ent = res.get("attn_entropy", float("nan"))
-        logger.info("[jamming_interpretability %s] %-11s JSR=%6s | BER=%.4f corr_tau=%.3f "
-                    "margin=%.2f entr_attn=%.3f (%.0f s)",
-                    arch, tag, "clean" if is_clean else f"{jsr_db:g}dB",
-                    res["ber"], res["corr_tau"], res["margin_mean"],
-                    ent if np.isfinite(ent) else float("nan"), time.time() - t0c)
+    t0_clean = time.time()
+    clean_res, clean_per_snr, clean_out = _run_condition(
+        model, probe, cap, arch, x, bit, tau, f_d, snr_db, x_ref,
+        None, ret_idx, tau_max, fd_max, capture_clean=True,
+    )
+    clean_store = clean_out
+    clean_res.update({"arch": arch, "jammer": "clean", "jsr_db": float("nan")})
+    cond_rows.append(clean_res)
+    for row in clean_per_snr:
+        row.update({"arch": arch, "jammer": "clean", "jsr_db": float("nan")})
+        per_snr_rows.append(row)
+    _save()
+    logger.info(
+        "[jamming_interpretability %s] clean | BER=%.4f corr_tau=%.3f margin=%.2f (%.0f s)",
+        arch, clean_res["ber"], clean_res["corr_tau"], clean_res["margin_mean"],
+        time.time() - t0_clean,
+    )
 
-    _go("", float("nan"), True)
     for jammer in jammer_types:
-        for jsr_db in jsr_values:
-            _go(jammer, jsr_db, False)
+        jammer_records: List[Dict[str, Any]] = []
+        jammer_per_snr: List[Dict[str, Any]] = []
+        for realization in range(n_realizations):
+            seed = (
+                base_seed
+                + (sum(ord(ch) for ch in jammer) % 10000)
+                + realization * 100003
+            )
+            rng = np.random.default_rng(seed)
+            jammer_wave = sample_jammer_waveform(
+                x.shape,
+                jammer,
+                rng,
+                realization=realization,
+                n_realizations=n_realizations,
+            )
+            for jsr_db in jsr_values:
+                t0c = time.time()
+                xx = _add_jammer_at_jsr(x, jammer_wave, float(jsr_db))
+                res, per_snr, _ = _run_condition(
+                    model, probe, cap, arch, xx, bit, tau, f_d, snr_db, x_ref,
+                    clean_store, ret_idx, tau_max, fd_max, capture_clean=False,
+                )
+                res.update({
+                    "arch": arch,
+                    "jammer": jammer,
+                    "jsr_db": float(jsr_db),
+                    "realization": int(realization),
+                })
+                jammer_records.append(res)
+                realization_rows.append(dict(res))
+                for row in per_snr:
+                    row.update({
+                        "arch": arch,
+                        "jammer": jammer,
+                        "jsr_db": float(jsr_db),
+                        "realization": int(realization),
+                    })
+                    jammer_per_snr.append(row)
+                logger.info(
+                    "[jamming_interpretability %s] %-11s JSR=%6.1f dB r=%d | BER=%.4f "
+                    "corr_tau=%.3f margin=%.2f (%.0f s)",
+                    arch, jammer, float(jsr_db), realization,
+                    res["ber"], res["corr_tau"], res["margin_mean"], time.time() - t0c,
+                )
+        cond_rows.extend(
+            _aggregate_rows(
+                jammer_records, ("arch", "jammer", "jsr_db"), ("ber", "margin_mean")
+            )
+        )
+        per_snr_rows.extend(
+            _aggregate_rows(
+                jammer_per_snr,
+                ("arch", "jammer", "jsr_db", "snr_db"),
+                ("ber", "margin_mean"),
+            )
+        )
+        _save()
 
     metadata = {
         "experiment": "jamming_interpretability", "arch": arch,
@@ -290,7 +373,8 @@ def run_jamming_interpretability_probe(
         "n_test_samples": int(n), "ret_subset": int(ret_subset),
         "batch_size": _BATCH,
         "n_conditions": len(cond_rows),
-        "tag": tag,
+        "n_realizations": int(n_realizations),
+        "tag": tag if tag is not None else arch,
     }
     with open(out_dir / "run_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
@@ -298,6 +382,9 @@ def run_jamming_interpretability_probe(
     logger.info("[jamming_interpretability %s] completed -> %s (conditions=%d)", arch, out_dir, len(cond_rows))
     return {"conditions_csv": str(out_dir / "conditions.csv"),
             "per_snr_csv": str(out_dir / "per_snr.csv"),
+            "conditions_realizations_csv": (
+                str(out_dir / "conditions_realizations.csv") if realization_rows else None
+            ),
             "n_conditions": len(cond_rows)}
 
 

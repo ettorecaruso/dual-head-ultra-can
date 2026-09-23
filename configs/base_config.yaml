@@ -88,6 +88,7 @@ jamming:
   jamming_types: ["cw", "barrage", "partial_band"]
   jsr_range: [-10, 10]
   jsr_step: 2
+  n_realizations: 5
 visualization:
   attention_maps: true
   save_plots: true
@@ -96,9 +97,31 @@ visualization:
 channel:
   model: "aerial_multiecho"
   direct_fading: "rician"
-  echo_fading: "rayleigh"
+  echo_fading: "none"
+  echo_fading_kappa_db: 6.0
+  direct_fading_kappa_db: null
+  num_echoes_model: "fixed"
+  poisson_echoes_mean: 2.0
+  hold_mode: "per_symbol"
   add_awgn: true
   echo_only_mode: false
+frequency_hopping:
+  enable: true
+  num_channels: 8
+  dwell_bursts: 1
+  burst_duration_us: 10.0
+  sequence_seed: null
+  coverage_fraction: 0.25
+  sweep_jam_slots: 1
+  follower_reaction_bursts: 2
+  jammer_models: ["barrage", "fixed_partial", "sweep", "follower"]
+  in_channel_types: ["cw", "partial_band"]
+  jsr_values: [-10, -6, -2, 2, 6, 10]
+  n_bursts_per_condition: 20000
+  n_realizations: 5
+  dwell_sweep: [1, 2, 4, 8, 16]
+  dwell_sweep_jsr: 6.0
+  dwell_sweep_models: ["sweep", "follower"]
 baselines:
   enabled: true
   lstm:
@@ -126,7 +149,19 @@ experiments:
     jamming_types: ["cw", "barrage", "partial_band"]
     jsr_range: [-10, 10]
     jsr_step: 2
+    n_realizations: 5
     visualize_layers: true
+  channel_generalization:
+    models: [conv1d, qkv, lstm, mc_dlsk]
+    variants:
+      - {name: "chan_b_rician6_kappa3", echo_fading: "rician", echo_fading_kappa_db: 6.0, direct_fading_kappa_db: 3.0}
+      - {name: "chan_b_rayleigh_kappa3", echo_fading: "rayleigh", echo_fading_kappa_db: 0.0, direct_fading_kappa_db: 3.0}
+      - {name: "chan_c_poisson_k", num_echoes_model: "poisson", poisson_echoes_mean: 2.0, echo_fading: "rician", echo_fading_kappa_db: 6.0, direct_fading_kappa_db: 3.0}
+    snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
+    num_symbols_per_snr: 2000
+    bit_error_threshold: 100
+  frequency_agility:
+    models: [conv1d, qkv, lstm, mc_dlsk]
   final_report:
     output: "weight_table.tex"
     include_classical: true
