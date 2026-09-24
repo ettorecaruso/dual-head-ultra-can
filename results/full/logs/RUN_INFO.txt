@@ -1,0 +1,57 @@
+run_timestamp_local : 2026-09-24T10:38:09
+repo                : /content/dual-head-ultra-can
+git_commit          : 12e9017252050b96ccdb1f7e19c2c32286ff7cf0
+git_commit_short    : 12e9017
+git_last_subject    : 1
+git_status          : M figures/ber_full_k1_single_echo.pdf
+ M figures/ber_full_k3_low_doppler.pdf
+ M figures/ber_full_k3_multi_echo.pdf
+ M figures/ber_full_linear.pdf
+ M figures/ber_region_zoom.pdf
+ M figures/ber_region_zoom_k1_single_echo.pdf
+ M figures/ber_region_zoom_k3_low_doppler.pdf
+ M figures/ber_region_zoom_k3_multi_echo.pdf
+ M figures/jamming_aware_control.pdf
+ M figures/jamming_layer_retention.pdf
+ M figures/sensing_delay_single.pdf
+ M results/full/final_report/latency_results.json
+?? CHECKPOINTS_INFO.txt
+?? figures/frequency_agility.pdf
+?? results/full/frequency_agility/
+?? results/full/logs/
+?? results/newRes/
+?? src/__pycache__/
+?? src/data/__pycache__/
+?? src/evaluation/__pycache__/
+?? src/experiments/__pycache__/
+?? src/models/__pycache__/
+?? src/training/__pycache__/
+?? src/utils/__pycache__/
+python              : 3.13.15 (Linux-6.6.122+-x86_64-with-glibc2.39)
+tensorflow          : 2.20.0
+tf_gpus             : ['/physical_device:GPU:0']
+nvidia_smi          : Tesla T4, 15360 MiB
+--- risultati frequency_agility  (sha256[:16]  size  path) ---
+e009972338fdee64       36104  results/full/frequency_agility/conv1d/frequency_agility_realizations.csv
+36d2a3cc69366787         921  results/full/frequency_agility/conv1d/frequency_agility_vs_dwell.csv
+c83197cb433eb400       12379  results/full/frequency_agility/conv1d/frequency_agility_vs_jsr.csv
+aa2988796d019c2d       35261  results/full/frequency_agility/lstm/frequency_agility_realizations.csv
+d8a1c2b819f040cd         931  results/full/frequency_agility/lstm/frequency_agility_vs_dwell.csv
+6d9a03acaf361f50       12154  results/full/frequency_agility/lstm/frequency_agility_vs_jsr.csv
+3f15e8cc4f907c0b       36666  results/full/frequency_agility/mc_dlsk/frequency_agility_realizations.csv
+45139082a4424ab6         935  results/full/frequency_agility/mc_dlsk/frequency_agility_vs_dwell.csv
+e48732c279377939       12439  results/full/frequency_agility/mc_dlsk/frequency_agility_vs_jsr.csv
+438a6c4da5d871b6        1362  results/full/frequency_agility/qkv/frequency_agility_gain.csv
+f8239940d261693b       34377  results/full/frequency_agility/qkv/frequency_agility_realizations.csv
+b72163af9125c666         917  results/full/frequency_agility/qkv/frequency_agility_vs_dwell.csv
+52f4acbf7ae79766       12334  results/full/frequency_agility/qkv/frequency_agility_vs_jsr.csv
+8087ad798cd6185f       27261  figures/frequency_agility.pdf
+--- self-check: barrage fh_off vs fh_on (max |diff| sui JSR >= 0) ---
+conv1d   cw          : max|off-on|=0.00000  OK
+conv1d   partial_band: max|off-on|=0.00000  OK
+qkv      cw          : max|off-on|=0.00000  OK
+qkv      partial_band: max|off-on|=0.00000  OK
+lstm     cw          : max|off-on|=0.00000  OK
+lstm     partial_band: max|off-on|=0.00000  OK
+mc_dlsk  cw          : max|off-on|=0.00000  OK
+mc_dlsk  partial_band: max|off-on|=0.00000  OK

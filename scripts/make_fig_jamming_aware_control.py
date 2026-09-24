@@ -1,88 +1,135 @@
 #!/usr/bin/env python3
-"""Jamming-aware training control figure."""
+"""Jamming-aware training control figure.
+
+Panels: CW, barrage (control) and partial-band. In every panel the clean-trained
+QKV receiver and the jamming-aware one are plotted as the **mean BER over the
+jammer realizations** stored in ``conditions.csv`` (``n_realizations``), with the
++-1 sigma envelope drawn as a light band.
+
+Only the mean-over-realizations curves are used: the per-realization table
+(``conditions_realizations.csv``) and single-run curves are deliberately *not*
+plotted, because a single CW realization is the artefact that made the curve
+non-monotone (see ``results/full/diagnostics/jamming_artifact``). The script
+asserts that the clean-trained CW and partial-band curves are monotone in JSR, so
+that artefact can not silently come back.
+"""
+from __future__ import annotations
+
+import sys
 from pathlib import Path
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 REPO = Path(__file__).resolve().parents[1]
-RESULTS = REPO / 'results' / 'full'
-OUT = REPO / 'figures' / 'jamming_aware_control.pdf'
-MIRROR = REPO / 'results' / 'figures' / 'jamming_aware_control.pdf'
-CLEAN = RESULTS / 'jamming_interpretability' / 'qkv'
-AWARE = RESULTS / 'jamming_interpretability' / 'jamming_aware_training' / 'qkv'
-JAMMERS = ['cw', 'barrage', 'partial_band']
-TITLES = {'cw': 'CW', 'barrage': 'Barrage', 'partial_band': 'Partial-band'}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import figure_style as fs  # noqa: E402
+
+RESULTS = REPO / "results" / "full" / "jamming_interpretability"
+CLEAN = RESULTS / "qkv"
+AWARE = RESULTS / "jamming_aware_training" / "qkv"
+JAMMERS = [("cw", "CW"), ("barrage", "Barrage (control)"),
+           ("partial_band", "Partial band")]
+MONOTONE = ("cw", "partial_band")
+MIN_REALIZATIONS = 5
+Y_LO, Y_HI = 1e-3, 1.0
 
 
-def _legend_below(ax, ncol: int, y: float = -0.20) -> None:
-    """Single legend under the panel, outside the axes (never on a curve)."""
-    handles, labels, seen = [], [], set()
-    for handle, label in zip(*ax.get_legend_handles_labels()):
-        if label not in seen:
-            seen.add(label)
-            handles.append(handle)
-            labels.append(label)
-    ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, y),
-              ncol=ncol, fontsize=7, framealpha=0.8, edgecolor='gray',
-              facecolor='white', borderpad=0.5, labelspacing=0.3,
-              handlelength=2.2)
-
-fig, axes = plt.subplots(1, 3, figsize=(7.4, 2.6), sharey=True)
-clean = pd.read_csv(CLEAN / 'conditions.csv')
-aware = pd.read_csv(AWARE / 'conditions.csv')
+def _load(path: Path, who: str) -> pd.DataFrame:
+    if not path.is_file():
+        raise FileNotFoundError(f"missing {who} conditions: {path}")
+    df = pd.read_csv(path)
+    n = df["n_realizations"].dropna().unique() if "n_realizations" in df else []
+    if len(n) != 1 or int(n[0]) < MIN_REALIZATIONS:
+        raise RuntimeError(
+            f"{who}: expected the mean over >= {MIN_REALIZATIONS} realizations, "
+            f"found n_realizations={list(n)}"
+        )
+    if "ber_std" not in df.columns:
+        raise RuntimeError(f"{who}: conditions.csv has no ber_std column")
+    return df
 
 
-def _band(df, sign):
-    if 'ber_std' not in df:
-        return None
-    std = np.nan_to_num(df['ber_std'].to_numpy(dtype=float), nan=0.0)
-    ber = df['ber'].to_numpy(dtype=float)
-    return np.clip(ber + sign * std, 1e-9, 1.0)
+def _curve(df: pd.DataFrame, jammer: str) -> pd.DataFrame:
+    out = df[df.jammer == jammer].copy()
+    return out.dropna(subset=["jsr_db"]).sort_values("jsr_db")
 
 
-def _draw_band(ax, df, color):
-    lower = _band(df, -1.0)
-    upper = _band(df, +1.0)
-    if lower is None or upper is None:
-        return
-    ax.fill_between(df['jsr_db'].to_numpy(dtype=float), lower, upper,
-                    color=color, alpha=0.18, linewidth=0)
+def _check_monotone(df: pd.DataFrame, who: str) -> None:
+    """The mean-over-realizations curves must grow monotonically with JSR."""
+    for jammer in MONOTONE:
+        c = _curve(df, jammer)
+        if len(c) < 2:
+            continue
+        d = np.diff(c["ber"].to_numpy(dtype=float))
+        if np.any(d < -1e-9):
+            raise AssertionError(
+                f"{who}/{jammer}: BER is not monotone in JSR (worst step {float(d.min()):.3e}). "
+                "A single-realization artefact is back: check n_realizations and the "
+                "jammer geometry (results/full/diagnostics/jamming_artifact)."
+            )
 
 
-bers = []
-for df in (clean, aware):
-    lower = _band(df, -1.0)
-    source = df['ber'].to_numpy(dtype=float) if lower is None else lower
-    bers.extend(float(v) for v in source if v > 0)
-y_lo = 10.0 ** np.floor(np.log10(min(bers)))
-y_hi = 1.0
+def _clean_ber(df: pd.DataFrame) -> float:
+    """No-jammer BER of a training regime (the ``clean`` condition)."""
+    return float(df[df.jammer == "clean"]["ber"].iloc[0])
 
-for ax, jammer in zip(axes, JAMMERS):
-    c = clean[clean.jammer == jammer].sort_values('jsr_db')
-    a = aware[aware.jammer == jammer].sort_values('jsr_db')
-    ax.plot(c['jsr_db'], c['ber'], color='#c44e52', ls='-', marker='o', ms=3, lw=1.4,
-            label='Clean-trained')
-    _draw_band(ax, c, '#c44e52')
-    ax.plot(a['jsr_db'], a['ber'], color='#4c72b0', ls='--', marker='s', ms=3, lw=1.4,
-            label='Jamming-aware')
-    _draw_band(ax, a, '#4c72b0')
-    ax.set_yscale('log')
-    ax.set_ylim(y_lo, y_hi)
-    ax.set_title(TITLES[jammer], fontsize=8)
-    ax.set_xlabel('JSR (dB)', fontsize=8)
-    ax.tick_params(labelsize=7)
-    ax.grid(alpha=0.3, which='both')
-axes[0].set_ylabel('BER', fontsize=8)
-fig.tight_layout()
-_legend_below(axes[1], ncol=2)
-OUT.parent.mkdir(parents=True, exist_ok=True)
-fig.savefig(OUT, bbox_inches='tight', pad_inches=0.12)
-print('saved', OUT)
-if MIRROR.parent.is_dir():
-    fig.savefig(MIRROR, bbox_inches='tight', pad_inches=0.12)
-    print('saved', MIRROR)
-plt.close(fig)
+
+def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
+                jammer: str, title: str) -> None:
+    """One JSR panel: mean curves of the two training regimes + 1 sigma bands."""
+    fs.log_axis(ax, Y_LO, Y_HI, x_step=4.0)
+    xs = None
+    for df, name, label in ((clean, "clean_trained", "Clean-trained"),
+                            (aware, "jamming_aware", "Jamming-aware")):
+        c = _curve(df, jammer)
+        if c.empty:
+            continue
+        kw = fs.series_kwargs(name)
+        x = c["jsr_db"].to_numpy(dtype=float)
+        y = c["ber"].to_numpy(dtype=float)
+        s = np.nan_to_num(c["ber_std"].to_numpy(dtype=float), nan=0.0)
+        xs = x
+        ax.fill_between(x, np.clip(y - s, Y_LO, Y_HI), np.clip(y + s, Y_LO, Y_HI),
+                        color=kw["color"], alpha=0.15, lw=0, zorder=2)
+        ax.plot(x, y, label=label, zorder=3, **kw)
+    # No-jammer reference of each regime (their difference is the clean-region cost).
+    for df, name, label in ((clean, "clean_trained", "no jammer: clean-trained"),
+                            (aware, "jamming_aware", "no jammer: jamming-aware")):
+        kw = fs.series_kwargs(name)
+        ax.axhline(_clean_ber(df), color=kw["color"], lw=1.1, ls=":", alpha=0.9,
+                   zorder=1, label=label)
+    ax.set_title(title, pad=8)
+    ax.set_xlabel("JSR (dB)")
+    if xs is not None:
+        ax.set_xlim(float(xs.min()), float(xs.max()))
+        ax.set_xticks(sorted(float(v) for v in xs))
+    ax.set_axisbelow(True)
+
+
+def main() -> None:
+    clean = _load(CLEAN / "conditions.csv", "clean-trained")
+    aware = _load(AWARE / "conditions.csv", "jamming-aware")
+    _check_monotone(clean, "clean-trained")
+    _check_monotone(aware, "jamming-aware")
+    print(f"n_realizations: clean-trained={int(clean['n_realizations'].dropna().iloc[0])}, "
+          f"jamming-aware={int(aware['n_realizations'].dropna().iloc[0])}")
+
+    fs.apply_style()
+    fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=True)
+    for ax, (jammer, title) in zip(axes, JAMMERS):
+        _draw_panel(ax, clean, aware, jammer, title)
+    axes[0].set_ylabel("BER")
+    fig.tight_layout()
+    fs.legend_below(axes[1], ncol=2)
+    fs.outer_frame(fig, axes)
+    fs.save(fig, "jamming_aware_control")
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    main()
+

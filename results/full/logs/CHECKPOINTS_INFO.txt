@@ -1,0 +1,6 @@
+tensorflow: 2.20.0
+gpu: ['/physical_device:GPU:0']
+conv1d   params= 26597   0.40 MB  sha256[:16]=cd5b8b51f99d75da  results/full/ber_vs_snr/k3_doppler_full/conv1d/best_model.keras
+qkv      params= 43172   0.61 MB  sha256[:16]=7d0d4900384c7ffd  results/full/ber_vs_snr/k3_doppler_full/qkv/best_model.keras
+lstm     params= 45988   0.63 MB  sha256[:16]=7d3eb722b975666c  results/full/ber_vs_snr/k3_doppler_full/lstm/best_model.keras
+mc_dlsk  params= 44756   0.62 MB  sha256[:16]=14dd4bd1bfa92211  results/full/ber_vs_snr/k3_doppler_full/mc_dlsk/best_model.keras

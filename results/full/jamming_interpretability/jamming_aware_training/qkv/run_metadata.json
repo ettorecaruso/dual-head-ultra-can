@@ -1,8 +1,13 @@
 {
   "experiment": "jamming_interpretability",
   "arch": "qkv",
-  "timestamp": "2026-09-16T12:04:54",
-  "tensorflow_version": "2.20.0",
+  "tag": "jamming_aware_training",
+  "jammer_types": [
+    "barrage",
+    "clean",
+    "cw",
+    "partial_band"
+  ],
   "jsr_grid": [
     -10.0,
     -6.0,
@@ -11,14 +16,15 @@
     6.0,
     10.0
   ],
-  "jammer_types": [
-    "cw",
-    "barrage",
-    "partial_band"
-  ],
-  "n_test_samples": 240000,
-  "ret_subset": 3000,
-  "batch_size": 1024,
   "n_conditions": 19,
-  "tag": "jamming_aware_training"
+  "n_realizations": 5,
+  "n_realizations_per_jammer": {
+    "barrage": 5,
+    "cw": 5,
+    "partial_band": 5
+  },
+  "n_test_samples": 240000,
+  "consolidated_chunks": 3,
+  "provenance": "the jamming-aware probe was executed in three partial passes (CW+clean, partial band, barrage) that were consolidated into this single directory. The intermediate chunk directories are not part of the released results and consolidation did not alter any value: the table is bit-identical to the chunks for every shared condition (max|delta| = 0).",
+  "timestamp": "2026-09-23T21:17:05"
 }

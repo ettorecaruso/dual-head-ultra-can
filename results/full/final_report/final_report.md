@@ -32,12 +32,15 @@ This report aggregates the outputs of the runner experiments and mirrors the eva
 
 | scenario | mean BER (SNR >= 5 dB) |
 |---|---|
+| k1_doppler_full | 0.1884 |
+| k3_doppler_full | 0.2311 |
+| k3_doppler_limited | 0.2313 |
 
 ## Jamming robustness and interpretability
 
 | architecture | clean BER | BER @JSR=-2 dB (barrage) |
 |---|---|---|
-| Ultra-CAN (Conv1D) | 0.0021 | 0.0225 |
+| Ultra-CAN (Conv1D) | 0.0021 | 0.0226 |
 | Ultra-CAN (QKV) | 0.0021 | 0.0221 |
 | LSTM-OFDM-DCSK | 0.0016 | 0.0173 |
 | MC-DLCSK | 0.0014 | 0.0174 |
@@ -46,9 +49,9 @@ This report aggregates the outputs of the runner experiments and mirrors the eva
 
 | jammer | clean-trained BER @JSR=-2 dB | jamming-aware BER @JSR=-2 dB |
 |---|---|---|
-| cw | 0.3836 | 0.0111 |
-| barrage | 0.0221 | 0.0239 |
-| partial_band | 0.2381 | 0.0143 |
+| cw | 0.3346 | 0.0135 |
+| barrage | 0.0221 | 0.0236 |
+| partial_band | 0.2513 | 0.0237 |
 
 ## Memory footprint (SWaP-C)
 

@@ -1,0 +1,46 @@
+{
+  "experiment": "frequency_agility",
+  "arch": "conv1d",
+  "timestamp": "2026-09-24T09:37:12",
+  "tensorflow_version": "2.20.0",
+  "jammer_models": [
+    "barrage",
+    "fixed_partial",
+    "sweep",
+    "follower"
+  ],
+  "in_channel_types": [
+    "cw",
+    "partial_band"
+  ],
+  "jsr_values": [
+    -10.0,
+    -6.0,
+    -2.0,
+    2.0,
+    6.0,
+    10.0
+  ],
+  "n_bursts_per_condition": 20000,
+  "n_realizations": 5,
+  "snr_db": 21.0,
+  "num_echoes": 3,
+  "dwell_sweep": [
+    1,
+    2,
+    4,
+    8,
+    16
+  ],
+  "dwell_sweep_jsr": 6.0,
+  "hop": {
+    "num_bursts": 20000.0,
+    "num_slots": 20000.0,
+    "num_channels": 8.0,
+    "dwell_bursts": 1.0,
+    "slot_duration_us": 10.0,
+    "hop_rate_hz": 100000.0
+  },
+  "channel_process": "per_slot; identical slot_ids in fh_off and fh_on",
+  "mask_rng_offset": 50021
+}

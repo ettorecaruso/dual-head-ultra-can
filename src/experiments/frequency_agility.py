@@ -34,6 +34,7 @@ import tensorflow as tf
 from src.data.data_loader import _build_feature_matrix
 from src.data.dataset_generator import generate_test_batch
 from src.data.frequency_hopping import (
+    HopConfig,
     build_hop_sequence,
     build_slot_ids,
     hop_config,
