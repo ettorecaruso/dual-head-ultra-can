@@ -3,15 +3,18 @@
 
 Panels: CW, barrage (control) and partial-band. In every panel the clean-trained
 QKV receiver and the jamming-aware one are plotted as the **mean BER over the
-jammer realizations** stored in ``conditions.csv`` (``n_realizations``), with the
-+-1 sigma envelope drawn as a light band.
+jammer realizations** stored in ``conditions.csv`` (``n_realizations``).
 
-Only the mean-over-realizations curves are used: the per-realization table
-(``conditions_realizations.csv``) and single-run curves are deliberately *not*
-plotted, because a single CW realization is the artefact that made the curve
-non-monotone (see ``results/full/diagnostics/jamming_artifact``). The script
-asserts that the clean-trained CW and partial-band curves are monotone in JSR, so
-that artefact can not silently come back.
+Only the mean-over-realizations curves are drawn: the +-1 sigma envelope is *not*
+plotted (the spread is tabulated in ``conditions_realizations.csv``), and the
+per-realization table and single-run curves are deliberately *not* plotted
+either, because a single CW realization is the artefact that made the curve
+non-monotone (see ``results/full/diagnostics/jamming_artifact``). The two
+no-jammer reference lines are not drawn either: each regime has its own flat
+clean BER and the low-JSR tail of its curve already *is* that no-jamming floor,
+so the lines only add two flat entries to the legend. The script asserts that
+the clean-trained CW and partial-band curves are monotone in JSR, so that
+artefact can not silently come back.
 """
 from __future__ import annotations
 
@@ -31,7 +34,7 @@ import figure_style as fs  # noqa: E402
 RESULTS = REPO / "results" / "full" / "jamming_interpretability"
 CLEAN = RESULTS / "qkv"
 AWARE = RESULTS / "jamming_aware_training" / "qkv"
-JAMMERS = [("cw", "CW"), ("barrage", "Barrage (control)"),
+JAMMERS = [("cw", "CW"), ("barrage", "Barrage"),
            ("partial_band", "Partial band")]
 MONOTONE = ("cw", "partial_band")
 MIN_REALIZATIONS = 5
@@ -48,8 +51,6 @@ def _load(path: Path, who: str) -> pd.DataFrame:
             f"{who}: expected the mean over >= {MIN_REALIZATIONS} realizations, "
             f"found n_realizations={list(n)}"
         )
-    if "ber_std" not in df.columns:
-        raise RuntimeError(f"{who}: conditions.csv has no ber_std column")
     return df
 
 
@@ -73,14 +74,9 @@ def _check_monotone(df: pd.DataFrame, who: str) -> None:
             )
 
 
-def _clean_ber(df: pd.DataFrame) -> float:
-    """No-jammer BER of a training regime (the ``clean`` condition)."""
-    return float(df[df.jammer == "clean"]["ber"].iloc[0])
-
-
 def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
                 jammer: str, title: str) -> None:
-    """One JSR panel: mean curves of the two training regimes + 1 sigma bands."""
+    """One JSR panel: mean curves of the two training regimes (no envelope)."""
     fs.log_axis(ax, Y_LO, Y_HI, x_step=4.0)
     xs = None
     for df, name, label in ((clean, "clean_trained", "Clean-trained"),
@@ -91,17 +87,8 @@ def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
         kw = fs.series_kwargs(name)
         x = c["jsr_db"].to_numpy(dtype=float)
         y = c["ber"].to_numpy(dtype=float)
-        s = np.nan_to_num(c["ber_std"].to_numpy(dtype=float), nan=0.0)
         xs = x
-        ax.fill_between(x, np.clip(y - s, Y_LO, Y_HI), np.clip(y + s, Y_LO, Y_HI),
-                        color=kw["color"], alpha=0.15, lw=0, zorder=2)
         ax.plot(x, y, label=label, zorder=3, **kw)
-    # No-jammer reference of each regime (their difference is the clean-region cost).
-    for df, name, label in ((clean, "clean_trained", "no jammer: clean-trained"),
-                            (aware, "jamming_aware", "no jammer: jamming-aware")):
-        kw = fs.series_kwargs(name)
-        ax.axhline(_clean_ber(df), color=kw["color"], lw=1.1, ls=":", alpha=0.9,
-                   zorder=1, label=label)
     ax.set_title(title, pad=8)
     ax.set_xlabel("JSR (dB)")
     if xs is not None:

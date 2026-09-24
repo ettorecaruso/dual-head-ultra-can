@@ -231,18 +231,6 @@ def _compile(engine: str, workdir: Path) -> Path:
     return pdf
 
 
-def _preview_png(dpi: int = 300) -> None:
-    """Raster preview of the PDF (used to eyeball the diagram)."""
-    tool = shutil.which("pdftoppm") or shutil.which("pdftocairo")
-    if tool is None:
-        print("[warn] pdftoppm/pdftocairo not found: no PNG preview written")
-        return
-    subprocess.run([tool, "-png", "-r", str(dpi), "-singlefile",
-                    str(OUT_PDF), str(FIG_DIR / "architecture_preview")],
-                   check=True)
-    print("saved", FIG_DIR / "architecture_preview.png")
-
-
 def _mirror() -> None:
     """Copy the deliverable next to the results when that tree exists."""
     mirror_dir = REPO / "results" / "figures"
@@ -251,7 +239,7 @@ def _mirror() -> None:
         print("saved", mirror_dir / OUT_PDF.name)
 
 
-def render(keep_tex: bool = False, preview: bool = False) -> None:
+def render(keep_tex: bool = False) -> None:
     """Build ``figures/architecture.pdf`` from the embedded TikZ source."""
     engine = _latex_engine()
     FIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -263,8 +251,6 @@ def render(keep_tex: bool = False, preview: bool = False) -> None:
         if keep_tex:
             shutil.copyfile(workdir / TEX_NAME, FIG_DIR / TEX_NAME)
             print("saved", FIG_DIR / TEX_NAME)
-    if preview:
-        _preview_png()
     _mirror()
 
 
@@ -272,10 +258,8 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--keep-tex", action="store_true",
                     help="also write figures/architecture.tex")
-    ap.add_argument("--preview", action="store_true",
-                    help="also write figures/architecture_preview.png (300 dpi)")
     args = ap.parse_args(argv)
-    render(keep_tex=args.keep_tex, preview=args.preview)
+    render(keep_tex=args.keep_tex)
 
 
 if __name__ == "__main__":

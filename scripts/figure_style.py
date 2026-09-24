@@ -168,17 +168,16 @@ def outer_frame(fig, axes) -> None:
                              clip_on=False, zorder=10))
 
 
-def save(fig, stem: str, preview: bool = True) -> None:
-    """Write ``figures/<stem>.pdf`` (+ optional PNG preview) and mirror it."""
+def save(fig, stem: str) -> None:
+    """Write ``figures/<stem>.pdf`` and mirror it next to the results.
+
+    No PNG raster copy is written: the deliverables are the vector PDFs only.
+    """
     fig_dir = REPO / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
     out = fig_dir / f"{stem}.pdf"
     fig.savefig(out, bbox_inches="tight", pad_inches=0.12)
     print("saved", out)
-    if preview:
-        png = fig_dir / f"{stem}_preview.png"
-        fig.savefig(png, dpi=110, bbox_inches="tight", pad_inches=0.12)
-        print("saved", png)
     # Final deliverables live next to the results when that tree exists.
     mirror = REPO / "results" / "figures" / f"{stem}.pdf"
     if mirror.parent.is_dir():
