@@ -7,6 +7,17 @@ and the hopping link (only the bursts whose channel is covered). Every
 condition keeps the transmitted batch, the channel realization and the jammer
 geometry fixed, and sweeps only the jammer power, so that the BER-vs-JSR curves
 are controlled experiments.
+
+Controlled comparison (important). ``channel.hold_mode`` is ``per_slot`` for
+this experiment, i.e. the slot ids *select* the channel realization. The two
+modalities therefore draw their channel from the same per-slot process:
+:func:`_modality_inputs` returns the same ``slot_ids`` for ``fh_off`` and
+``fh_on`` and only the hop sequence and the jammer coverage differ. Without
+that, ``fh_off`` would be evaluated on a single frozen channel while ``fh_on``
+sees a new channel at every slot, and the measured gap would mix the agility
+gain with a channel mismatch. The jammer mask is additionally drawn from its
+own RNG stream, so that the channel/waveform draws are identical in the two
+modalities.
 """
 
 from __future__ import annotations
@@ -39,6 +50,7 @@ _VALID_JAMMER_MODELS = frozenset({"barrage", "fixed_partial", "sweep", "follower
 _MODALITIES = ("fh_off", "fh_on")
 _PREDICT_BATCH = 1024
 _JAMMER_STREAM_OFFSET = 7919
+_MASK_STREAM_OFFSET = 50021
 _REALIZATION_STRIDE = 100003
 
 
@@ -88,6 +100,46 @@ def jammed_mask(
     dwell = max(1, int(params.get("dwell_bursts", 1)))
     offsets = np.arange(hop.shape[0], dtype=np.int64) % dwell
     return offsets >= reaction_bursts
+
+
+def _modality_inputs(
+    n_bursts: int,
+    hop_cfg: HopConfig,
+    modality: str,
+    jammer_model: str,
+    params: Dict[str, Any],
+    mask_rng: np.random.Generator,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Channel geometry and jammer coverage of one transmission modality.
+
+    Both modalities share the *same* per-slot channel process: the returned
+    ``slot_ids`` never depend on ``modality``, because with
+    ``channel.hold_mode = per_slot`` they select the channel realization. Only
+    the hop sequence and the jammer coverage change:
+
+    * ``fh_on``: the transmitter hops and the jammer covers what its model
+      covers (``barrage``/``fixed_partial``/``sweep``/``follower``);
+    * ``fh_off``: fixed carrier, i.e. the jammer always finds the transmission
+      and every burst is jammed, while the propagation channel still evolves
+      slot by slot exactly as in ``fh_on``.
+
+    Returns:
+        ``(hop_channels, slot_ids, mask)``, all of shape ``(n_bursts,)``.
+    """
+    if modality not in _MODALITIES:
+        raise ValueError(f"invalid modality: {modality!r} (expected: {_MODALITIES})")
+    n = int(n_bursts)
+    slot_ids = build_slot_ids(n, hop_cfg)
+    if modality == "fh_on":
+        hop_channels = build_hop_sequence(n, hop_cfg)
+        mask = jammed_mask(
+            hop_channels, slot_ids, jammer_model,
+            int(hop_cfg.num_channels), params, mask_rng,
+        )
+        return hop_channels, slot_ids, mask
+    hop_channels = np.zeros(n, dtype=np.int64)
+    mask = np.ones(n, dtype=bool)
+    return hop_channels, slot_ids, mask
 
 
 def _add_jammer_masked(
@@ -204,21 +256,17 @@ def evaluate_frequency_agility(
         arch, hop_cfg.num_channels, hop_cfg.dwell_bursts, hop_cfg.slot_duration_us,
         hop_cfg.hop_rate_hz, n_bursts, n_realizations, snr_db, k,
     )
+    logger.info(
+        "[frequency_agility %s] controlled comparison: fh_off and fh_on share the "
+        "same per-slot channel process and the same transmission; only the hop "
+        "sequence and the jammer coverage differ",
+        arch,
+    )
 
     rows: List[Dict[str, Any]] = []
     realization_rows: List[Dict[str, Any]] = []
 
     for modality in _MODALITIES:
-        hop_channels = (
-            build_hop_sequence(n_bursts, hop_cfg)
-            if modality == "fh_on"
-            else np.zeros(n_bursts, dtype=np.int64)
-        )
-        slot_ids = (
-            build_slot_ids(n_bursts, hop_cfg)
-            if modality == "fh_on"
-            else np.zeros(n_bursts, dtype=np.int64)
-        )
         for jammer_model in jammer_models:
             for realization in range(n_realizations):
                 seed = (
@@ -226,14 +274,15 @@ def evaluate_frequency_agility(
                     + (sum(ord(ch) for ch in jammer_model) % 10000)
                     + realization * _REALIZATION_STRIDE
                 )
+                # The channel/waveform stream (rng) is seeded identically in the
+                # two modalities, and the jammer mask is drawn from its own
+                # stream, so fh_off and fh_on see the very same transmission and
+                # differ only by the hop sequence and the jammer coverage.
                 rng = np.random.default_rng(seed)
-                if modality == "fh_off":
-                    mask = np.ones(n_bursts, dtype=bool)
-                else:
-                    mask = jammed_mask(
-                        hop_channels, slot_ids, jammer_model,
-                        int(hop_cfg.num_channels), params, rng,
-                    )
+                mask_rng = np.random.default_rng(seed + _MASK_STREAM_OFFSET)
+                _, slot_ids, mask = _modality_inputs(
+                    n_bursts, hop_cfg, modality, jammer_model, params, mask_rng,
+                )
                 jammer_rng = np.random.default_rng(seed + _JAMMER_STREAM_OFFSET)
                 x_clean, bit, x_ref = _generate_batch(
                     config, n_bursts, snr_db, k, rng, slot_ids
@@ -406,6 +455,8 @@ def evaluate_frequency_agility(
         "dwell_sweep": dwell_values,
         "dwell_sweep_jsr": dwell_jsr,
         "hop": hop_counters(n_bursts, hop_cfg),
+        "channel_process": "per_slot; identical slot_ids in fh_off and fh_on",
+        "mask_rng_offset": _MASK_STREAM_OFFSET,
     }
     with open(output_dir / "run_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
