@@ -93,7 +93,7 @@ def _band(frame: pd.DataFrame) -> Optional[Tuple[np.ndarray, np.ndarray]]:
 
 def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
                 jammer: str, title: str) -> None:
-    """One JSR panel: mean curves of the two training regimes with their band."""
+    """One JSR panel: mean curves of the two training regimes, no envelope."""
     fs.log_axis(ax, Y_LO, Y_HI, x_step=4.0)
     xs = None
     for df, name, label in ((clean, "clean_trained", "Clean-trained"),
@@ -104,10 +104,6 @@ def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
         kw = fs.series_kwargs(name)
         x = c["jsr_db"].to_numpy(dtype=float)
         y = c["ber"].to_numpy(dtype=float)
-        band = _band(c)
-        if band is not None:
-            ax.fill_between(x, band[0], band[1], color=kw["color"], alpha=0.15,
-                            linewidth=0, zorder=2)
         xs = x
         ax.plot(x, y, label=label, zorder=3, **kw)
     ax.set_title(title, pad=8)
@@ -133,7 +129,6 @@ def main() -> None:
     axes[0].set_ylabel("BER")
     fig.tight_layout()
     fs.legend_below(axes[1], ncol=2)
-    fs.outer_frame(fig, axes)
     fs.save(fig, "jamming_aware_control")
     plt.close(fig)
 

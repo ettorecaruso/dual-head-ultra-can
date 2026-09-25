@@ -1,8 +1,18 @@
 {
   "experiment": "frequency_agility",
   "arch": "lstm",
-  "timestamp": "2026-09-24T10:15:01",
+  "timestamp": "2026-09-25T13:38:00",
   "tensorflow_version": "2.20.0",
+  "modalities": [
+    "fh_off",
+    "fh_off_blind",
+    "fh_on"
+  ],
+  "jammer_knowledge": {
+    "fh_off": "omniscient",
+    "fh_off_blind": "band_agnostic",
+    "fh_on": "model"
+  },
   "jammer_models": [
     "barrage",
     "fixed_partial",
@@ -33,6 +43,18 @@
     16
   ],
   "dwell_sweep_jsr": 6.0,
+  "reaction_sweep": [
+    0,
+    1,
+    2,
+    4,
+    8
+  ],
+  "reaction_sweep_models": [
+    "follower"
+  ],
+  "reaction_sweep_jsr": 6.0,
+  "reaction_sweep_dwell": 8,
   "hop": {
     "num_bursts": 20000.0,
     "num_slots": 20000.0,
@@ -41,6 +63,22 @@
     "slot_duration_us": 10.0,
     "hop_rate_hz": 100000.0
   },
-  "channel_process": "per_slot; identical slot_ids in fh_off and fh_on",
-  "mask_rng_offset": 50021
+  "channel": {
+    "model": "aerial_multiecho",
+    "fingerprint": "1e4a4753",
+    "hold_mode": "per_hop",
+    "parameters": {
+      "direct_fading": "rician",
+      "echo_fading": "none",
+      "echo_fading_kappa_db": 6.0,
+      "direct_fading_kappa_db": null,
+      "num_echoes_model": "fixed",
+      "poisson_echoes_mean": 2.0,
+      "add_awgn": true,
+      "echo_only_mode": false
+    }
+  },
+  "shared_process": "the modalities share the waveform stream and the slot ids; the hold mode of the channel decides how the realization is selected",
+  "mask_rng_offset": 50021,
+  "time_block_slots": 53
 }

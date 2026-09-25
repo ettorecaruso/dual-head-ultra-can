@@ -96,22 +96,6 @@ def _x_ticks(values):
     values = sorted(values)
     return values[1:-1] if len(values) > 2 else values
 
-
-def _outer_frame(fig, axes) -> None:
-    """Close the outer border across the gaps between panels."""
-    from matplotlib.patches import Rectangle
-
-    pos = [ax.get_position() for ax in axes]
-    x0 = min(p.x0 for p in pos)
-    x1 = max(p.x1 for p in pos)
-    y0 = min(p.y0 for p in pos)
-    y1 = max(p.y1 for p in pos)
-    fig.add_artist(Rectangle((x0, y0), x1 - x0, y1 - y0,
-                             transform=fig.transFigure, fill=False,
-                             edgecolor="black", linewidth=1.0,
-                             clip_on=False, zorder=10))
-
-
 def _siino_frame(ax, x_step: float = 2.0) -> None:
     """plotly_white frame: black box, light major grid, dotted minor grid."""
     ax.set_axisbelow(True)
@@ -203,7 +187,6 @@ def main(argv=None) -> None:
                    labelspacing=0.4, handlelength=2.6)
 
     fig.tight_layout()
-    _outer_frame(fig, (ax_corr,))
     out_dir = REPO / "figures"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / "sensing_delay_single.pdf"

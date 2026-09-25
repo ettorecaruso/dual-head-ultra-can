@@ -31,7 +31,7 @@ data:
   raw_dir: data/raw
   processed_dir: data/processed
 model:
-  backbone_type: conv1d
+  backbone_type: mc_dlsk
   size: full
   seeds:
     conv1d: 21
@@ -105,6 +105,8 @@ evaluation:
   online_generation: false
   eval_batch_symbols: 100000
   eval_predict_batch_size: 1024
+  operating_snr_db: 5.0
+  target_ber: 0.0001
 jamming:
   enable: false
   jamming_types:
@@ -356,7 +358,7 @@ channel:
   direct_fading_kappa_db: null
   num_echoes_model: fixed
   poisson_echoes_mean: 2.0
-  hold_mode: per_slot
+  hold_mode: per_hop
   add_awgn: true
   echo_only_mode: false
 frequency_hopping:
@@ -364,6 +366,7 @@ frequency_hopping:
   num_channels: 8
   dwell_bursts: 1
   burst_duration_us: 10.0
+  time_block_slots: 53
   sequence_seed: null
   coverage_fraction: 0.25
   sweep_jam_slots: 1
@@ -395,6 +398,16 @@ frequency_hopping:
   dwell_sweep_models:
   - sweep
   - follower
+  reaction_sweep:
+  - 0
+  - 1
+  - 2
+  - 4
+  - 8
+  reaction_sweep_models:
+  - follower
+  reaction_sweep_jsr: 6.0
+  reaction_sweep_dwell: 8
 baselines:
   enabled: true
   lstm:
@@ -454,21 +467,8 @@ experiments:
     - qkv
     - lstm
     - mc_dlsk
-    variants:
-    - name: chan_b_rician6_kappa3
-      echo_fading: rician
-      echo_fading_kappa_db: 6.0
-      direct_fading_kappa_db: 3.0
-    - name: chan_b_rayleigh_kappa3
-      echo_fading: rayleigh
-      echo_fading_kappa_db: 0.0
-      direct_fading_kappa_db: 3.0
-    - name: chan_c_poisson_k
-      num_echoes_model: poisson
-      poisson_echoes_mean: 2.0
-      echo_fading: rician
-      echo_fading_kappa_db: 6.0
-      direct_fading_kappa_db: 3.0
+    channel_variants:
+    - nominal
     snr_test_range:
     - -5
     - -3
@@ -484,7 +484,6 @@ experiments:
     - 17
     - 19
     - 21
-    num_symbols_per_snr: 2000
     bit_error_threshold: 100
   frequency_agility:
     models:
@@ -492,6 +491,7 @@ experiments:
     - qkv
     - lstm
     - mc_dlsk
+    channel_variant: b_tdl_d
   final_report:
     output: weight_table.tex
     include_classical: true
@@ -987,7 +987,7 @@ frequency_agility:
     sweep_doppler: *id003
     echo_only: *id004
     channel:
-      hold_mode: per_slot
+      hold_mode: per_hop
     frequency_hopping:
       enable: true
       num_channels: 8
@@ -1027,6 +1027,7 @@ frequency_agility:
         - qkv
         - lstm
         - mc_dlsk
+        channel_variant: b_tdl_d
   fast:
     general:
       experiment_name: frequency_agility_fast
@@ -1070,7 +1071,6 @@ channel_generalization:
       - 21
       snr_step: 2
       echoes:
-      - 1
       - 3
     model: *id001
     training: *id010
@@ -1106,23 +1106,14 @@ channel_generalization:
         - qkv
         - lstm
         - mc_dlsk
-        variants:
-        - name: chan_b_rician6_kappa3
-          echo_fading: rician
-          echo_fading_kappa_db: 6.0
-          direct_fading_kappa_db: 3.0
-        - name: chan_b_rayleigh_kappa3
-          echo_fading: rayleigh
-          echo_fading_kappa_db: 0.0
-          direct_fading_kappa_db: 3.0
-        - name: chan_c_poisson_k
-          num_echoes_model: poisson
-          poisson_echoes_mean: 2.0
-          echo_fading: rician
-          echo_fading_kappa_db: 6.0
-          direct_fading_kappa_db: 3.0
-        num_symbols_per_snr: 2000
-        bit_error_threshold: 100
+        channel_variants:
+        - nominal
+        - b_tdl_d
+        - b_tdl_a
+        - c_two_ray_jakes
+        bit_error_threshold: 50
+        max_symbols_per_snr: 200000
+        eval_batch_symbols: 100000
   fast:
     general:
       experiment_name: channel_generalization_fast
@@ -1148,10 +1139,10 @@ channel_generalization:
         models:
         - conv1d
         - qkv
-        variants:
-        - name: chan_b_rician6_kappa3
-          echo_fading: rician
-          echo_fading_kappa_db: 6.0
-          direct_fading_kappa_db: 3.0
-        num_symbols_per_snr: 300
-        bit_error_threshold: 30
+        channel_variants:
+        - nominal
+        - b_tdl_d
+        bit_error_threshold: 10
+        max_symbols_per_snr: 20000
+        eval_batch_symbols: 10000
+channel_variant: nominal

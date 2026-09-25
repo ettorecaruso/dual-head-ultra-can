@@ -104,22 +104,6 @@ def _x_ticks(values):
     values = sorted(values)
     return values[1:-1] if len(values) > 2 else values
 
-
-def _outer_frame(fig, axes) -> None:
-    """Close the outer border across the gaps between panels."""
-    from matplotlib.patches import Rectangle
-
-    pos = [ax.get_position() for ax in axes]
-    x0 = min(p.x0 for p in pos)
-    x1 = max(p.x1 for p in pos)
-    y0 = min(p.y0 for p in pos)
-    y1 = max(p.y1 for p in pos)
-    fig.add_artist(Rectangle((x0, y0), x1 - x0, y1 - y0,
-                             transform=fig.transFigure, fill=False,
-                             edgecolor="black", linewidth=1.0,
-                             clip_on=False, zorder=10))
-
-
 def _apply_style() -> None:
     plt.rcParams.update(
         {
@@ -341,7 +325,6 @@ def plot_full_range(out_dir) -> None:
     axes[0].set_ylabel("BER")
     fig.tight_layout()
     _legend_below(axes[1], ncol=5)
-    _outer_frame(fig, axes)
     _save(fig, out_dir, "ber_full_linear")
     plt.close(fig)
 

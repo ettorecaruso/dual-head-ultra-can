@@ -1,9 +1,10 @@
 """Shared publication style for the figures of the Dual-Head Ultra-CAN paper.
 
-The look is the one of ``make_fig_ber_region_zoom.py`` (matplotlib engine), which
-reproduces the ``plotly_white`` palette used in the notebooks: white background,
-black frame, light major grid, dotted sub-decade grid, Unicode log ticks and a
-single shared legend *below* the panels (so it never sits on a curve).
+The look reproduces the ``plotly_white`` palette used in the notebooks: white
+background, black frame, light major grid, dotted sub-decade grid, Unicode log
+ticks and a single shared legend *below* the panels (so it never sits on a curve).
+Each panel keeps its own frame: the panels are deliberately **not** joined into
+one box, so a row of panels reads as separate measurements.
 
 Typical use in a figure script::
 
@@ -18,8 +19,7 @@ Typical use in a figure script::
         fs.log_axis(ax, y_lo, y_hi, x_step=2.0)
         ax.plot(x, y, label=..., **fs.series_kwargs("qkv"))
         ax.set_title(...); ax.set_xlabel(...)
-    fs.legend_below(axes[1], ncol=2)
-    fs.outer_frame(fig, axes)
+    fs.legend_below(axes[1], ncol=2)      # or legend_below_fig for a centred one
     fs.save(fig, "my_figure")
 """
 from __future__ import annotations
@@ -153,19 +153,37 @@ def legend_below(ax, ncol: int, y: float = -0.17) -> None:
               borderpad=0.6, labelspacing=0.4, handlelength=2.6)
 
 
-def outer_frame(fig, axes) -> None:
-    """Close the outer border across the gaps between panels."""
-    from matplotlib.patches import Rectangle
+def legend_below_fig(fig, axes, ncol: int, gap: float = 0.055) -> None:
+    """One legend centred under the **whole row** of panels, in its own band.
 
-    pos = [ax.get_position() for ax in axes]
-    x0 = min(p.x0 for p in pos)
-    x1 = max(p.x1 for p in pos)
-    y0 = min(p.y0 for p in pos)
-    y1 = max(p.y1 for p in pos)
-    fig.add_artist(Rectangle((x0, y0), x1 - x0, y1 - y0,
-                             transform=fig.transFigure, fill=False,
-                             edgecolor="black", linewidth=1.0,
-                             clip_on=False, zorder=10))
+    ``legend_below`` anchors to a single axes, so on a two- or four-panel figure it
+    ends up under one of them and looks off-centre. This variant collects the
+    handles of every panel and anchors to the figure instead.
+
+    The vertical position is **measured, not guessed**: the legend hangs just
+    below ``min(axes tight bottom) - gap``, where the tight bottom includes the
+    tick labels *and* the x labels, so the legend never touches them whatever the
+    figure height is. Call it *after* ``fig.tight_layout()``, which is what fixes
+    the panel positions being read here.
+    """
+    if not isinstance(axes, (list, tuple, np.ndarray)):
+        axes = [axes]
+    handles, labels, seen = [], [], set()
+    for ax in axes:
+        for handle, label in zip(*ax.get_legend_handles_labels()):
+            if label not in seen:
+                seen.add(label)
+                handles.append(handle)
+                labels.append(label)
+    bottom = min(
+        fig.transFigure.inverted().transform(
+            ax.get_tightbbox(fig.canvas.get_renderer()).p0
+        )[1]
+        for ax in axes
+    )
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, bottom - gap),
+               ncol=ncol, framealpha=0.8, edgecolor="gray", facecolor="white",
+               borderpad=0.6, labelspacing=0.4, handlelength=2.6)
 
 
 def save(fig, stem: str) -> None:

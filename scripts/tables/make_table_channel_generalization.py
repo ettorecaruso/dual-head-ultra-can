@@ -23,7 +23,7 @@ import pandas as pd
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_RUN_DIR = REPO / "results" / "full" / "channel_generalization"
 
-ARCHS = ("conv1d", "qkv", "lstm", "mc_dlsk")
+ARCHS = ("conv1d", "qkv")
 ARCH_LABELS = {
     "conv1d": "Ultra-CAN (Conv1D)",
     "qkv": "Ultra-CAN-QKV",
@@ -33,6 +33,7 @@ ARCH_LABELS = {
 VARIANT_LABELS = {
     "nominal": "nominal (aerial multi-echo)",
     "b_tdl_d": "B: 3GPP TDL-D (LOS)",
+    "b_tdl_d_light": "B: 3GPP TDL-D, 5\\% clutter",
     "b_tdl_a": "B: 3GPP TDL-A (NLOS)",
     "c_two_ray_jakes": "C: two-ray + Jakes",
 }
@@ -46,6 +47,13 @@ def _fmt(value: float, digits: int = 2) -> str:
     if value is None or not np.isfinite(float(value)):
         return "n/a"
     return f"{float(value):.{digits}f}"
+
+
+def _min_snr_text(value: float) -> str:
+    """The minimum SNR at the target BER, or the fact that it is never met."""
+    if value is None or not np.isfinite(float(value)):
+        return "not reached"
+    return f"${float(value):.0f}$"
 
 
 def _sci(value: float) -> str:
@@ -83,10 +91,12 @@ def latex(frame: pd.DataFrame) -> str:
     lines = [
         "\\begin{table*}[t]",
         "\\centering",
-        "\\caption{Cross-channel generalization of the frozen receivers (no "
+        "\\caption{Cross-channel generalization of the two Ultra-CAN variants (no "
         "retraining). Pooled BER over the operating region with its $95\\%$ Wilson "
         "interval, minimum SNR at the target BER, and the sensing metrics of the "
-        "dominant echo. Every row is measured with the same protocol.}",
+        "dominant echo. Every row is measured with the same protocol. \\emph{not "
+        "reached} means the pooled BER never falls to the target inside the "
+        "evaluated SNR grid.}",
         "\\label{tab:generalization}",
         "\\begin{tabular}{llcccc}",
         "\\toprule",
@@ -110,7 +120,7 @@ def latex(frame: pd.DataFrame) -> str:
                 pooled = _sci(row["pooled_ber"])
             lines.append(
                 f"{label} & {ARCH_LABELS.get(str(row['arch']), row['arch'])} & {pooled} & "
-                f"{_fmt(row.get('min_snr_at_target'), 0)} & "
+                f"{_min_snr_text(row.get('min_snr_at_target'))} & "
                 f"{_fmt(row.get('corr_tau_top'), 3)} & "
                 f"{_fmt(row.get('mse_tau_top'), 1)} \\\\"
             )

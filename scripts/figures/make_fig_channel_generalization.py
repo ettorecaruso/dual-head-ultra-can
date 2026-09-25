@@ -3,11 +3,18 @@
 
     python scripts/figures/make_fig_channel_generalization.py [run_dir]
 
-One panel per architecture, one curve per channel variant (the nominal aerial
-channel plus the 3GPP TDL profiles and the two-ray reflection), with the Wilson
-interval of every point drawn as a light band. Reading the four panels side by
-side answers the question of the section directly: the curves move when the
-propagation model changes, the ranking of the receivers does not.
+One panel per reported architecture, one curve per channel variant (the nominal
+aerial channel, the two 3GPP TDL profiles, the two-ray reflection and the light
+5%-clutter TDL-D control), with the Wilson interval of every point drawn as a
+light band. Reading the panels side by side answers the question of the section
+directly: the curves move when the propagation model changes, and **the ranking
+of the two reported receivers changes with them** -- the Ultra-CAN-QKV variant
+is the best on the nominal channel and the worst on every alternative one, while
+the plain Ultra-CAN (Conv1D) is the opposite. The run also contains the
+LSTM-OFDM-DCSK and MC-DLCSK baselines; they are deliberately not reported here
+(they overtake both receivers off the nominal channel, so they belong to the
+cross-architecture comparison of the benchmark section, not to this ablation of
+the two Ultra-CAN variants). Their `metrics.csv` files stay in the run directory.
 
 Written dataset for the figure: ``run_dir`` must contain, for each architecture,
 ``<variant>/metrics.csv`` (columns ``snr_db``, ``ber``, ``ber_ci_lo``, ``ber_ci_hi``)
@@ -32,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from style import figure_style as fs  # noqa: E402
 
 DEFAULT_RUN_DIR = REPO / "results" / "full" / "channel_generalization"
-ARCHS = ("conv1d", "qkv", "lstm", "mc_dlsk")
+ARCHS = ("conv1d", "qkv")
 ARCH_TITLES = {
     "conv1d": "Ultra-CAN (Conv1D)",
     "qkv": "Ultra-CAN-QKV",
@@ -40,19 +47,25 @@ ARCH_TITLES = {
     "mc_dlsk": "MC-DLCSK",
 }
 VARIANT_LABELS = {
-    "nominal": "Nominal aerial channel",
-    "b_tdl_d": "3GPP TDL-D (LOS)",
-    "b_tdl_a": "3GPP TDL-A (NLOS)",
+    "nominal": "Nominal",
+    "b_tdl_d": "3GPP TDL-D",
+    "b_tdl_d_light": "TDL-D, 5% clutter",
+    "b_tdl_a": "3GPP TDL-A",
     "c_two_ray_jakes": "Two-ray + Jakes",
 }
 VARIANT_STYLE = {
     "nominal": ("#636EFA", "o", "-"),
     "b_tdl_d": ("#EF553B", "s", (0, (6, 2))),
+    "b_tdl_d_light": ("#FFA15A", "P", (0, (3, 1, 1, 1))),
     "b_tdl_a": ("#00CC96", "D", (0, (4, 1.2, 1, 1.2))),
     "c_two_ray_jakes": ("#AB63FA", "^", (0, (1, 1.6))),
 }
-FALLBACK_VARIANTS = ("nominal", "b_tdl_d", "b_tdl_a", "c_two_ray_jakes")
-Y_LO, Y_HI = 1e-6, 1.0
+FALLBACK_VARIANTS = (
+    "nominal", "b_tdl_d", "b_tdl_d_light", "b_tdl_a", "c_two_ray_jakes",
+)
+#: The measured range: the nominal curve reaches 6e-5 while the mismatched ones
+#: stay in 3e-2 ... 3e-1, so a wider window would leave the panels half empty.
+Y_LO, Y_HI = 1e-5, 4e-1
 
 
 def _variants(run_dir: Path) -> List[str]:
@@ -84,10 +97,12 @@ def main(argv: Optional[List[str]] = None) -> None:
         raise SystemExit(f"no known channel variant under {run_dir}")
 
     fs.apply_style()
-    fig, axes = plt.subplots(1, len(ARCHS), figsize=(13.2, 4.2), sharey=True)
+    fig, axes = plt.subplots(1, len(ARCHS), figsize=(10.6, 4.4), sharey=True)
     for ax, arch in zip(axes, ARCHS):
         fs.log_axis(ax, Y_LO, Y_HI, x_step=4.0)
         drawn = 0
+        span = None
+        ticks = set()
         for variant in variants:
             frame = _curve(run_dir, arch, variant)
             if frame is None or frame.empty:
@@ -108,20 +123,24 @@ def main(argv: Optional[List[str]] = None) -> None:
                 zorder=3,
             )
             drawn += 1
-        if drawn:
-            ax.set_xlim(float(np.min(x)), float(np.max(x)))
-            ax.set_xticks(sorted(float(value) for value in x))
+            lo = float(x.min())
+            hi = float(x.max())
+            span = (lo, hi) if span is None else (min(span[0], lo), max(span[1], hi))
+            ticks.update(float(value) for value in x)
+        if drawn and span is not None:
+            ax.set_xlim(span[0], span[1])
+            ax.set_xticks(sorted(ticks))
         ax.set_title(ARCH_TITLES.get(arch, arch), pad=8)
         ax.set_xlabel("SNR (dB)")
         ax.set_axisbelow(True)
     axes[0].set_ylabel("BER")
     fig.suptitle(
-        "Frozen receivers across channel models (bands: 95% Wilson interval)",
+        "Ultra-CAN receivers across channel models "
+        "(bands: 95% Wilson interval)",
         fontsize=12.5, y=1.02,
     )
     fig.tight_layout()
-    fs.legend_below(axes[len(ARCHS) // 2], ncol=4)
-    fs.outer_frame(fig, axes)
+    fs.legend_below_fig(fig, axes, ncol=5)
     fs.save(fig, "channel_generalization")
     plt.close(fig)
 

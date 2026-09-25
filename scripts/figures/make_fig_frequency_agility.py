@@ -67,6 +67,9 @@ MODELS = [("barrage", "Barrage"),
           ("follower", "Follower (20 \u00b5s)")]
 IN_CHANNEL = "cw"
 MIN_REALIZATIONS = 5
+#: The aggregate fh_off/fh_on difference under barrage must stay inside this
+#: fraction of the confidence half-width. See ``_check_matched_control``.
+MATCHED_CONTROL_FRACTION = 0.05
 Y_LO, Y_HI = 3e-5, 1.0
 DWELL_JSR = 6.0
 GAIN_JSR = 10.0
@@ -100,21 +103,50 @@ def _dwell(arch: str) -> pd.DataFrame:
     return df[(df.in_channel == IN_CHANNEL) & (df.arch == arch)]
 
 
-def _check_matched_control(arch: str) -> float:
-    """Barrage: the two modalities must give the same BER per realization."""
+def _check_matched_control(arch: str):
+    """Barrage is the matched control: hopping must not change the exposure.
+
+    The jammer used as the control covers the whole band, so switching hopping on
+    cannot change how much of the transmission it reaches: the two modalities
+    must give the same BER curve. That is the evidence the figure's barrage panel
+    rests on, and it is checked here rather than asserted in the caption.
+
+    *What changed with* ``hold_mode = per_hop``. Under the old ``per_slot`` hold
+    the channel realization was indexed by the slot alone, so a fixed-carrier and
+    a hopping link drew the **same** realization on every slot and the barrage BER
+    matched bit for bit; that identity was the gate. Under ``per_hop`` the
+    realization is held per *visited channel*, so the two modalities draw
+    different realizations by construction and a per-realization identity can no
+    longer hold -- it would be a property of the channel process, not of the
+    jammer exposure. The gate that survives, and the one the claim actually needs,
+    is at the aggregate level: the two BER-vs-JSR curves must agree to a small
+    fraction of their confidence interval.
+
+    Both numbers are returned and printed, so the run log carries the evidence:
+    the per-realization spread (diagnostic) and the aggregate difference (gate).
+    """
     rea = _read(arch, "frequency_agility_realizations.csv")
     rea = rea[rea.in_channel == IN_CHANNEL]
     piv = rea.pivot_table(index=["realization", "jammer_model", "jsr_db"],
                           columns="modality", values="ber").dropna()
     bar = piv.xs("barrage", level="jammer_model")
-    delta = float((bar["fh_off"] - bar["fh_on"]).abs().max())
-    if delta > 1e-9:
+    per_realization = float((bar["fh_off"] - bar["fh_on"]).abs().max())
+
+    jsr = _read(arch, "frequency_agility_vs_jsr.csv")
+    jsr = jsr[(jsr.in_channel == IN_CHANNEL) & (jsr.jammer_model == "barrage")]
+    half = float(((jsr["ber_ci_hi"] - jsr["ber_ci_lo"]) / 2.0).max())
+    means = jsr.pivot_table(index="jsr_db", columns="modality", values="ber")
+    aggregate = float((means["fh_off"] - means["fh_on"]).abs().max())
+
+    if not aggregate < MATCHED_CONTROL_FRACTION * half:
         raise AssertionError(
-            f"{arch}: barrage is not a matched control, max|off-on| = {delta:.3e}. "
-            "The two modalities must share the per-slot channel process and the "
-            "transmission (see src/experiments/frequency_agility.py)."
+            f"{arch}: barrage is not a matched control, the aggregate "
+            f"max|off-on| = {aggregate:.3e} is not inside "
+            f"{MATCHED_CONTROL_FRACTION:.2f} of the confidence half-width "
+            f"({half:.3e}). The two modalities must share the channel process and "
+            "the transmission (see src/experiments/frequency_agility.py)."
         )
-    return delta
+    return per_realization, aggregate
 
 
 def _curve(df: pd.DataFrame, model: str, modality: str = "fh_on") -> pd.DataFrame:
@@ -262,15 +294,14 @@ def _gain_figure(gains: dict, fractions: dict, title: str) -> None:
     fig.tight_layout(rect=(0, 0, 1, 0.94), w_pad=3.0)
     fs.legend_below(ax0, ncol=2, y=-0.24)
     fs.legend_below(ax1, ncol=2, y=-0.24)
-    fs.outer_frame(fig, axes)
     fs.save(fig, "frequency_agility_gain")
     plt.close(fig)
 
 
 def main() -> None:
     deltas = {a: _check_matched_control(a) for a in ARCHS}
-    print("matched control (barrage, per realization):",
-          {a: f"max|off-on|={d:.1e}" for a, d in deltas.items()})
+    print("matched control (barrage, per realization / aggregate):",
+          {a: f"{d[0]:.1e} / {d[1]:.1e}" for a, d in deltas.items()})
 
     jsr = _jsr(ARCH)
     dwell = _dwell(ARCH)
@@ -283,8 +314,7 @@ def main() -> None:
     _panel_dwell(axes[3], dwell, f"BER vs hop rate (JSR = +{DWELL_JSR:.0f} dB)")
     axes[0].set_ylabel("BER")
     fig.tight_layout()
-    fs.legend_below(axes[2], ncol=2)
-    fs.outer_frame(fig, axes)
+    fs.legend_below_fig(fig, axes, ncol=5)
     fs.save(fig, "frequency_agility")
     plt.close(fig)
 

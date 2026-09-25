@@ -39,5 +39,13 @@ echo "== figures =="
 "${PYTHON}" scripts/figures/make_fig_frequency_agility.py
 "${PYTHON}" scripts/figures/make_fig_frequency_agility_reaction.py
 
+echo "== cross-channel and jamming synthesis =="
+"${PYTHON}" scripts/figures/make_fig_channel_summary.py
+"${PYTHON}" scripts/figures/make_fig_sensing_observability.py
+"${PYTHON}" scripts/figures/make_fig_agility_law.py
+"${PYTHON}" scripts/figures/make_fig_jamaware_margin.py
+"${PYTHON}" scripts/figures/make_fig_jamming_tone_selectivity.py
+"${PYTHON}" scripts/figures/make_fig_lpi_detectability.py
+
 echo "== done: figures/ and the result tables are up to date =="
 

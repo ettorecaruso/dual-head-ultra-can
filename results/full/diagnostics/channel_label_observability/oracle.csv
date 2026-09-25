@@ -1,0 +1,6 @@
+channel_variant,hold_mode,n_taps,n_labeled_taps,p_label_is_strongest,corr_label_strongest,var_tau
+nominal,per_symbol,3,3,1.000000,1.000000,92.505523
+b_tdl_d,per_hop,14,3,0.000000,-0.034409,89.138202
+b_tdl_d_light,per_hop,14,3,0.622000,0.106970,89.138202
+b_tdl_a,per_hop,15,3,0.000000,0.001133,89.138202
+c_two_ray_jakes,per_hop,4,3,0.000000,-0.000000,89.138202
