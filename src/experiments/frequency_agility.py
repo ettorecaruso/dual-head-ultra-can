@@ -8,16 +8,22 @@ condition keeps the transmitted batch, the channel realization and the jammer
 geometry fixed, and sweeps only the jammer power, so that the BER-vs-JSR curves
 are controlled experiments.
 
-Controlled comparison (important). ``channel.hold_mode`` is ``per_slot`` for
-this experiment, i.e. the slot ids *select* the channel realization. The two
-modalities therefore draw their channel from the same per-slot process:
-:func:`_modality_inputs` returns the same ``slot_ids`` for ``fh_off`` and
-``fh_on`` and only the hop sequence and the jammer coverage differ. Without
-that, ``fh_off`` would be evaluated on a single frozen channel while ``fh_on``
-sees a new channel at every slot, and the measured gap would mix the agility
-gain with a channel mismatch. The jammer mask is additionally drawn from its
-own RNG stream, so that the channel/waveform draws are identical in the two
-modalities.
+Controlled comparison (important). ``channel.hold_mode`` decides how the slot ids
+*select* the channel realization. The two modalities therefore draw their channel
+from the same per-slot process: :func:`_modality_inputs` returns the same
+``slot_ids`` for ``fh_off`` and ``fh_on`` and only the hop sequence and the jammer
+coverage differ. Without that, ``fh_off`` would be evaluated on a single frozen
+channel while ``fh_on`` sees a new channel at every slot, and the measured gap
+would mix the agility gain with a channel mismatch. The jammer mask is
+additionally drawn from its own RNG stream, so that the channel/waveform draws are
+identical in the two modalities.
+
+``per_slot`` refreshes the realization at every slot and is the baseline the paper
+figures were built on; ``per_hop`` refreshes it every
+``frequency_hopping.time_block_slots`` slots and pairs it with the visited
+frequency, which is the hold that makes the hop itself average the channel. The
+full profile runs ``per_hop`` on the nominal channel, so the coherence block falls
+back to its declaration in ``frequency_hopping``.
 """
 
 from __future__ import annotations
@@ -33,7 +39,11 @@ import tensorflow as tf
 
 from src.data import channel_models
 from src.data.data_loader import _build_feature_matrix
-from src.data.dataset_generator import generate_test_batch
+from src.data.dataset_generator import (
+    channel_hold_mode,
+    channel_time_block_slots,
+    generate_test_batch,
+)
 from src.data.frequency_hopping import (
     HopConfig,
     build_hop_sequence,
@@ -593,6 +603,10 @@ def evaluate_frequency_agility(
         ),
         "mask_rng_offset": _MASK_STREAM_OFFSET,
     }
+    if channel_hold_mode(config) == "per_hop":
+        # The block length is the mechanism under test, so it must be readable
+        # from the metadata without going back to the configuration snapshot.
+        metadata["time_block_slots"] = channel_time_block_slots(config)
     with open(output_dir / "run_metadata.json", "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 

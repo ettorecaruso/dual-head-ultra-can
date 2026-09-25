@@ -112,6 +112,14 @@ frequency_hopping:
   num_channels: 8
   dwell_bursts: 1
   burst_duration_us: 10.0
+  # Slots per Jakes coherence block of the hop process, i.e. the granularity of
+  # the `per_hop` channel hold: a visited frequency keeps one realization for
+  # this many slots, about one Jakes coherence time, and is then refreshed. It is
+  # a property of the link (slot clock and Doppler) and not of a propagation
+  # variant, so it is declared once here and a channel variant that needs a
+  # different value, like the 3GPP ones, overrides it in its own section of
+  # configs/channels.yaml.
+  time_block_slots: 53
   sequence_seed: null
   coverage_fraction: 0.25
   sweep_jam_slots: 1

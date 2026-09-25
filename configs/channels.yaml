@@ -3,6 +3,11 @@
 # experiment profile) against this file and deep-merges it over the `channel`
 # block of base_config.yaml, so no propagation default lives in the sources.
 #
+# `time_block_slots` is the one key that is not a propagation parameter: it is the
+# coherence block of the hop process, declared once in
+# `frequency_hopping.time_block_slots` of base_config.yaml and repeated here only
+# by the variants that run a `per_hop` hold, as an explicit override.
+#
 # `nominal` must stay byte-equal to the `channel` block of base_config.yaml:
 # tests/test_channel_config.py enforces the equality, which is what keeps the two
 # copies from drifting.

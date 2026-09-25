@@ -158,6 +158,36 @@ def channel_hold_dwell(config: Dict[str, Any]) -> int:
         return 1
     return max(1, int(cfg.get("dwell_bursts", 1)))
 
+def channel_time_block_slots(config: Dict[str, Any]) -> int:
+    """Slots per Jakes coherence block, the granularity of a ``per_hop`` hold.
+
+    The block length belongs to the hopping link and not to a propagation
+    variant: it follows from the slot clock and the Doppler of the scenario, so
+    its single source is ``frequency_hopping.time_block_slots``. A channel
+    variant may still override it in its own ``channel`` section, which is what
+    the 3GPP and two-ray variants do. Nothing is defaulted in the sources: a
+    ``per_hop`` hold that finds neither declaration fails with both dotted paths,
+    so a configuration can never be silently completed by a value that is not in
+    the configuration files.
+    """
+    channel = _channel_section(config)
+    if "time_block_slots" in channel:
+        blocks = int(channel["time_block_slots"])
+        path = "channel.time_block_slots"
+    else:
+        hopping = config.get("frequency_hopping") or {}
+        if not isinstance(hopping, dict) or "time_block_slots" not in hopping:
+            raise KeyError(
+                "missing required configuration key: "
+                "frequency_hopping.time_block_slots (or the channel.time_block_slots "
+                "override)"
+            )
+        blocks = int(hopping["time_block_slots"])
+        path = "frequency_hopping.time_block_slots"
+    if blocks < 1:
+        raise ValueError(f"{path} must be >= 1, got {blocks}")
+    return blocks
+
 def _validate_channel_config(config: Dict[str, Any]) -> None:
     channel = _channel_section(config)
     if not channel:
@@ -190,6 +220,10 @@ def _validate_channel_config(config: Dict[str, Any]) -> None:
         raise ValueError(
             f"channel.hold_mode must be one of {sorted(_CHANNEL_HOLD_MODES)}, got: {hold_mode!r}"
         )
+    if hold_mode == "per_hop":
+        # Fail here, with the dotted path and before a model or a dataset is
+        # loaded, when the coherence block of the hop process is not declared.
+        channel_time_block_slots(config)
     channel_model(config)
     validate_overlay(config)
 
@@ -206,10 +240,10 @@ def _hold_representatives(
     ``per_slot`` groups the symbols by slot, so the realization changes on the
     slot clock. ``per_hop`` groups by the pair ``(frequency channel, coherence
     block)``: the realization is a function of the visited frequency and is
-    refreshed every ``channel.time_block_slots`` slots, i.e. about once per Jakes
-    coherence time. A hopping link therefore averages over the hop channels while
-    a fixed carrier keeps a single realization per coherence block, which is the
-    mechanism the frequency agility experiment measures.
+    refreshed every :func:`channel_time_block_slots` slots, i.e. about once per
+    Jakes coherence time. A hopping link therefore averages over the hop channels
+    while a fixed carrier keeps a single realization per coherence block, which is
+    the mechanism the frequency agility experiment measures.
     """
     if hold_mode == "per_symbol":
         return None
@@ -226,12 +260,7 @@ def _hold_representatives(
     num_channels = max(
         1, int((config.get("frequency_hopping") or {}).get("num_channels", 1))
     )
-    channel_section = config.get("channel") or {}
-    if "time_block_slots" not in channel_section:
-        raise KeyError("missing required configuration key: channel.time_block_slots")
-    blocks = int(channel_section["time_block_slots"])
-    if blocks < 1:
-        raise ValueError(f"channel.time_block_slots must be >= 1, got {blocks}")
+    blocks = channel_time_block_slots(config)
     return _slot_representatives((slots // blocks) * num_channels + hop, n)
 
 
