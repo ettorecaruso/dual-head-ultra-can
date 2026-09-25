@@ -200,9 +200,11 @@ def main() -> None:
         default=",".join(JAMMERS),
         help=(
             "Jammer archetypes of this pass, comma separated (default: all of them). "
-            "Splitting the probe into passes is a crash-resilience device, not a "
-            "scientific choice: each pass writes its own table, so a session that "
-            "dies in the middle loses only the pass it was running."
+            "The clean condition is not an archetype -- the probe always measures it "
+            "first and labels it 'clean' in conditions.csv -- so 'clean' is accepted "
+            "here and ignored. Splitting the probe into passes is a crash-resilience "
+            "device, not a scientific choice: each pass writes its own table, so a "
+            "session that dies in the middle loses only the pass it was running."
         ),
     )
     ap.add_argument(
@@ -228,9 +230,24 @@ def main() -> None:
         help="Cap the symbols per realization, to be traded against realizations.",
     )
     args = ap.parse_args()
-    jammers = [name.strip() for name in str(args.jammers).split(",") if name.strip()]
-    if not jammers:
+    requested = [name.strip() for name in str(args.jammers).split(",") if name.strip()]
+    if not requested:
         raise SystemExit("--jammers does not contain a valid archetype")
+    # The clean condition is measured by the probe itself, before any jammer, so
+    # it is not one of the sampled archetypes: accepting it here lets a caller ask
+    # for the pairing that ends up in conditions.csv (clean + the jammers) without
+    # hitting the waveform sampler, which would reject it.
+    from src.experiments.run_jamming import _VALID_JAMMING_TYPES
+
+    if any(name == "clean" for name in requested):
+        print("[jammers] 'clean' is not an archetype: the probe measures it first anyway")
+    jammers = [name for name in requested if name != "clean"]
+    unknown = [name for name in jammers if name not in _VALID_JAMMING_TYPES]
+    if unknown:
+        raise SystemExit(
+            f"unknown --jammers {unknown}; expected a subset of "
+            f"{sorted(_VALID_JAMMING_TYPES)} (plus 'clean', which is always measured)"
+        )
 
     cfg = load_cfg()
     if args.epochs:
