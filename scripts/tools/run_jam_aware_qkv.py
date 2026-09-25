@@ -158,9 +158,10 @@ def _train(cfg: Dict, aug_dir: Path, canon: Path, out_dir: Path) -> Dict:
     return {"model": model, "history": history, "path": best}
 
 
-def _probe(model, cfg, canon: Path, out_dir: Path, jammers: Sequence[str]) -> None:
+def _probe(model, cfg, canon: Path, out_dir: Path, jammers: Sequence[str],
+           max_symbols: int = None) -> None:
     from src.data.data_loader import (build_reference_matrix, load_npz_files)
-    print(f"[probe] jammers: {list(jammers)}")
+    print(f"[probe] jammers: {list(jammers)}  max_symbols: {max_symbols}")
     print("[probe] loading the test subset and the ISAC reference (240k samples)...")
     from src.experiments.jamming_interpretability import run_jamming_interpretability_probe
     echoes = [int(k) for k in cfg["data"]["echoes"]]
@@ -171,7 +172,8 @@ def _probe(model, cfg, canon: Path, out_dir: Path, jammers: Sequence[str]) -> No
     run_jamming_interpretability_probe(model=model, arch="qkv", test_data=test_data, config=cfg,
                    out_dir=out_dir, jsr_values=JSR_FULL, jammer_types=list(jammers),
                    ret_subset=3000, tag="jamming_aware_training",
-                   n_realizations=int((cfg.get("jamming") or {}).get("n_realizations", 1)))
+                   n_realizations=int((cfg.get("jamming") or {}).get("n_realizations", 1)),
+                   max_symbols=max_symbols)
 
 
 def _compare(out_dir: Path) -> None:
@@ -213,6 +215,18 @@ def main() -> None:
             "repository (default: results/full/jamming_interpretability/jamming_aware_training)."
         ),
     )
+    ap.add_argument(
+        "--n-realizations",
+        type=int,
+        default=None,
+        help="Jammer realizations per point (default: jamming.n_realizations of the config).",
+    )
+    ap.add_argument(
+        "--max-symbols",
+        type=int,
+        default=None,
+        help="Cap the symbols per realization, to be traded against realizations.",
+    )
     args = ap.parse_args()
     jammers = [name.strip() for name in str(args.jammers).split(",") if name.strip()]
     if not jammers:
@@ -221,6 +235,10 @@ def main() -> None:
     cfg = load_cfg()
     if args.epochs:
         cfg["training"]["epochs"] = args.epochs
+    if args.n_realizations is not None:
+        if int(args.n_realizations) < 1:
+            raise SystemExit("--n-realizations must be >= 1")
+        cfg.setdefault("jamming", {})["n_realizations"] = int(args.n_realizations)
     canon = canonical_dir(cfg)
     ensure_canonical_data(cfg, canon)
     aug_dir = canon.parent / (canon.name + "_jamaug")
@@ -240,7 +258,7 @@ def main() -> None:
         model = _train(cfg, aug_dir, canon, out_dir)["model"]
 
     print("[probe] evaluating jamming_interpretability grid (clean + the jammers of this pass)...")
-    _probe(model, cfg, canon, out_dir, jammers)
+    _probe(model, cfg, canon, out_dir, jammers, args.max_symbols)
     _compare(out_dir)
     print("DONE ->", out_dir)
 
