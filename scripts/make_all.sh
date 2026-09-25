@@ -4,8 +4,8 @@
 #   PYTHON=/path/to/python ./scripts/make_all.sh [run_root]
 #
 # ``run_root`` is optional and only affects the two producers that read a run
-# directory: it defaults to the frozen tree, and it can point at a sandbox, e.g.
-# results/runs/v2/full.
+# directory: it defaults to results/full and can point at an archived copy, e.g.
+# results/archive/frequency_agility_2026-09-26T101533.
 #
 # Figures are vector PDFs written to figures/ (the paper reads them through
 # \graphicspath{{../figures/}} in latex/paper.tex); tables are written next to the

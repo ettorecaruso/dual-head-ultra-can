@@ -64,6 +64,15 @@ def _parse_args(argv) -> argparse.Namespace:
     parser.add_argument("--arch", default="qkv")
     parser.add_argument("--symbols", type=int, default=8000)
     parser.add_argument("--snapshots", type=int, default=SNAPSHOTS)
+    parser.add_argument(
+        "--out-root",
+        type=Path,
+        default=_REPO / "results" / "full",
+        help=(
+            "Root the diagnostic is written to; the checkpoints and the dataset are "
+            "still read from the repository (default: results/full)."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -132,7 +141,7 @@ def main(argv=None) -> None:
     })
     table = pd.DataFrame({"jsr_db": JSR, "ber_legacy": legacy}).merge(summary, on="jsr_db")
 
-    out = _REPO / "results" / "full" / "diagnostics" / "jamming_artifact"
+    out = args.out_root / "diagnostics" / "jamming_artifact"
     out.mkdir(parents=True, exist_ok=True)
     table.to_csv(out / "ber_vs_jsr_cw_legacy_vs_mc.csv", index=False)
     mc.to_csv(out / "ber_vs_jsr_cw_realizations.csv", index=False)

@@ -43,6 +43,16 @@ def _parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--archs", default=",".join(ARCHS))
     parser.add_argument("--max-symbols", type=int, default=40000)
     parser.add_argument("--realizations", type=int, default=None)
+    parser.add_argument(
+        "--out-root",
+        type=Path,
+        default=_REPO / "results" / "full",
+        help=(
+            "Root the results and the log are written to; the checkpoints and the "
+            "dataset are still read from the repository. Point it at a Drive "
+            "directory to keep the output of a Colab session (default: results/full)."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -60,7 +70,7 @@ def _subsample(data: Dict[str, Any], max_symbols: int) -> Dict[str, Any]:
 
 def main(argv=None) -> None:
     args = _parse_args(argv)
-    setup_logging(log_dir=_REPO / "results" / "full" / "jamming" / "logs",
+    setup_logging(log_dir=args.out_root / "jamming" / "logs",
                   level="INFO", experiment_name="rerun_jamming_mc")
     cfg = load_experiment_config(
         experiment_name="jamming",
@@ -92,7 +102,7 @@ def main(argv=None) -> None:
         logger.info("=" * 60)
         logger.info("re-evaluating jamming for %s from %s", arch, ckpt)
         model = load_model(ckpt)
-        out_dir = _REPO / "results" / "full" / "jamming" / arch / "jamming"
+        out_dir = args.out_root / "jamming" / arch / "jamming"
         evaluate_jamming(
             model=model,
             test_data=test_data,

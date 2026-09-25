@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Single-burst CPU latency benchmark."""
+"""Single-burst CPU latency benchmark.
+
+    python scripts/tools/latency_bench.py [out_root]
+
+The receivers are read from the repository; ``out_root`` only decides where
+``final_report/latency_results.json`` is written (default: results/full).
+"""
 import json
 import os
 import statistics
@@ -106,7 +112,8 @@ for name, _ in MODELS:
     print('  batch=32 amortised/burst us:', row['batch32_amortized'])
     del loaded[name]
 
-dest = REPO / 'results' / 'full' / 'final_report' / 'latency_results.json'
+dest = (Path(sys.argv[1]) if len(sys.argv) > 1 else REPO / 'results' / 'full') \
+    / 'final_report' / 'latency_results.json'
 dest.parent.mkdir(parents=True, exist_ok=True)
 with open(dest, 'w') as fp:
     json.dump(out, fp, indent=2)

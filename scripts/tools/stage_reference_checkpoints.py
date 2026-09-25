@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Link the frozen reference checkpoints into a sandbox run root.
+"""Link the frozen reference checkpoints into a run root.
 
-    python scripts/tools/stage_reference_checkpoints.py results/runs/v2_canaleB --mode full
+    python scripts/tools/stage_reference_checkpoints.py <run_root> --mode full
 
 The runner already falls back to ``results/full`` when it resolves the frozen
 receivers, so this helper is only needed when that tree lives outside the
 repository (for example on a Drive mount in a Colab session): it makes
-``<sandbox>/<mode>/ber_vs_snr`` point at it, which is where the experiments of
+``<run_root>/<mode>/ber_vs_snr`` point at it, which is where the experiments of
 that run look first. Nothing is ever written inside the reference tree.
 """
 
@@ -25,7 +25,7 @@ STAGED = ("ber_vs_snr", "jamming")
 
 def main(argv: List[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("sandbox_root", type=Path, help="Run root, e.g. results/runs/<tag>")
+    parser.add_argument("sandbox_root", type=Path, help="Run root to populate, e.g. <output-dir>/full")
     parser.add_argument("--mode", default="full", choices=["full", "fast"])
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument(

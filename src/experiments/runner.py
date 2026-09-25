@@ -9,6 +9,7 @@ import copy
 import gc
 import logging
 import math
+import shutil
 import subprocess
 import sys
 import time
@@ -65,8 +66,6 @@ _EXPERIMENT_ORDER = ("ber_vs_snr", "classical_receivers", "jamming",
                      "channel_generalization", "final_report")
 
 _CHANNEL_HOLD_MODES = ("per_symbol", "per_slot", "per_hop")
-
-_FROZEN_RESULTS = _REPO_ROOT / "results" / "full"
 
 _VALID_MODELS = ("conv1d", "qkv", "lstm", "mc_dlsk")
 _DEFAULT_MODEL = None
@@ -139,7 +138,7 @@ Examples:
         default=None,
         help=(
             "Output directory; the run root is <output-dir>/<mode>. Default: "
-            f"{_DEFAULT_OUTPUT_DIR}, or results/runs/<tag> with --run-tag."
+            f"{_DEFAULT_OUTPUT_DIR}."
         ),
     )
     parser.add_argument(
@@ -170,11 +169,12 @@ Examples:
         help="Override the number of jammer realizations of the experiment.",
     )
     parser.add_argument(
-        "--run-tag",
-        default=None,
+        "--supersede",
+        action="store_true",
         help=(
-            "Write into results/runs/<tag>/<mode> instead of the default output "
-            "directory. An explicit --output-dir takes precedence."
+            "When an experiment directory already contains results, move it to "
+            "results/archive/<experiment>_<timestamp>/ and write the new ones: the "
+            "previous version is never destroyed."
         ),
     )
     parser.add_argument(
@@ -194,8 +194,9 @@ Examples:
         "--force",
         action="store_true",
         help=(
-            "Allow writing into a non-empty experiment directory and into the "
-            "frozen reference tree results/full."
+            "Overwrite a populated experiment directory in place, without archiving "
+            "it. Meant for throwaway experiments: without it, and without "
+            "--supersede, the runner refuses to write."
         ),
     )
     parser.add_argument(
@@ -1475,29 +1476,32 @@ def _apply_channel(
 
 
 def _resolve_run_root(args: argparse.Namespace) -> Path:
-    """Run root of the invocation: explicit output dir, run tag, or the default."""
-    if args.output_dir is not None:
-        base = Path(args.output_dir)
-    elif args.run_tag:
-        base = _REPO_ROOT / "results" / "runs" / str(args.run_tag)
-    else:
-        base = _DEFAULT_OUTPUT_DIR
+    """Run root of the invocation: ``<output-dir>/<mode>``, default ``results/<mode>``."""
+    base = Path(args.output_dir) if args.output_dir is not None else _DEFAULT_OUTPUT_DIR
     return base / args.mode
 
 
-def _guard_output_tree(run_root: Path, force: bool) -> None:
-    """Refuse to write into the frozen reference tree unless forced."""
-    frozen = _FROZEN_RESULTS.resolve()
-    root = Path(run_root).resolve()
-    if force:
-        logger.warning("--force: writing is allowed under %s", root)
-        return
-    if root == frozen or frozen in root.parents:
-        raise SystemExit(
-            f"refusing to write inside the frozen reference tree {frozen}: pick another "
-            "--output-dir or --run-tag, or pass --force if that tree is really meant to "
-            "be regenerated in place"
-        )
+def _supersede_directory(exp_output_dir: Path) -> Path:
+    """Move a populated result directory into ``results/archive`` and recreate it.
+
+    The results of an experiment are written straight into the single ``results``
+    tree, so a re-run has to decide what to do with the previous version. Archiving
+    it keeps the single tree and loses nothing: the archived copy is the one that
+    also serves as the comparison arm of the new one.
+    """
+    archive = (
+        _REPO_ROOT
+        / "results"
+        / "archive"
+        / f"{exp_output_dir.name}_{time.strftime('%Y-%m-%dT%H%M%S')}"
+    )
+    if archive.exists():
+        raise SystemExit(f"archive target already exists: {archive}")
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(exp_output_dir), str(archive))
+    exp_output_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("superseded: previous results archived in %s", archive)
+    return archive
 
 
 def _planned_models(config: Dict[str, Any], exp_name: str) -> List[str]:
@@ -1576,7 +1580,6 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         logger.info("Requested models (multi): %s", parts)
 
     run_root = _resolve_run_root(args)
-    _guard_output_tree(run_root, args.force)
     if args.dry_run:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
         logger.info("Dry run: no file will be written")
@@ -1624,19 +1627,26 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             if args.dry_run:
                 _log_plan(exp_name, config, exp_output_dir)
                 continue
-            if args.resume and exp_output_dir.exists() and any(exp_output_dir.iterdir()):
+            populated = exp_output_dir.exists() and any(exp_output_dir.iterdir())
+            if populated and args.resume:
                 logger.info(
                     "--resume: %s is already populated in %s, skipping",
                     exp_name, exp_output_dir,
                 )
                 all_results[exp_name] = {"skipped": True}
                 continue
-            if exp_output_dir.exists() and any(exp_output_dir.iterdir()) and not args.force:
-                raise SystemExit(
-                    f"{exp_output_dir} is not empty: pass --force to overwrite it or "
-                    "--resume to keep what is already there"
-                )
-
+            if populated:
+                if args.supersede:
+                    _supersede_directory(exp_output_dir)
+                elif args.force:
+                    logger.warning("--force: overwriting %s in place", exp_output_dir)
+                else:
+                    raise SystemExit(
+                        f"{exp_output_dir} already contains results: pass --supersede to "
+                        "archive them and write the new ones, --resume to keep them, or "
+                        "--force to overwrite them in place"
+                    )
+            exp_output_dir.mkdir(parents=True, exist_ok=True)
             log_config_summary(config, logger)
 
             exp_log_dir = exp_output_dir / "logs"

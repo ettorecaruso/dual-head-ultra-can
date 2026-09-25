@@ -8,7 +8,7 @@ import math
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Sequence, Tuple
 
 import numpy as np
 
@@ -158,8 +158,9 @@ def _train(cfg: Dict, aug_dir: Path, canon: Path, out_dir: Path) -> Dict:
     return {"model": model, "history": history, "path": best}
 
 
-def _probe(model, cfg, canon: Path, out_dir: Path) -> None:
+def _probe(model, cfg, canon: Path, out_dir: Path, jammers: Sequence[str]) -> None:
     from src.data.data_loader import (build_reference_matrix, load_npz_files)
+    print(f"[probe] jammers: {list(jammers)}")
     print("[probe] loading the test subset and the ISAC reference (240k samples)...")
     from src.experiments.jamming_interpretability import run_jamming_interpretability_probe
     echoes = [int(k) for k in cfg["data"]["echoes"]]
@@ -168,7 +169,7 @@ def _probe(model, cfg, canon: Path, out_dir: Path) -> None:
     test_data["x_ref"] = build_reference_matrix(test_data["bit"], test_data["seed"], cfg)
     print(f"[probe] test ready ({test_data[chr(120)].shape[0]} samples) in {time.time()-t0:.0f}s; starting the grid (per-condition logging enabled)...")
     run_jamming_interpretability_probe(model=model, arch="qkv", test_data=test_data, config=cfg,
-                   out_dir=out_dir, jsr_values=JSR_FULL, jammer_types=JAMMERS,
+                   out_dir=out_dir, jsr_values=JSR_FULL, jammer_types=list(jammers),
                    ret_subset=3000, tag="jamming_aware_training",
                    n_realizations=int((cfg.get("jamming") or {}).get("n_realizations", 1)))
 
@@ -192,7 +193,30 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--epochs", type=int, default=None)
     ap.add_argument("--skip-train", action="store_true", help="reuse an already trained best_model")
+    ap.add_argument(
+        "--jammers",
+        default=",".join(JAMMERS),
+        help=(
+            "Jammer archetypes of this pass, comma separated (default: all of them). "
+            "Splitting the probe into passes is a crash-resilience device, not a "
+            "scientific choice: each pass writes its own table, so a session that "
+            "dies in the middle loses only the pass it was running."
+        ),
+    )
+    ap.add_argument(
+        "--out-root",
+        type=Path,
+        default=Path(_REPO) / "results/full/jamming_interpretability/jamming_aware_training",
+        help=(
+            "Directory the probe writes to, with the retrained receiver inside; the "
+            "dataset and the clean-trained baseline are still read from the "
+            "repository (default: results/full/jamming_interpretability/jamming_aware_training)."
+        ),
+    )
     args = ap.parse_args()
+    jammers = [name.strip() for name in str(args.jammers).split(",") if name.strip()]
+    if not jammers:
+        raise SystemExit("--jammers does not contain a valid archetype")
 
     cfg = load_cfg()
     if args.epochs:
@@ -200,7 +224,7 @@ def main() -> None:
     canon = canonical_dir(cfg)
     ensure_canonical_data(cfg, canon)
     aug_dir = canon.parent / (canon.name + "_jamaug")
-    out_root = Path(_REPO) / "results/full/jamming_interpretability/jamming_aware_training"
+    out_root = Path(args.out_root)
     out_dir = out_root / "qkv"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -215,8 +239,8 @@ def main() -> None:
         print(f"[train] starting jamming-aware QKV training (canon={canon.name}, aug={aug_dir.name})")
         model = _train(cfg, aug_dir, canon, out_dir)["model"]
 
-    print("[probe] evaluating jamming_interpretability grid (clean + 3 jammers x 6 JSR)...")
-    _probe(model, cfg, canon, out_dir)
+    print("[probe] evaluating jamming_interpretability grid (clean + the jammers of this pass)...")
+    _probe(model, cfg, canon, out_dir, jammers)
     _compare(out_dir)
     print("DONE ->", out_dir)
 

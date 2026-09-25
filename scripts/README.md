@@ -51,7 +51,7 @@ scripts/
 | `data/generate_dataset.sh`, `data/generate_all_datasets.sh` | `data/raw/<hash>/` |
 
 Three producers accept a run directory as an optional argument, so the same script
-serves the frozen tree and a sandbox:
+serves the current results and an archived copy:
 `tables/make_table_channel_generalization.py`,
 `figures/make_fig_channel_generalization.py` and
 `figures/make_fig_frequency_agility_reaction.py`.

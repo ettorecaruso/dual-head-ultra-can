@@ -3,11 +3,12 @@
 
     python scripts/tables/make_table_channel_generalization.py [run_dir]
 
-``run_dir`` defaults to ``results/full/channel_generalization`` and can point at a
-sandbox of a new run, e.g. ``results/runs/v2/full/channel_generalization``. The
-script reads the ``summary.csv`` written by the experiment, so the table carries
-exactly the values the run measured, including the Wilson interval of the pooled
-BER, and nothing is recomputed here.
+``run_dir`` defaults to ``results/full/channel_generalization`` and can point at an
+archived copy of the experiment, e.g.
+``results/archive/channel_generalization_2026-09-26T101533``, or at a directory
+outside the repository. The script reads the ``summary.csv`` written by the
+experiment, so the table carries exactly the values the run measured, including
+the Wilson interval of the pooled BER, and nothing is recomputed here.
 """
 
 from __future__ import annotations
