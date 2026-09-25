@@ -169,6 +169,25 @@ Examples:
         help="Override the number of jammer realizations of the experiment.",
     )
     parser.add_argument(
+        "--scenario",
+        default=None,
+        help=(
+            "Scenario name(s) of ber_vs_snr, comma separated: filters the scenarios "
+            "of the profile, e.g. --scenario k3_doppler_full trains a single channel "
+            "configuration instead of the three of the benchmark."
+        ),
+    )
+    parser.add_argument(
+        "--max-symbols",
+        type=int,
+        default=None,
+        help=(
+            "Cap the symbols per realization of the jamming and interpretability "
+            "experiments. Trading symbols for realizations keeps the wall clock "
+            "constant while the dispersion of the mean shrinks."
+        ),
+    )
+    parser.add_argument(
         "--supersede",
         action="store_true",
         help=(
@@ -502,10 +521,13 @@ def run_ber_vs_snr(
     exp_cfg = config["experiments"]["ber_vs_snr"]
     architectures = list(exp_cfg["architectures"])
     if model_type is not None:
-        architectures = [a for a in architectures if a == model_type]
+        wanted = {model_type} if isinstance(model_type, str) else set(model_type)
+        architectures = [a for a in architectures if a in wanted]
         logger.info(
             "ber_vs_snr: --model=%s filters architectures to: %s", model_type, architectures
         )
+    if not architectures:
+        raise SystemExit("ber_vs_snr: no architecture left after --model filtering")
     scenarios = exp_cfg["scenarios"]
     plot_format = config["visualization"].get("plot_format", "pdf")
 
@@ -947,6 +969,7 @@ def run_jamming_interpretability(
     jammer_types = list(jamming_interpretability_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
     snr_eval = [float(v) for v in (jamming_interpretability_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 21.0])]
     ret_subset = int(jamming_interpretability_cfg.get("ret_subset", 3000))
+    max_symbols = jamming_interpretability_cfg.get("max_symbols")
     n_realizations = int(
         jamming_interpretability_cfg.get(
             "n_realizations", (config.get("jamming") or {}).get("n_realizations", 1)
@@ -954,8 +977,8 @@ def run_jamming_interpretability(
     )
 
     logger.info("Experiment jamming_interpretability (models=%s)", models_to_test)
-    logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d realizations=%d",
-                snr_eval, jsr_values, jammer_types, ret_subset, n_realizations)
+    logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d realizations=%d max_symbols=%s",
+                snr_eval, jsr_values, jammer_types, ret_subset, n_realizations, max_symbols)
 
     data_dir = pipeline.prepare_dataset(config, no_regen)
     echoes = [int(k) for k in config["data"]["echoes"]]
@@ -997,6 +1020,7 @@ def run_jamming_interpretability(
             jammer_types=jammer_types,
             ret_subset=ret_subset,
             n_realizations=n_realizations,
+            max_symbols=int(max_symbols) if max_symbols is not None else None,
         )
         results["models"][arch] = arch_res
 
@@ -1471,7 +1495,51 @@ def _apply_channel(
             if "n_realizations" in section:
                 section["n_realizations"] = count
                 experiments[name] = section
+    if args.max_symbols is not None:
+        cap = int(args.max_symbols)
+        if cap < 1:
+            raise SystemExit("--max-symbols must be >= 1")
+        experiments = config.setdefault("experiments", {})
+        for name in ("jamming", "jamming_interpretability"):
+            section = dict(experiments.get(name) or {})
+            section["max_symbols"] = cap
+            experiments[name] = section
     channel_models.channel_model(config)
+    return config
+
+
+def _apply_scenario_filter(
+    config: Dict[str, Any],
+    exp_name: str,
+    args: argparse.Namespace,
+) -> Dict[str, Any]:
+    """Restrict the scenarios of ``ber_vs_snr`` to the requested names.
+
+    The filter runs before the config snapshot is taken, so the recorded config
+    describes exactly what was trained.
+    """
+    if args.scenario is None:
+        return config
+    wanted = {name.strip() for name in str(args.scenario).split(",") if name.strip()}
+    if not wanted:
+        raise SystemExit("--scenario does not contain a valid name")
+    if exp_name != "ber_vs_snr":
+        logger.warning("--scenario is ignored by the %s experiment", exp_name)
+        return config
+    experiments = config.setdefault("experiments", {})
+    section = dict(experiments.get("ber_vs_snr") or {})
+    scenarios = [
+        scenario
+        for scenario in (section.get("scenarios") or [])
+        if str(scenario.get("name")) in wanted
+    ]
+    if not scenarios:
+        raise SystemExit(
+            f"--scenario {sorted(wanted)} matches no scenario of the ber_vs_snr profile"
+        )
+    section["scenarios"] = scenarios
+    experiments["ber_vs_snr"] = section
+    logger.info("ber_vs_snr: scenarios limited to %s", [s["name"] for s in scenarios])
     return config
 
 
@@ -1543,7 +1611,11 @@ def _log_plan(
             )
     if exp_name == "jamming_interpretability":
         for arch in _planned_models(config, exp_name):
-            checkpoint = _find_trained_model(config, arch, exp_output_dir)
+            candidates = [
+                exp_output_dir.parent / "jamming" / arch / "best_model.keras",
+                _REPO_ROOT / "results" / "full" / "jamming" / arch / "best_model.keras",
+            ]
+            checkpoint = next((c for c in candidates if c.is_file()), None)
             logger.info(
                 "[plan]   %-8s checkpoint: %s",
                 arch, checkpoint if checkpoint is not None else "MISSING",
@@ -1570,11 +1642,12 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         invalid = [m for m in parts if m not in _VALID_MODELS]
         if invalid:
             raise ValueError(f"Invalid models in --model: {invalid}")
-        if set(exp_names) - {"jamming_interpretability", "frequency_agility",
-                             "channel_generalization"}:
+        if set(exp_names) - {"ber_vs_snr", "jamming", "jamming_interpretability",
+                             "frequency_agility", "channel_generalization"}:
             raise ValueError(
                 "--model with multiple architectures is allowed only with "
-                "--experiments jamming_interpretability"
+                "--experiments ber_vs_snr, jamming, jamming_interpretability, "
+                "frequency_agility or channel_generalization"
             )
         args.model = parts
         logger.info("Requested models (multi): %s", parts)
@@ -1622,6 +1695,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 cli_overrides=cli_overrides,
             )
             config = _apply_channel(config, exp_name, args)
+            config = _apply_scenario_filter(config, exp_name, args)
 
             exp_output_dir = run_root / exp_name
             if args.dry_run:

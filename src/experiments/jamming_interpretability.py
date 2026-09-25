@@ -256,6 +256,34 @@ def _aggregate_rows(
         aggregated.append(agg)
     return aggregated
 
+def _subsample(test_data: DataDict, max_symbols: Optional[int]) -> DataDict:
+    """Thin the test set with a uniform stride over its (SNR, echo) blocks.
+
+    The blocks are laid out one after the other, so a uniform stride keeps every
+    SNR point of the breakdown represented with the same weight. That is what
+    makes it sound to trade symbols per realization for realizations: the cost of
+    a realization falls while the per-SNR table keeps meaning the same thing.
+    """
+    if max_symbols is None:
+        return test_data
+    cap = int(max_symbols)
+    if cap < 1:
+        raise ValueError(f"max_symbols must be >= 1, got {max_symbols!r}")
+    n = int(np.asarray(test_data["x"]).shape[0])
+    if cap >= n:
+        return test_data
+    index = np.linspace(0, n - 1, cap).astype(np.int64)
+    out: Dict[str, Any] = {}
+    for key, value in test_data.items():
+        array = np.asarray(value)
+        out[key] = array[index] if array.shape[:1] == (n,) else value
+    logger.info(
+        "[jamming_interpretability] test set thinned to %d of %d symbols per realization",
+        cap, n,
+    )
+    return out
+
+
 def run_jamming_interpretability_probe(
     model: tf.keras.Model,
     arch: str,
@@ -267,12 +295,14 @@ def run_jamming_interpretability_probe(
     ret_subset: int = 3000,
     tag: Optional[str] = None,
     n_realizations: int = 1,
+    max_symbols: Optional[int] = None,
 ) -> Dict[str, Any]:
     
     from src.experiments.run_jamming import sample_jammer_waveform, _add_jammer_at_jsr
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    test_data = _subsample(test_data, max_symbols)
     x = np.asarray(test_data["x"])
     bit, tau = np.asarray(test_data["bit"]), np.asarray(test_data["tau"])
     f_d = np.asarray(test_data["f_d"])
