@@ -30,9 +30,11 @@ from src.models.dcsk_correlator import evaluate_classical, dcsk_correlator_demod
 from src.utils.config_loader import (
     DEFAULT_BASE_CONFIG_PATH,
     _deep_merge,
+    load_channels,
     load_config,
     save_config_snapshot,
     validate_config,
+    with_channel_variant,
 )
 from src.utils.dataset_utils import get_dataset_dir
 from src.utils.logger import get_logger, log_config_summary, setup_logging
@@ -61,6 +63,10 @@ def _log_rss(tag: str) -> None:
 _EXPERIMENT_ORDER = ("ber_vs_snr", "classical_receivers", "jamming",
                      "jamming_interpretability", "frequency_agility",
                      "channel_generalization", "final_report")
+
+_CHANNEL_HOLD_MODES = ("per_symbol", "per_slot", "per_hop")
+
+_FROZEN_RESULTS = _REPO_ROOT / "results" / "full"
 
 _VALID_MODELS = ("conv1d", "qkv", "lstm", "mc_dlsk")
 _DEFAULT_MODEL = None
@@ -130,8 +136,67 @@ Examples:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=_DEFAULT_OUTPUT_DIR,
-        help=f"Output directory (default: {_DEFAULT_OUTPUT_DIR})",
+        default=None,
+        help=(
+            "Output directory; the run root is <output-dir>/<mode>. Default: "
+            f"{_DEFAULT_OUTPUT_DIR}, or results/runs/<tag> with --run-tag."
+        ),
+    )
+    parser.add_argument(
+        "--channel",
+        default=None,
+        help=(
+            "Channel variant name(s) from configs/channels.yaml, comma separated. "
+            "The first one is applied to the run; channel_generalization evaluates "
+            "the whole list. Default: the profile's channel_variants."
+        ),
+    )
+    parser.add_argument(
+        "--channel-file",
+        type=Path,
+        default=None,
+        help="Path to channels.yaml (default: configs/channels.yaml)",
+    )
+    parser.add_argument(
+        "--hop-hold-mode",
+        choices=list(_CHANNEL_HOLD_MODES),
+        default=None,
+        help="Override channel.hold_mode (default: the profile's value).",
+    )
+    parser.add_argument(
+        "--n-realizations",
+        type=int,
+        default=None,
+        help="Override the number of jammer realizations of the experiment.",
+    )
+    parser.add_argument(
+        "--run-tag",
+        default=None,
+        help=(
+            "Write into results/runs/<tag>/<mode> instead of the default output "
+            "directory. An explicit --output-dir takes precedence."
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Print the resolved plan (channel, checkpoints, output paths) and exit "
+            "without writing anything."
+        ),
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Skip the experiments whose output directory is already populated.",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "Allow writing into a non-empty experiment directory and into the "
+            "frozen reference tree results/full."
+        ),
     )
     parser.add_argument(
         "--config",
@@ -951,6 +1016,7 @@ def _find_trained_model(
     run_root_candidates = [
         output_dir.parent,
         output_dir.parents[1],
+        _REPO_ROOT / "results" / "full",
     ]
     for scenario in scenarios:
         if isinstance(scenario, dict) and scenario.get("name"):
@@ -980,11 +1046,20 @@ def _resolve_arch_checkpoint(
     output_dir: Path,
     preferred_scenario: str,
 ) -> Optional[Path]:
-    candidate = (
-        output_dir.parent / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras"
-    )
-    if candidate.is_file():
-        return candidate
+    """Resolve the frozen receiver of ``arch``.
+
+    The sandbox of the current run wins, so that an in-domain retraining can be
+    consumed by the other experiments of the same run; the frozen reference tree
+    of the paper is the fallback, because those four checkpoints are exactly the
+    receivers the validation experiments must reuse.
+    """
+    candidates = [
+        output_dir.parent / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras",
+        _REPO_ROOT / "results" / "full" / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
     return _find_trained_model(config, arch, output_dir)
 
 def run_frequency_agility(
@@ -1329,6 +1404,149 @@ def _build_echo_only_dataset(
 
 
 
+def _profile_channel_variants(config: Dict[str, Any], exp_name: str) -> List[str]:
+    """Channel variants declared by an experiment profile."""
+    section = (config.get("experiments") or {}).get(exp_name) or {}
+    names = section.get("channel_variants")
+    if names is None:
+        single = section.get("channel_variant")
+        names = [] if single is None else [single]
+    if isinstance(names, str):
+        names = [names]
+    return [str(name) for name in names]
+
+
+def _cli_channel_variants(args: argparse.Namespace) -> Optional[List[str]]:
+    """Validate the ``--channel`` list against the available variant names."""
+    if args.channel is None:
+        return None
+    names = [name.strip() for name in str(args.channel).split(",") if name.strip()]
+    if not names:
+        raise SystemExit("--channel does not contain a valid variant name")
+    available = sorted(load_channels(args.channel_file))
+    unknown = [name for name in names if name not in available]
+    if unknown:
+        raise SystemExit(f"unknown --channel {unknown}; available: {available}")
+    return names
+
+
+def _apply_channel(
+    config: Dict[str, Any],
+    exp_name: str,
+    args: argparse.Namespace,
+) -> Dict[str, Any]:
+    """Resolve the channel of one experiment from the CLI, the profile or the base."""
+    from src.data import channel_models
+
+    selection = _cli_channel_variants(args)
+    cli_selection = selection is not None
+    if selection is None:
+        selection = _profile_channel_variants(config, exp_name)
+    if exp_name == "channel_generalization" and cli_selection:
+        config.setdefault("experiments", {}).setdefault(exp_name, {})[
+            "channel_variants"
+        ] = list(selection)
+    if selection:
+        if exp_name != "channel_generalization" and len(selection) > 1:
+            logger.warning(
+                "%s: only %s is applied, the other requested channels are ignored",
+                exp_name, selection[0],
+            )
+        config = with_channel_variant(config, selection[0], args.channel_file)
+    if args.hop_hold_mode is not None:
+        channel = dict(config.get("channel") or {})
+        channel["hold_mode"] = str(args.hop_hold_mode)
+        config["channel"] = channel
+    if args.n_realizations is not None:
+        count = int(args.n_realizations)
+        if count < 1:
+            raise SystemExit("--n-realizations must be >= 1")
+        jamming = dict(config.get("jamming") or {})
+        jamming["n_realizations"] = count
+        config["jamming"] = jamming
+        experiments = config.setdefault("experiments", {})
+        for name in ("jamming", "jamming_interpretability", "frequency_agility"):
+            section = dict(experiments.get(name) or {})
+            if "n_realizations" in section:
+                section["n_realizations"] = count
+                experiments[name] = section
+    channel_models.channel_model(config)
+    return config
+
+
+def _resolve_run_root(args: argparse.Namespace) -> Path:
+    """Run root of the invocation: explicit output dir, run tag, or the default."""
+    if args.output_dir is not None:
+        base = Path(args.output_dir)
+    elif args.run_tag:
+        base = _REPO_ROOT / "results" / "runs" / str(args.run_tag)
+    else:
+        base = _DEFAULT_OUTPUT_DIR
+    return base / args.mode
+
+
+def _guard_output_tree(run_root: Path, force: bool) -> None:
+    """Refuse to write into the frozen reference tree unless forced."""
+    frozen = _FROZEN_RESULTS.resolve()
+    root = Path(run_root).resolve()
+    if force:
+        logger.warning("--force: writing is allowed under %s", root)
+        return
+    if root == frozen or frozen in root.parents:
+        raise SystemExit(
+            f"refusing to write inside the frozen reference tree {frozen}: pick another "
+            "--output-dir or --run-tag, or pass --force if that tree is really meant to "
+            "be regenerated in place"
+        )
+
+
+def _planned_models(config: Dict[str, Any], exp_name: str) -> List[str]:
+    section = (config.get("experiments") or {}).get(exp_name) or {}
+    models = section.get("models") or section.get("architectures")
+    if not models:
+        return list(_VALID_MODELS)
+    return [str(name) for name in models]
+
+
+def _log_plan(
+    exp_name: str,
+    config: Dict[str, Any],
+    exp_output_dir: Path,
+) -> None:
+    """Describe what the experiment would do, without writing anything."""
+    from src.data import channel_models
+
+    metadata = channel_models.channel_metadata(config)
+    logger.info("[plan] %s", exp_name)
+    logger.info(
+        "[plan]   channel    : %s (fingerprint %s, hold_mode %s)",
+        metadata["model"], metadata["fingerprint"], metadata["hold_mode"],
+    )
+    logger.info("[plan]   propagation: %s", channel_models.diagnostics(config))
+    if exp_name == "channel_generalization":
+        variants = _profile_channel_variants(config, exp_name) or ["nominal"]
+        logger.info("[plan]   variants   : %s", variants)
+    populated = exp_output_dir.exists() and any(exp_output_dir.iterdir())
+    logger.info("[plan]   output     : %s (populated: %s)", exp_output_dir, populated)
+    if exp_name in ("channel_generalization", "frequency_agility"):
+        section = (config.get("experiments") or {}).get(exp_name) or {}
+        scenario = str(section.get("model_scenario", "k3_doppler_full"))
+        for arch in _planned_models(config, exp_name):
+            checkpoint = _resolve_arch_checkpoint(config, arch, exp_output_dir, scenario)
+            logger.info(
+                "[plan]   %-8s checkpoint: %s",
+                arch, checkpoint if checkpoint is not None else "MISSING",
+            )
+    if exp_name == "jamming_interpretability":
+        for arch in _planned_models(config, exp_name):
+            checkpoint = _find_trained_model(config, arch, exp_output_dir)
+            logger.info(
+                "[plan]   %-8s checkpoint: %s",
+                arch, checkpoint if checkpoint is not None else "MISSING",
+            )
+
+
+
 def main(argv: Optional[Sequence[str]] = None) -> None:
     """Run the requested experiments in sequence."""
     args = parse_args(argv)
@@ -1357,11 +1575,17 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         args.model = parts
         logger.info("Requested models (multi): %s", parts)
 
-    run_root = args.output_dir / args.mode
-    log_dir = run_root / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    setup_logging(log_dir=log_dir, level="INFO", experiment_name="runner")
+    run_root = _resolve_run_root(args)
+    _guard_output_tree(run_root, args.force)
+    if args.dry_run:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+        logger.info("Dry run: no file will be written")
+    else:
+        log_dir = run_root / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        setup_logging(log_dir=log_dir, level="INFO", experiment_name="runner")
     logger.info("Mode: %s", args.mode)
+    logger.info("Run root: %s", run_root)
     logger.info("Models: %s", args.model if args.model is not None else "ALL (config)")
     logger.info("No dataset regeneration: %s", args.no_regen)
 
@@ -1394,10 +1618,27 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 base_config_path=DEFAULT_BASE_CONFIG_PATH,
                 cli_overrides=cli_overrides,
             )
+            config = _apply_channel(config, exp_name, args)
+
+            exp_output_dir = run_root / exp_name
+            if args.dry_run:
+                _log_plan(exp_name, config, exp_output_dir)
+                continue
+            if args.resume and exp_output_dir.exists() and any(exp_output_dir.iterdir()):
+                logger.info(
+                    "--resume: %s is already populated in %s, skipping",
+                    exp_name, exp_output_dir,
+                )
+                all_results[exp_name] = {"skipped": True}
+                continue
+            if exp_output_dir.exists() and any(exp_output_dir.iterdir()) and not args.force:
+                raise SystemExit(
+                    f"{exp_output_dir} is not empty: pass --force to overwrite it or "
+                    "--resume to keep what is already there"
+                )
 
             log_config_summary(config, logger)
 
-            exp_output_dir = run_root / exp_name
             exp_log_dir = exp_output_dir / "logs"
             exp_log_dir.mkdir(parents=True, exist_ok=True)
             save_config_snapshot(config, exp_log_dir)

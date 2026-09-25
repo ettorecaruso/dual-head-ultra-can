@@ -7,7 +7,7 @@ import shutil
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
@@ -363,7 +363,7 @@ def plot_full_range_plotly(out_dir) -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
-    import plotly_style as ps
+    from style import plotly_style as ps
 
     out_dir = Path(out_dir)
     curves = {s: _load_curves(out_dir, s) for s in SCENARIOS}

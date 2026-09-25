@@ -49,9 +49,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import figure_style as fs  # noqa: E402
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from style import figure_style as fs  # noqa: E402
 
 RESULTS = REPO / "results" / "full" / "frequency_agility"
 ARCH = "qkv"
@@ -276,13 +276,14 @@ def main() -> None:
     dwell = _dwell(ARCH)
 
     fs.apply_style()
-    fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=True)
-    _panel_jsr(axes[0], jsr, "fh_off", "Fixed carrier (no hopping)")
-    _panel_jsr(axes[1], jsr, "fh_on", "Frequency hopping (100 k hop/s)")
-    _panel_dwell(axes[2], dwell, f"BER vs hop rate (JSR = +{DWELL_JSR:.0f} dB)")
+    fig, axes = plt.subplots(1, 4, figsize=(17.0, 4.2), sharey=True)
+    _panel_jsr(axes[0], jsr, "fh_off", "Fixed carrier, omniscient jammer")
+    _panel_jsr(axes[1], jsr, "fh_off_blind", "Fixed carrier, blind jammer")
+    _panel_jsr(axes[2], jsr, "fh_on", "Frequency hopping (100 k hop/s)")
+    _panel_dwell(axes[3], dwell, f"BER vs hop rate (JSR = +{DWELL_JSR:.0f} dB)")
     axes[0].set_ylabel("BER")
     fig.tight_layout()
-    fs.legend_below(axes[1], ncol=2)
+    fs.legend_below(axes[2], ncol=2)
     fs.outer_frame(fig, axes)
     fs.save(fig, "frequency_agility")
     plt.close(fig)

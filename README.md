@@ -18,7 +18,7 @@ src/models/         receivers: Ultra-CAN, Ultra-CAN-QKV, LSTM-OFDM-DCSK, MC-DLCS
 src/training/       multi-task losses and the Trainer
 src/evaluation/     BER/sensing/jamming evaluation and the SWaP-C table
 src/experiments/    runner.py (single entry point), pipeline helpers, final report
-scripts/            figure/table producers and benchmarks
+scripts/            figures, tables, diagnostics, tools and dataset wrappers
 notebooks/          Colab notebooks (setup, benchmark, jamming, final report)
 results/full/       generated outputs (models ignored by git, curated CSVs kept)
 ```
@@ -63,24 +63,24 @@ python src/experiments/runner.py --experiments all --mode full --no-regen
 Run these after the corresponding experiments (see also the notebooks):
 
 ```bash
-python scripts/make_fig_architecture.py             # architecture.pdf
-python scripts/make_fig_ber_full_linear.py          # ber_full_linear.pdf + blind receiver tables
-python scripts/make_fig_ber_region_zoom.py          # ber_region_zoom.pdf
-python scripts/make_fig_sensing_delay.py            # sensing_delay_single.pdf
-python scripts/make_table_operating_region.py       # operating-region table (pooled BER, min SNR @1e-4)
-python scripts/make_fig_layer_retention.py          # jamming_layer_retention.pdf
-python scripts/run_jam_aware_qkv.py                 # jamming-aware training (long)
-python scripts/make_fig_jamming_aware_control.py    # jamming_aware_control.pdf
-python scripts/make_fig_frequency_agility.py         # frequency_agility.pdf + per-arch gain
-python scripts/make_table_channel_generalization.py  # generalization_table.tex
-python scripts/latency_bench.py                     # single-burst latency (CPU)
+python scripts/figures/make_fig_architecture.py             # architecture.pdf
+python scripts/figures/make_fig_ber_full_linear.py          # ber_full_linear.pdf + blind receiver tables
+python scripts/figures/make_fig_ber_region_zoom.py          # ber_region_zoom.pdf
+python scripts/figures/make_fig_sensing_delay.py            # sensing_delay_single.pdf
+python scripts/tables/make_table_operating_region.py       # operating-region table (pooled BER, min SNR @1e-4)
+python scripts/figures/make_fig_layer_retention.py          # jamming_layer_retention.pdf
+python scripts/tools/run_jam_aware_qkv.py                 # jamming-aware training (long)
+python scripts/figures/make_fig_jamming_aware_control.py    # jamming_aware_control.pdf
+python scripts/figures/make_fig_frequency_agility.py         # frequency_agility.pdf + per-arch gain
+python scripts/tables/make_table_channel_generalization.py  # generalization_table.tex
+python scripts/tools/latency_bench.py                     # single-burst latency (CPU)
 ```
 
 Diagnostics and checkpoint-only re-evaluation (no retraining, no GPU):
 
 ```bash
-python scripts/diagnose_jamming_mc.py               # CW single-realization artifact vs Monte Carlo
-python scripts/rerun_jamming_mc.py                  # re-run the jamming grid on the stored checkpoints
+python scripts/diagnostics/diagnose_jamming_mc.py               # CW single-realization artifact vs Monte Carlo
+python scripts/tools/rerun_jamming_mc.py                  # re-run the jamming grid on the stored checkpoints
 ```
 
 All figure scripts resolve their inputs under `results/` and write PDFs into

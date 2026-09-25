@@ -16,9 +16,9 @@ import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
-if str(Path(__file__).resolve().parent) not in sys.path:
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
+REPO = Path(__file__).resolve().parents[2]
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 ARCHS = ["conv1d", "qkv", "lstm", "mc_dlsk"]
 LABELS = {
     "conv1d": "Ultra-CAN (Conv1D)",
@@ -220,7 +220,7 @@ def plot_region_zoom_plotly() -> None:
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
-    import plotly_style as ps
+    from style import plotly_style as ps
 
     curves = {scenario: _curve(scenario) for scenario, _, _ in SCENARIOS}
     if not any(curves.values()):

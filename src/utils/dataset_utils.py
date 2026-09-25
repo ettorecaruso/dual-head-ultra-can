@@ -31,8 +31,31 @@ def get_dataset_dir(config: Dict[str, Any]) -> Path:
     params_str = (
         f"v{_DATASET_VERSION}_e{echoes}_d{max_delay}_D{max_doppler}_S{snr_range}"
         f"_s{snr_step}_f{feature_mode}_a{alpha_min}_{alpha_max}"
-        f"_C{coupling}_F{floor}"
+        f"_C{coupling}_F{floor}{_channel_suffix(config)}"
     )
     params_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
     raw_dir = Path(data.get("raw_dir", "data/raw"))
     return raw_dir / params_hash
+
+
+def _channel_suffix(config: Dict[str, Any]) -> str:
+    """Channel digest appended to the dataset hash, empty for the nominal channel.
+
+    The data depend on the propagation model, so a different channel must land in
+    a different directory; the nominal channel keeps the historical digest so the
+    archived ``data/raw`` tree stays valid.
+    """
+    from src.data.channel_models import (
+        DEFAULT_CHANNEL_MODEL,
+        fingerprint_of,
+        resolved_channel_section,
+    )
+    from src.utils.config_loader import DEFAULT_CHANNEL_VARIANT, load_channels
+
+    nominal = load_channels()[DEFAULT_CHANNEL_VARIANT]
+    nominal.setdefault("model", DEFAULT_CHANNEL_MODEL)
+    section = resolved_channel_section(config)
+    digest = fingerprint_of(section)
+    if digest == fingerprint_of(nominal):
+        return ""
+    return f"_c{digest}"

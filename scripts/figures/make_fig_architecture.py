@@ -26,7 +26,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 FIG_DIR = REPO / "figures"
 OUT_PDF = FIG_DIR / "architecture.pdf"
 TEX_NAME = "architecture.tex"

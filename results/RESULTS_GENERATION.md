@@ -15,11 +15,11 @@ in the plotting code).
 |---|---|---|---|
 | `ber_vs_snr` — 3 scenarios x 5 receivers (Conv1D, QKV, LSTM-OFDM-DCSK, MC-DLCSK, blind statistical), 14 SNR points | 16 csv + 12 `.keras` | `runner.py --experiments ber_vs_snr --mode full` | `n_errors`/`n_symbols` per point in each `metrics.csv`; `operating_region_table.csv` |
 | `classical_receivers` — equations-only reference | 2 csv | `runner.py --experiments classical_receivers --mode full` | deterministic (`ber_vs_k.csv`, `ber_vs_doppler.csv`) |
-| `jamming` — 4 receivers x 3 jammers x 11 JSR x **5 realizations** | 36 csv + 24 pdf + 4 `.keras` | `runner.py --experiments jamming --mode full`, re-evaluated with `scripts/rerun_jamming_mc.py` | `jamming_results_*.csv` = mean/std/min/max over realizations; `jamming_realizations_*.csv` = per-realization BER |
-| `jamming_interpretability` — 4 receivers x 19 conditions x 5 realizations, layer-wise activation probes | 16 csv + 5 json + 1 yaml + 1 `.keras` + 1 md | `runner.py --experiments jamming_interpretability --mode full`, then `scripts/run_jam_aware_qkv.py` (see `jamming_aware_training/README.md` for the consolidation note) | `run_metadata.json` per receiver, `logs/config_used.yaml` |
+| `jamming` — 4 receivers x 3 jammers x 11 JSR x **5 realizations** | 36 csv + 24 pdf + 4 `.keras` | `runner.py --experiments jamming --mode full`, re-evaluated with `scripts/tools/rerun_jamming_mc.py` | `jamming_results_*.csv` = mean/std/min/max over realizations; `jamming_realizations_*.csv` = per-realization BER |
+| `jamming_interpretability` — 4 receivers x 19 conditions x 5 realizations, layer-wise activation probes | 16 csv + 5 json + 1 yaml + 1 `.keras` + 1 md | `runner.py --experiments jamming_interpretability --mode full`, then `scripts/tools/run_jam_aware_qkv.py` (see `jamming_aware_training/README.md` for the consolidation note) | `run_metadata.json` per receiver, `logs/config_used.yaml` |
 | `frequency_agility` — 4 receivers x 4 jammer models x 6 JSR x 5 realizations + dwell sweep (5 hop rates) | 13 csv + 4 json + 1 yaml + 1 pdf | `runner.py --experiments frequency_agility --mode full --no-regen` | `run_metadata.json` per receiver (`channel_process`, `hop`), `logs/config_used.yaml` |
-| `final_report` — SWaP-C table, latency, aggregated report | `weight_table.tex`, `latency_results.json`, `final_report.md` | `runner.py --experiments final_report --mode full` + `scripts/latency_bench.py` | latency measured on the reference laptop (AMD Ryzen 5 PRO 4650U, float32, single thread, TF 2.21; median of five trials) |
-| `diagnostics/jamming_artifact` — CW single-realization artifact vs Monte Carlo | 2 csv + 1 pdf | `scripts/diagnose_jamming_mc.py` | `f_cw`, per-realization BER |
+| `final_report` — SWaP-C table, latency, aggregated report | `weight_table.tex`, `latency_results.json`, `final_report.md` | `runner.py --experiments final_report --mode full` + `scripts/tools/latency_bench.py` | latency measured on the reference laptop (AMD Ryzen 5 PRO 4650U, float32, single thread, TF 2.21; median of five trials) |
+| `diagnostics/jamming_artifact` — CW single-realization artifact vs Monte Carlo | 2 csv + 1 pdf | `scripts/diagnostics/diagnose_jamming_mc.py` | `f_cw`, per-realization BER |
 | `logs/` — provenance of the 2026-09-24 frequency-agility run | `runner.log`, `RUN_INFO.txt`, `CHECKPOINTS_INFO.txt` | the runner itself | git commit `12e9017`, TensorFlow 2.20.0, Tesla T4, sha256 of the four checkpoints |
 
 Pointer to the paper: `ber_vs_snr` -> communication benchmark and sensing
@@ -116,14 +116,14 @@ jamming-aware QKV receiver of Fig. `jamaware` (17 `.keras` files in total).
 python src/experiments/runner.py --experiments ber_vs_snr --mode full
 python src/experiments/runner.py --experiments classical_receivers --mode full
 python src/experiments/runner.py --experiments jamming --mode full
-python scripts/rerun_jamming_mc.py                          # per-realization jamming grid
+python scripts/tools/rerun_jamming_mc.py                          # per-realization jamming grid
 python src/experiments/runner.py --experiments jamming_interpretability --mode full
-python scripts/run_jam_aware_qkv.py                          # jamming-aware QKV training
+python scripts/tools/run_jam_aware_qkv.py                          # jamming-aware QKV training
 python src/experiments/runner.py --experiments frequency_agility --mode full --no-regen
-python scripts/make_fig_ber_full_linear.py ; python scripts/make_fig_ber_region_zoom.py
-python scripts/make_fig_sensing_delay.py ; python scripts/make_table_operating_region.py
-python scripts/make_fig_layer_retention.py ; python scripts/make_fig_jamming_aware_control.py
-python scripts/make_fig_frequency_agility.py ; python scripts/latency_bench.py
+python scripts/figures/make_fig_ber_full_linear.py ; python scripts/figures/make_fig_ber_region_zoom.py
+python scripts/figures/make_fig_sensing_delay.py ; python scripts/tables/make_table_operating_region.py
+python scripts/figures/make_fig_layer_retention.py ; python scripts/figures/make_fig_jamming_aware_control.py
+python scripts/figures/make_fig_frequency_agility.py ; python scripts/tools/latency_bench.py
 python src/experiments/runner.py --experiments final_report --mode full
 ```
 

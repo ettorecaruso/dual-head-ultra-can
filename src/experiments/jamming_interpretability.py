@@ -16,6 +16,7 @@ import pandas as pd
 
 from src.data.data_loader import DataDict, _build_feature_matrix
 from src.evaluation.metrics import bit_error_count, mse_delay_doppler
+from src.evaluation.stats import mean_interval
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -212,7 +213,17 @@ def _aggregate_rows(
     rows: List[Dict[str, Any]],
     keys: Sequence[str],
     std_fields: Sequence[str],
+    ci_fields: Sequence[str] = ("ber",),
 ) -> List[Dict[str, Any]]:
+    """Mean over realizations plus the dispersion the figures must report.
+
+    ``std_fields`` get the standard deviation, ``ci_fields`` get the standard
+    error of the mean, the confidence interval and the 5th/95th percentiles. With
+    the stratified jammer realizations of :func:`sample_jammer_waveform` the
+    residual spread is a quadrature error that falls like ``1/n``, so what is
+    reported here is the uncertainty of the mean curve and not the binomial
+    uncertainty of a single point.
+    """
     grouped: Dict[Tuple[Any, ...], List[Dict[str, Any]]] = {}
     for row in rows:
         grouped.setdefault(tuple(row[key] for key in keys), []).append(row)
@@ -234,6 +245,13 @@ def _aggregate_rows(
                 agg[f"{field}_std"] = (
                     float(values[finite].std(ddof=0)) if bool(finite.any()) else float("nan")
                 )
+            if field in ci_fields and int(finite.sum()) >= 1:
+                interval = mean_interval(values[finite])
+                agg[f"{field}_sem"] = interval["sem"]
+                agg[f"{field}_ci_lo"] = interval["ci_lo"]
+                agg[f"{field}_ci_hi"] = interval["ci_hi"]
+                agg[f"{field}_q05"] = interval["q05"]
+                agg[f"{field}_q95"] = interval["q95"]
         agg["n_realizations"] = len(group)
         aggregated.append(agg)
     return aggregated

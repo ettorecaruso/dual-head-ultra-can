@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Optional, Tuple
 
 import matplotlib
 matplotlib.use("Agg")
@@ -27,9 +28,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import figure_style as fs  # noqa: E402
+REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from style import figure_style as fs  # noqa: E402
 
 RESULTS = REPO / "results" / "full" / "jamming_interpretability"
 CLEAN = RESULTS / "qkv"
@@ -39,6 +40,7 @@ JAMMERS = [("cw", "CW"), ("barrage", "Barrage"),
 MONOTONE = ("cw", "partial_band")
 MIN_REALIZATIONS = 5
 Y_LO, Y_HI = 1e-3, 1.0
+_Z95 = 1.959963984540054
 
 
 def _load(path: Path, who: str) -> pd.DataFrame:
@@ -74,9 +76,24 @@ def _check_monotone(df: pd.DataFrame, who: str) -> None:
             )
 
 
+def _band(frame: pd.DataFrame) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """Interval of a mean curve: the stored CI, or the SEM of the realizations."""
+    y = frame["ber"].to_numpy(dtype=float)
+    if "ber_ci_lo" in frame and "ber_ci_hi" in frame:
+        return (
+            np.clip(frame["ber_ci_lo"].to_numpy(dtype=float), Y_LO, Y_HI),
+            np.clip(frame["ber_ci_hi"].to_numpy(dtype=float), Y_LO, Y_HI),
+        )
+    if "ber_std" in frame and "n_realizations" in frame:
+        n = np.maximum(frame["n_realizations"].to_numpy(dtype=float), 1.0)
+        half = _Z95 * frame["ber_std"].to_numpy(dtype=float) / np.sqrt(n)
+        return (np.clip(y - half, Y_LO, Y_HI), np.clip(y + half, Y_LO, Y_HI))
+    return None
+
+
 def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
                 jammer: str, title: str) -> None:
-    """One JSR panel: mean curves of the two training regimes (no envelope)."""
+    """One JSR panel: mean curves of the two training regimes with their band."""
     fs.log_axis(ax, Y_LO, Y_HI, x_step=4.0)
     xs = None
     for df, name, label in ((clean, "clean_trained", "Clean-trained"),
@@ -87,6 +104,10 @@ def _draw_panel(ax, clean: pd.DataFrame, aware: pd.DataFrame,
         kw = fs.series_kwargs(name)
         x = c["jsr_db"].to_numpy(dtype=float)
         y = c["ber"].to_numpy(dtype=float)
+        band = _band(c)
+        if band is not None:
+            ax.fill_between(x, band[0], band[1], color=kw["color"], alpha=0.15,
+                            linewidth=0, zorder=2)
         xs = x
         ax.plot(x, y, label=label, zorder=3, **kw)
     ax.set_title(title, pad=8)

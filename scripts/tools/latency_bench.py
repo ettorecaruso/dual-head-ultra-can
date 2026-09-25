@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 
 import numpy as np

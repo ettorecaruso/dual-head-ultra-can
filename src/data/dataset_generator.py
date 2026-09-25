@@ -35,6 +35,13 @@ if str(_REPO_ROOT) not in sys.path:
 
 from src.utils.config_loader import DEFAULT_BASE_CONFIG_PATH, load_config, save_config_snapshot
 from src.utils.logger import log_config_summary, setup_logging
+from src.data.channel_models import (
+    TapGeometry,
+    apply_overlay,
+    channel_model,
+    validate_overlay,
+)
+from src.data.frequency_hopping import build_hop_sequence, hop_config
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +61,7 @@ _SEED_HIGH = 2**63 - 1
 
 _ECHO_FADING_TYPES = frozenset({"none", "rayleigh", "rician"})
 _NUM_ECHOES_MODES = frozenset({"fixed", "poisson"})
-_CHANNEL_HOLD_MODES = frozenset({"per_symbol", "per_slot"})
+_CHANNEL_HOLD_MODES = frozenset({"per_symbol", "per_slot", "per_hop"})
 _POISSON_ECHOES_MEAN_DEFAULT = 2.0
 _FADING_POWER_EPS = 1e-12
 
@@ -183,6 +190,51 @@ def _validate_channel_config(config: Dict[str, Any]) -> None:
         raise ValueError(
             f"channel.hold_mode must be one of {sorted(_CHANNEL_HOLD_MODES)}, got: {hold_mode!r}"
         )
+    channel_model(config)
+    validate_overlay(config)
+
+
+def _hold_representatives(
+    hold_mode: str,
+    slot_ids: Optional[np.ndarray],
+    hop_channels: Optional[np.ndarray],
+    n: int,
+    config: Dict[str, Any],
+) -> Optional[np.ndarray]:
+    """Row representative of every hold group, or ``None`` for per-symbol holds.
+
+    ``per_slot`` groups the symbols by slot, so the realization changes on the
+    slot clock. ``per_hop`` groups by the pair ``(frequency channel, coherence
+    block)``: the realization is a function of the visited frequency and is
+    refreshed every ``channel.time_block_slots`` slots, i.e. about once per Jakes
+    coherence time. A hopping link therefore averages over the hop channels while
+    a fixed carrier keeps a single realization per coherence block, which is the
+    mechanism the frequency agility experiment measures.
+    """
+    if hold_mode == "per_symbol":
+        return None
+    if slot_ids is None:
+        raise ValueError(f"channel.hold_mode is {hold_mode!r} but slot_ids is None")
+    slots = np.asarray(slot_ids, dtype=np.int64)
+    if hold_mode == "per_slot":
+        return _slot_representatives(slots, n)
+    if hop_channels is None:
+        raise ValueError("channel.hold_mode is 'per_hop' but hop_channels is None")
+    hop = np.asarray(hop_channels, dtype=np.int64)
+    if hop.shape != slots.shape:
+        raise ValueError(f"hop_channels must have shape {slots.shape}, got {hop.shape}")
+    num_channels = max(
+        1, int((config.get("frequency_hopping") or {}).get("num_channels", 1))
+    )
+    channel_section = config.get("channel") or {}
+    if "time_block_slots" not in channel_section:
+        raise KeyError("missing required configuration key: channel.time_block_slots")
+    blocks = int(channel_section["time_block_slots"])
+    if blocks < 1:
+        raise ValueError(f"channel.time_block_slots must be >= 1, got {blocks}")
+    return _slot_representatives((slots // blocks) * num_channels + hop, n)
+
+
 
 def _validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(config, dict):
@@ -895,6 +947,7 @@ def apply_channel_batch(
     config: Dict[str, Any],
     rng: np.random.Generator,
     slot_ids: Optional[np.ndarray] = None,
+    hop_channels: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     x_arr = np.asarray(x_norm, dtype=np.float64)
     if x_arr.ndim != 2:
@@ -935,8 +988,10 @@ def apply_channel_batch(
             f"k ({k_max}) > max_delay ({max_delay}): cannot sample "
             f"{k_max} distinct integer delays in [1, max_delay]"
         )
-    if hold_mode == "per_slot" and slot_ids is None:
-        raise ValueError("channel.hold_mode is 'per_slot' but slot_ids is None")
+    if hold_mode != "per_symbol" and slot_ids is None:
+        raise ValueError(f"channel.hold_mode is {hold_mode!r} but slot_ids is None")
+    if hold_mode == "per_hop" and hop_channels is None:
+        raise ValueError("channel.hold_mode is 'per_hop' but hop_channels is None")
 
     n_idx = np.arange(seq_len, dtype=np.float64)[None, :]
     n_idx_i = np.arange(seq_len, dtype=np.int64)[None, :]
@@ -985,29 +1040,59 @@ def apply_channel_batch(
         )
         dominance = np.abs(amplitudes)
 
-    if hold_mode == "per_slot":
-        reps = _slot_representatives(slot_ids, n)
-        taus = taus[reps]
-        dopplers = dopplers[reps]
-        alphas = alphas[reps]
-        amplitudes = amplitudes[reps]
-        dominance = dominance[reps]
-        valid = valid[reps]
+    geometry = TapGeometry(
+        taus=np.asarray(taus, dtype=np.float64),
+        dopplers=np.asarray(dopplers, dtype=np.float64),
+        amplitudes=np.asarray(amplitudes, dtype=np.complex128),
+        dominance=np.asarray(dominance, dtype=np.float64),
+        valid=np.asarray(valid, dtype=bool),
+        echo_power=np.asarray(echo_power, dtype=np.float64),
+        k_geometric=int(k_max),
+    )
+    geometry = apply_overlay(
+        config, geometry, rng, slot_ids=slot_ids, hop_channels=hop_channels
+    )
+    reps = _hold_representatives(hold_mode, slot_ids, hop_channels, n, config)
+    if reps is not None:
+        geometry = geometry.with_selection(reps)
         counts = counts[reps]
-        echo_power = echo_power[reps]
         h_c = h_c[reps]
         f_dc = f_dc[reps]
+    taus = geometry.taus
+    dopplers = geometry.dopplers
+    amplitudes = geometry.amplitudes
+    dominance = geometry.dominance
+    valid = geometry.valid
+    echo_power = geometry.echo_power
+    k_max = geometry.k_total
 
     h_c_eff = h_c * np.sqrt(1.0 - echo_power)
 
     y = h_c_eff[:, None] * x_arr * np.exp(1j * 2.0 * math.pi * f_dc[:, None] * n_idx)
+    integer_delays = bool(np.all(taus == np.round(taus)))
     for j in range(k_max):
-        delay_idx = n_idx_i - taus[:, j, None]
-        delay_valid = delay_idx >= 0
-        clip_idx = np.clip(delay_idx, 0, seq_len - 1)
-        x_delayed = np.where(
-            delay_valid, np.take_along_axis(x_arr, clip_idx, axis=1), 0.0
-        )
+        if integer_delays:
+            delay_idx = n_idx_i - taus[:, j, None].astype(np.int64)
+            delay_valid = delay_idx >= 0
+            clip_idx = np.clip(delay_idx, 0, seq_len - 1)
+            x_delayed = np.where(
+                delay_valid, np.take_along_axis(x_arr, clip_idx, axis=1), 0.0
+            )
+        else:
+            delay_low = np.floor(taus[:, j, None])
+            delay_frac = taus[:, j, None] - delay_low
+            low_idx = delay_low.astype(np.int64)
+            x_low = np.where(
+                low_idx >= 0,
+                np.take_along_axis(x_arr, np.clip(low_idx, 0, seq_len - 1), axis=1),
+                0.0,
+            )
+            x_high = np.where(
+                low_idx + 1 >= 0,
+                np.take_along_axis(x_arr, np.clip(low_idx + 1, 0, seq_len - 1), axis=1),
+                0.0,
+            )
+            x_delayed = (1.0 - delay_frac) * x_low + delay_frac * x_high
         phase = np.exp(1j * 2.0 * math.pi * dopplers[:, j, None] * n_idx)
         term = amplitudes[:, j, None] * x_delayed * phase
         if bool(np.all(valid[:, j])):
@@ -1017,7 +1102,15 @@ def apply_channel_batch(
 
     signal_power = np.mean(np.abs(y) ** 2, axis=1)
     if np.any(signal_power <= 0.0) or not np.all(np.isfinite(signal_power)):
-        raise RuntimeError("invalid signal power (degenerate symbol)")
+        bad = np.flatnonzero(~np.isfinite(signal_power) | (signal_power <= 0.0))
+        raise RuntimeError(
+            "invalid signal power (degenerate symbol) at rows "
+            f"{bad[:8].tolist()} of {n}: power in "
+            f"[{float(np.nanmin(signal_power)):.3e}, {float(np.nanmax(signal_power)):.3e}], "
+            f"echo power in [{float(np.min(echo_power)):.3e}, {float(np.max(echo_power)):.3e}], "
+            f"|h_c| in [{float(np.min(np.abs(h_c))):.3e}, {float(np.max(np.abs(h_c))):.3e}], "
+            f"taps={k_max}"
+        )
     noise_var = signal_power * 10.0 ** (-float(snr_db) / 10.0)
     w = np.sqrt(noise_var[:, None] / 2.0) * (
         rng.standard_normal((n, seq_len)) + 1j * rng.standard_normal((n, seq_len))
@@ -1051,6 +1144,7 @@ def generate_test_batch(
     rng: np.random.Generator,
     slot_ids: Optional[np.ndarray] = None,
     slot_offset: int = 0,
+    hop_channels: Optional[np.ndarray] = None,
 ) -> Dict[str, np.ndarray]:
     if isinstance(num_symbols, bool) or int(num_symbols) <= 0:
         raise ValueError(
@@ -1062,15 +1156,23 @@ def generate_test_batch(
     if isinstance(slot_offset, bool) or int(slot_offset) < 0:
         raise ValueError(f"slot_offset must be an int >= 0, got: {slot_offset!r}")
 
-    if slot_ids is None and channel_hold_mode(config) == "per_slot":
+    if slot_ids is None and channel_hold_mode(config) in ("per_slot", "per_hop"):
         dwell = channel_hold_dwell(config)
         slot_ids = (int(slot_offset) + np.arange(n, dtype=np.int64)) // dwell
+    if channel_hold_mode(config) == "per_hop" and hop_channels is None:
+        hop_channels = build_hop_sequence(n, hop_config(config))
 
     bits = rng.integers(0, 2, size=n, dtype=np.int64)
     seeds = rng.integers(0, _SEED_HIGH, size=n, dtype=np.int64)
     x_ref = generate_transmitted_batch_fast(config, bits, rng)
     y, tau, f_d = apply_channel_batch(
-        x_ref, int(k), float(snr_db), config, rng, slot_ids=slot_ids
+        x_ref,
+        int(k),
+        float(snr_db),
+        config,
+        rng,
+        slot_ids=slot_ids,
+        hop_channels=hop_channels,
     )
     return {
         "x": y,
@@ -1103,6 +1205,14 @@ def generate_dataset(
     rng_root = np.random.default_rng(int(config["general"]["seed"]))
     combo_seeds = rng_root.integers(0, _SEED_HIGH, size=num_combos)
 
+    hold_mode = channel_hold_mode(config)
+    slot_ids = None
+    hop_channels = None
+    if hold_mode != "per_symbol":
+        slot_ids = np.arange(n_per_combo, dtype=np.int64) // channel_hold_dwell(config)
+        if hold_mode == "per_hop":
+            hop_channels = build_hop_sequence(n_per_combo, hop_config(config))
+
     paths: List[Path] = []
     combo_index = 0
 
@@ -1116,7 +1226,15 @@ def generate_dataset(
 
             seed_sym = rng.integers(0, _SEED_HIGH, size=n_per_combo, dtype=np.int64)
             x_ref = generate_transmitted_batch(config, bits, seed_sym)
-            x_arr, tau, f_d = apply_channel_batch(x_ref, k, float(snr), config, rng)
+            x_arr, tau, f_d = apply_channel_batch(
+                x_ref,
+                k,
+                float(snr),
+                config,
+                rng,
+                slot_ids=slot_ids,
+                hop_channels=hop_channels,
+            )
 
             if not np.all(np.isfinite(x_arr)):
                 raise RuntimeError(f"array x not finite for {split} snr={snr} k={k}")

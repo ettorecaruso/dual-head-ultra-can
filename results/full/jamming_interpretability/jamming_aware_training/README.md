@@ -7,7 +7,7 @@ JSR), each averaged over 5 jammer realizations, plus the per-realization detail
 comparison against the clean-trained receiver
 (`comparison_clean_vs_jamaware.csv`) and the retrained model itself
 (`best_model.keras`). It is the file consumed by
-`scripts/make_fig_jamming_aware_control.py` and by the "Jamming-aware training"
+`scripts/figures/make_fig_jamming_aware_control.py` and by the "Jamming-aware training"
 paragraph of the paper.
 
 **Consolidation note.** The probe is long, so it was executed in three partial

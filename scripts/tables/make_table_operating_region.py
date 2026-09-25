@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 RESULTS = REPO / 'results' / 'full'
 MIN_DB = 5.0
 TARGET = 1e-4

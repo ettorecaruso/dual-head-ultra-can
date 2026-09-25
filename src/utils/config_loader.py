@@ -162,3 +162,62 @@ def save_config_snapshot(config: Dict[str, Any], output_dir: Path) -> Path:
     logger.info("config snapshot saved: %s", snapshot_path)
     return snapshot_path
 
+
+DEFAULT_CHANNELS_PATH = (
+    Path(__file__).resolve().parents[2] / "configs" / "channels.yaml"
+)
+
+DEFAULT_CHANNEL_VARIANT = "nominal"
+
+
+def load_channels(path: Optional[Path] = None) -> Dict[str, Dict[str, Any]]:
+    """Read the named channel variants of ``configs/channels.yaml``."""
+    target = Path(path) if path is not None else DEFAULT_CHANNELS_PATH
+    if not target.is_file():
+        raise FileNotFoundError(f"channels file not found: {target}")
+    try:
+        with open(target, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"invalid channels YAML: {exc}") from exc
+    if not isinstance(data, dict) or not data:
+        raise ValueError(f"{target} must contain a non-empty mapping of variants")
+    for name, section in data.items():
+        if not isinstance(section, dict):
+            raise ValueError(
+                f"channel variant {name!r} must be a mapping, got {type(section).__name__}"
+            )
+    return data
+
+
+def channel_variant(name: str, path: Optional[Path] = None) -> Dict[str, Any]:
+    """Return one named variant, with the list of available names on failure."""
+    variants = load_channels(path)
+    if name not in variants:
+        raise KeyError(
+            f"unknown channel variant {name!r}; available: {sorted(variants)}"
+        )
+    return variants[name]
+
+
+def with_channel_variant(
+    config: Dict[str, Any],
+    name: Optional[str] = None,
+    path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Deep-merge a named channel variant over the ``channel`` block.
+
+    The merge keeps every key the variant does not mention, so a variant states
+    only what it changes, and the input mapping is never mutated: the same base
+    configuration can therefore serve several channel models in one process.
+    """
+    if not isinstance(config, dict):
+        raise TypeError(f"config must be a dict, got {type(config).__name__}")
+    selected = str(name) if name is not None else DEFAULT_CHANNEL_VARIANT
+    section = channel_variant(selected, path)
+    merged = _deep_merge(dict(config.get("channel") or {}), section)
+    out = dict(config)
+    out["channel"] = merged
+    out["channel_variant"] = selected
+    return out
+

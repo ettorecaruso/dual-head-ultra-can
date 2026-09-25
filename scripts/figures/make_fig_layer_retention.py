@@ -15,7 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 RESULTS = REPO / 'results' / 'full'
 OUT = REPO / 'figures' / 'jamming_layer_retention.pdf'
 MIRROR = REPO / 'results' / 'figures' / 'jamming_layer_retention.pdf'

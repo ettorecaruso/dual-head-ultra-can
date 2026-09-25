@@ -10,7 +10,7 @@ Typical use in a figure script::
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    import figure_style as fs
+    from style import figure_style as fs
 
     fs.apply_style()
     fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=True)
@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 
 LINE_W = 1.5
 MARKER_SIZE = 6.5

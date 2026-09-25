@@ -1,58 +1,70 @@
 """Cross-channel generalization of the frozen receivers.
 
 The receivers are trained on the nominal aerial channel of the paper and then
-evaluated without any retraining on held-out channel models that differ in the
-echo fading law, in the direct-path Rician factor, or in the number of echoes.
-The transmitted waveforms, the SNRs and the sensing labels keep the same
-semantics, so the measured degradation is attributable to the channel mismatch
-only.
+evaluated without retraining on the alternative channel models defined in
+``configs/channels.yaml``: a 3GPP TR 38.901 TDL profile (LOS and NLOS variants)
+and the two-ray ground reflection with Jakes fading. Waveforms, SNRs and sensing
+labels keep the same semantics, so the measured degradation is attributable to the
+channel mismatch only.
+
+The comparison is homogeneous by construction: every variant, the nominal one
+included, is evaluated here with the same protocol
+(``evaluation.bit_error_threshold`` errors or ``evaluation.max_symbols_per_snr``
+symbols per point, ``evaluation.eval_batch_symbols`` symbols per draw) and on the
+same echo count ``data.echoes``. The nominal row is therefore measured in-domain
+with the same code path instead of being imported from the benchmark.
+
+Required configuration keys: ``experiments.channel_generalization.channel_variants``
+(names from ``configs/channels.yaml``), ``evaluation.snr_test_range``,
+``evaluation.bit_error_threshold``, ``evaluation.max_symbols_per_snr``,
+``evaluation.eval_batch_symbols`` and ``data.echoes``.
 """
 
 from __future__ import annotations
 
-import copy
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 
+from src.data import channel_models
 from src.data.data_loader import _build_feature_matrix
 from src.data.dataset_generator import generate_test_batch
 from src.evaluation.metrics import bit_error_count
+from src.evaluation.stats import wilson_interval
+from src.utils.config_loader import with_channel_variant
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-_VARIANT_CHANNEL_KEYS = (
-    "echo_fading",
-    "echo_fading_kappa_db",
-    "direct_fading_kappa_db",
-    "num_echoes_model",
-    "poisson_echoes_mean",
-)
 _PREDICT_BATCH = 1024
 _OPERATING_SNR_DB = 5.0
 _TARGET_BER = 1e-4
 
 
-def variant_config(config: Dict[str, Any], variant: Dict[str, Any]) -> Dict[str, Any]:
-    cfg = copy.deepcopy(config)
-    channel = dict(cfg.get("channel") or {})
-    for key in _VARIANT_CHANNEL_KEYS:
-        if key in variant:
-            channel[key] = variant[key]
-    cfg["channel"] = channel
-    return cfg
+def variants_of(config: Dict[str, Any]) -> List[str]:
+    """Channel variants to evaluate, nominal first when it is requested."""
+    section = (config.get("experiments") or {}).get("channel_generalization") or {}
+    names = section.get("channel_variants")
+    if names is None:
+        raise KeyError(
+            "missing required configuration key: "
+            "experiments.channel_generalization.channel_variants"
+        )
+    if isinstance(names, str):
+        names = [names]
+    ordered = [str(name) for name in names]
+    if not ordered:
+        raise ValueError("channel_variants must not be empty")
+    return ordered
 
 
-def _predict(
-    model: tf.keras.Model,
-    feat: np.ndarray,
-) -> Tuple[np.ndarray, np.ndarray]:
+def _predict(model: Any, feat: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    import tensorflow as tf
+
     logits_parts: List[np.ndarray] = []
     sensing_parts: List[np.ndarray] = []
     for start in range(0, feat.shape[0], _PREDICT_BATCH):
@@ -75,97 +87,117 @@ def _batch_seed(base_seed: int, variant_index: int, snr_db: float, batch_idx: in
     return int(abs(value) % (2**31 - 1))
 
 
+def protocol_of(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Resolved evaluation protocol, recorded in the run metadata."""
+    evaluation = config.get("evaluation") or {}
+    section = (config.get("experiments") or {}).get("channel_generalization") or {}
+    return {
+        "snr_test_range": [
+            float(value) for value in (section.get("snr_test_range") or evaluation.get("snr_test_range") or [])
+        ],
+        "bit_error_threshold": int(
+            section.get("bit_error_threshold", evaluation.get("bit_error_threshold"))
+        ),
+        "max_symbols_per_snr": int(
+            section.get("max_symbols_per_snr", evaluation.get("max_symbols_per_snr"))
+        ),
+        "batch_symbols": int(evaluation.get("eval_batch_symbols")),
+    }
+
+
+def _correlation(a: np.ndarray, b: np.ndarray) -> float:
+    if a.size < 2 or float(np.std(a)) == 0.0 or float(np.std(b)) == 0.0:
+        return float("nan")
+    return float(np.corrcoef(a, b)[0, 1])
+
+
 def _evaluate_variant(
-    model: tf.keras.Model,
+    model: Any,
     arch: str,
     variant_cfg: Dict[str, Any],
     variant_name: str,
     variant_index: int,
-    snr_range: List[float],
-    echoes: List[int],
-    num_symbols: int,
-    error_threshold: int,
-    max_symbols: int,
-    batch_symbols: int,
+    protocol: Dict[str, Any],
+    echoes: Sequence[int],
     feature_mode: str,
     feature_norm: str,
     base_seed: int,
     tau_max: float,
     fd_max: float,
 ) -> List[Dict[str, Any]]:
+    """BER and sensing rows of one (architecture, channel variant) pair."""
     rows: List[Dict[str, Any]] = []
-    for snr in snr_range:
+    for snr in protocol["snr_test_range"]:
         accum_err = 0
         accum_sym = 0
         batch_idx = 0
         tau_true: List[np.ndarray] = []
-        tau_pred_parts: List[np.ndarray] = []
+        tau_pred: List[np.ndarray] = []
         fd_true: List[np.ndarray] = []
-        fd_pred_parts: List[np.ndarray] = []
-        while accum_sym < max_symbols and accum_err < error_threshold:
-            k = echoes[batch_idx % len(echoes)]
+        fd_pred: List[np.ndarray] = []
+        while (
+            accum_sym < protocol["max_symbols_per_snr"]
+            and accum_err < protocol["bit_error_threshold"]
+        ):
+            k = int(echoes[batch_idx % len(echoes)])
             rng = np.random.default_rng(
-                _batch_seed(base_seed, variant_index, snr, batch_idx)
+                _batch_seed(base_seed, variant_index, float(snr), batch_idx)
             )
-            n_batch = min(batch_symbols, max_symbols - accum_sym)
+            n_batch = min(
+                protocol["batch_symbols"],
+                protocol["max_symbols_per_snr"] - accum_sym,
+            )
             batch = generate_test_batch(variant_cfg, n_batch, float(snr), k, rng)
+            bit = np.asarray(batch["bit"], dtype=np.int64)
             feat = _build_feature_matrix(
-                batch["x"], feature_mode, feature_norm, reference=batch["x_ref"]
+                np.asarray(batch["x"]),
+                feature_mode,
+                feature_norm,
+                reference=np.asarray(batch["x_ref"]),
             )
             logits, sensing = _predict(model, feat)
-            bit = np.asarray(batch["bit"], dtype=np.int64)
-            n_err, _ = bit_error_count(logits, bit)
-            accum_err += int(n_err)
-            accum_sym += int(bit.shape[0])
+            errors, _ = bit_error_count(logits, bit)
+            accum_err += int(errors)
+            accum_sym += int(n_batch)
+            batch_idx += 1
             tau_true.append(np.asarray(batch["tau"], dtype=np.float64))
             fd_true.append(np.asarray(batch["f_d"], dtype=np.float64))
-            tau_pred_parts.append(np.clip(sensing[:, 0], 0.0, 1.0) * tau_max)
-            fd_pred_parts.append(np.clip(sensing[:, 1], 0.0, 1.0) * fd_max)
-            batch_idx += 1
-
+            tau_pred.append(np.asarray(sensing, dtype=np.float64)[:, 0] * float(tau_max))
+            fd_pred.append(np.asarray(sensing, dtype=np.float64)[:, 1] * float(fd_max))
+        ci_lo, ci_hi = wilson_interval(accum_err, accum_sym)
+        tau_p = np.concatenate(tau_pred)
         tau_t = np.concatenate(tau_true)
-        tau_p = np.concatenate(tau_pred_parts)
+        fd_p = np.concatenate(fd_pred)
         fd_t = np.concatenate(fd_true)
-        fd_p = np.concatenate(fd_pred_parts)
-        corr_tau = (
-            float(np.corrcoef(tau_t, tau_p)[0, 1]) if np.std(tau_t) > 0.0 else float("nan")
-        )
-        corr_fd = (
-            float(np.corrcoef(fd_t, fd_p)[0, 1]) if np.std(fd_t) > 0.0 else float("nan")
-        )
-        ber = accum_err / max(1, accum_sym)
         rows.append({
+            "channel_variant": variant_name,
             "arch": arch,
-            "variant": variant_name,
             "snr_db": float(snr),
-            "ber": float(ber),
+            "ber": accum_err / max(1, accum_sym),
             "n_errors": int(accum_err),
             "n_symbols": int(accum_sym),
-            "mse_tau": float(np.mean((tau_t - tau_p) ** 2)),
-            "mse_fd": float(np.mean((fd_t - fd_p) ** 2)),
-            "corr_tau": corr_tau,
-            "corr_fd": corr_fd,
+            "ber_ci_lo": ci_lo,
+            "ber_ci_hi": ci_hi,
+            "mse_tau": float(np.mean((tau_p - tau_t) ** 2)),
+            "corr_tau": _correlation(tau_p, tau_t),
+            "mse_fd": float(np.mean((fd_p - fd_t) ** 2)),
+            "corr_fd": _correlation(fd_p, fd_t),
         })
-        logger.info(
-            "[channel_generalization] %-24s SNR=%6.1f dB | BER=%.6f (%d/%d) corr_tau=%.4f",
-            variant_name, float(snr), ber, accum_err, accum_sym, corr_tau,
-        )
     return rows
 
 
-def _pooled_ber(rows: List[Dict[str, Any]], min_snr_db: float) -> float:
-    errors = 0
-    symbols = 0
-    for row in rows:
-        if float(row["snr_db"]) >= float(min_snr_db) - 1e-9:
-            errors += int(row["n_errors"])
-            symbols += int(row["n_symbols"])
+def pooled_ber(rows: Sequence[Dict[str, Any]], min_snr_db: float) -> Tuple[float, float, float]:
+    """Pooled BER above ``min_snr_db`` with its Wilson interval."""
+    errors = sum(int(row["n_errors"]) for row in rows if float(row["snr_db"]) >= min_snr_db - 1e-9)
+    symbols = sum(int(row["n_symbols"]) for row in rows if float(row["snr_db"]) >= min_snr_db - 1e-9)
     if symbols == 0:
-        return float("nan")
-    return errors / float(symbols)
+        return (float("nan"), float("nan"), float("nan"))
+    lo, hi = wilson_interval(errors, symbols)
+    return (errors / symbols, lo, hi)
 
 
-def _min_snr_at_target(rows: List[Dict[str, Any]], target: float) -> float:
+def min_snr_at_target(rows: Sequence[Dict[str, Any]], target: float) -> float:
+    """Lowest SNR whose measured BER already meets ``target``."""
     for row in sorted(rows, key=lambda item: float(item["snr_db"])):
         if float(row["ber"]) <= float(target):
             return float(row["snr_db"])
@@ -173,61 +205,41 @@ def _min_snr_at_target(rows: List[Dict[str, Any]], target: float) -> float:
 
 
 def evaluate_channel_generalization(
-    model: tf.keras.Model,
+    model: Any,
     config: Dict[str, Any],
     output_dir: Path,
     arch: str,
 ) -> Dict[str, Any]:
+    """Evaluate one frozen receiver on every configured channel variant."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    cg = (config.get("experiments") or {}).get("channel_generalization") or {}
-    variants = list(cg.get("variants") or [{"name": "nominal"}])
-    snr_range = [
-        float(v)
-        for v in (cg.get("snr_test_range") or config["evaluation"]["snr_test_range"])
-    ]
-    snr_range = sorted(snr_range)
-    num_symbols = int(cg.get("num_symbols_per_snr", 2000))
-    error_threshold = int(cg.get("bit_error_threshold", 100))
-    max_symbols = int(cg.get("max_symbols_per_snr", 2000000))
-    batch_symbols = int(cg.get("eval_batch_symbols", 100000))
-    feature_mode = str(config["data"].get("feature_mode", "iq"))
-    feature_norm = str(config["data"].get("feature_norm", "none"))
-    echoes = [int(value) for value in config["data"]["echoes"]]
+    protocol = protocol_of(config)
+    names = variants_of(config)
+    data = config["data"]
+    evaluation = config.get("evaluation") or {}
+    echoes = [int(value) for value in data["echoes"]]
     if not echoes:
-        raise ValueError("data.echoes is empty")
-    base_seed = int(config["general"].get("seed", 42))
-    tau_max = float(config["data"]["max_delay"])
-    fd_max = float(config["data"]["max_doppler"])
-
-    logger.info(
-        "[channel_generalization %s] variants=%s snr=%s symbols/snr>=%d",
-        arch, [str(v.get("name")) for v in variants], snr_range, num_symbols,
-    )
+        raise ValueError("data.echoes must not be empty")
+    base_seed = int((config.get("general") or {}).get("seed", 0))
+    feature_mode = str(data.get("feature_mode", "iq"))
+    feature_norm = str(data.get("feature_norm", "none"))
+    tau_max = float(data["max_delay"])
+    fd_max = float(data["max_doppler"])
+    operating_snr = float(evaluation.get("operating_snr_db", _OPERATING_SNR_DB))
+    target_ber = float(evaluation.get("target_ber", _TARGET_BER))
 
     all_rows: List[Dict[str, Any]] = []
     summary: List[Dict[str, Any]] = []
-    for index, variant in enumerate(variants):
-        if not isinstance(variant, dict):
-            raise ValueError(
-                f"variant {index} must be a dict, got: {type(variant).__name__}"
-            )
-        name = str(variant.get("name") or f"variant_{index}")
-        variant_cfg = variant_config(config, variant)
-        channel = dict(variant_cfg.get("channel") or {})
+    for index, name in enumerate(names):
+        variant_cfg = with_channel_variant(config, name)
         rows = _evaluate_variant(
             model=model,
             arch=arch,
             variant_cfg=variant_cfg,
             variant_name=name,
             variant_index=index,
-            snr_range=snr_range,
+            protocol=protocol,
             echoes=echoes,
-            num_symbols=num_symbols,
-            error_threshold=error_threshold,
-            max_symbols=max_symbols,
-            batch_symbols=batch_symbols,
             feature_mode=feature_mode,
             feature_norm=feature_norm,
             base_seed=base_seed,
@@ -238,52 +250,61 @@ def evaluate_channel_generalization(
         variant_dir.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(rows).to_csv(variant_dir / "metrics.csv", index=False)
         all_rows.extend(rows)
-        finite_corr = [float(r["corr_tau"]) for r in rows if np.isfinite(r["corr_tau"])]
+        pooled, ci_lo, ci_hi = pooled_ber(rows, operating_snr)
+        finite_corr = [
+            float(row["corr_tau"]) for row in rows if np.isfinite(row["corr_tau"])
+        ]
         summary.append({
             "arch": arch,
-            "variant": name,
-            "echo_fading": str(channel.get("echo_fading", "none")),
-            "echo_fading_kappa_db": float(channel.get("echo_fading_kappa_db") or 0.0),
-            "direct_fading_kappa_db": float(
-                channel.get("direct_fading_kappa_db")
-                if channel.get("direct_fading_kappa_db") is not None
-                else config["data"]["rician_kappa_db"]
-            ),
-            "num_echoes_model": str(channel.get("num_echoes_model", "fixed")),
-            "poisson_echoes_mean": float(channel.get("poisson_echoes_mean") or 0.0),
-            "pooled_ber": _pooled_ber(rows, _OPERATING_SNR_DB),
-            "min_snr_at_1e-4": _min_snr_at_target(rows, _TARGET_BER),
+            "channel_variant": name,
+            "channel_model": channel_models.channel_model(variant_cfg),
+            "channel_fingerprint": channel_models.channel_fingerprint(variant_cfg),
+            "hold_mode": str((variant_cfg.get("channel") or {}).get("hold_mode", "")),
+            "pooled_ber": pooled,
+            "pooled_ber_ci_lo": ci_lo,
+            "pooled_ber_ci_hi": ci_hi,
+            "min_snr_at_target": min_snr_at_target(rows, target_ber),
             "corr_tau_top": max(finite_corr) if finite_corr else float("nan"),
-            "mse_tau_top": min((float(r["mse_tau"]) for r in rows), default=float("nan")),
+            "mse_tau_top": min(
+                (float(row["mse_tau"]) for row in rows), default=float("nan")
+            ),
+            "n_symbols_total": int(sum(int(row["n_symbols"]) for row in rows)),
+            "diagnostics": json.dumps(
+                channel_models.diagnostics(variant_cfg), sort_keys=True
+            ),
         })
-        min_snr = summary[-1]["min_snr_at_1e-4"]
+        minimum = summary[-1]["min_snr_at_target"]
         logger.info(
-            "[channel_generalization %s] %-24s pooled_ber=%.6f min_snr@1e-4=%s",
-            arch, name, summary[-1]["pooled_ber"],
-            f"{min_snr:.1f}" if np.isfinite(min_snr) else "n/a",
+            "[channel_generalization %s] %-18s pooled_ber=%.6f "
+            "[%.6f, %.6f] min_snr@target=%s",
+            arch, name, summary[-1]["pooled_ber"], ci_lo, ci_hi,
+            f"{minimum:.1f}" if np.isfinite(minimum) else "n/a",
         )
 
     pd.DataFrame(all_rows).to_csv(output_dir / "metrics.csv", index=False)
-    summary_df = pd.DataFrame(summary)
-    summary_df.to_csv(output_dir / "summary.csv", index=False)
+    pd.DataFrame(summary).to_csv(output_dir / "summary.csv", index=False)
 
     metadata = {
         "experiment": "channel_generalization",
         "arch": arch,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "tensorflow_version": tf.__version__,
-        "variants": [str(v.get("name")) for v in variants],
-        "snr_range": snr_range,
-        "num_symbols_per_snr": num_symbols,
-        "bit_error_threshold": error_threshold,
-        "operating_snr_db": _OPERATING_SNR_DB,
-        "target_ber": _TARGET_BER,
+        "channel_variants": names,
+        "protocol": protocol,
+        "operating_snr_db": operating_snr,
+        "target_ber": target_ber,
+        "echoes": echoes,
+        "channels": {
+            name: channel_models.channel_metadata(with_channel_variant(config, name))
+            for name in names
+        },
     }
-    with open(output_dir / "run_metadata.json", "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
+    with open(output_dir / "run_metadata.json", "w", encoding="utf-8") as handle:
+        json.dump(metadata, handle, indent=2)
 
     return {
         "metrics_csv": str(output_dir / "metrics.csv"),
         "summary_csv": str(output_dir / "summary.csv"),
-        "n_variants": len(variants),
+        "n_variants": len(names),
     }
+
+

@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
+from src.data import channel_models
 from src.data.data_loader import _build_feature_matrix
 from src.data.dataset_generator import generate_test_batch
 from src.data.frequency_hopping import (
@@ -42,13 +43,19 @@ from src.data.frequency_hopping import (
     with_dwell,
 )
 from src.evaluation.metrics import bit_error_count
+from src.evaluation.stats import describe
 from src.experiments.run_jamming import _add_jammer_at_jsr, sample_jammer_waveform
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 _VALID_JAMMER_MODELS = frozenset({"barrage", "fixed_partial", "sweep", "follower"})
-_MODALITIES = ("fh_off", "fh_on")
+_MODALITIES = ("fh_off", "fh_off_blind", "fh_on")
+_JAMMER_KNOWLEDGE = {
+    "fh_off": "omniscient",
+    "fh_off_blind": "band_agnostic",
+    "fh_on": "model",
+}
 _PREDICT_BATCH = 1024
 _JAMMER_STREAM_OFFSET = 7919
 _MASK_STREAM_OFFSET = 50021
@@ -113,16 +120,19 @@ def _modality_inputs(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Channel geometry and jammer coverage of one transmission modality.
 
-    Both modalities share the *same* per-slot channel process: the returned
-    ``slot_ids`` never depend on ``modality``, because with
-    ``channel.hold_mode = per_slot`` they select the channel realization. Only
-    the hop sequence and the jammer coverage change:
+    Every modality shares the *same* channel process and the *same* transmission:
+    the waveform stream and the slot ids never depend on the modality, and with
+    ``channel.hold_mode = per_hop`` the pair ``(slot, hop channel)`` selects the
+    realization. Three modalities span the jammer knowledge:
 
-    * ``fh_on``: the transmitter hops and the jammer covers what its model
-      covers (``barrage``/``fixed_partial``/``sweep``/``follower``);
-    * ``fh_off``: fixed carrier, i.e. the jammer always finds the transmission
-      and every burst is jammed, while the propagation channel still evolves
-      slot by slot exactly as in ``fh_on``.
+    * ``fh_off``: fixed carrier and a jammer that knows it, so every burst is
+      jammed (``mask = 1``). It is the worst case and the control of the gain;
+    * ``fh_off_blind``: fixed carrier and a band-agnostic jammer, whose coverage
+      or scan is placed independently of the transmission, so it can miss;
+      comparing it with ``fh_off`` measures how much the "the jammer always finds
+      the carrier" assumption is worth;
+    * ``fh_on``: the transmitter hops and the jammer keeps its own model, in which
+      only the ``follower`` tracks the transmission, with a finite reaction time.
 
     Returns:
         ``(hop_channels, slot_ids, mask)``, all of shape ``(n_bursts,)``.
@@ -139,7 +149,12 @@ def _modality_inputs(
         )
         return hop_channels, slot_ids, mask
     hop_channels = np.zeros(n, dtype=np.int64)
-    mask = np.ones(n, dtype=bool)
+    if modality == "fh_off":
+        return hop_channels, slot_ids, np.ones(n, dtype=bool)
+    mask = jammed_mask(
+        hop_channels, slot_ids, jammer_model,
+        int(hop_cfg.num_channels), params, mask_rng,
+    )
     return hop_channels, slot_ids, mask
 
 
@@ -186,8 +201,24 @@ def _generate_batch(
     k: int,
     rng: np.random.Generator,
     slot_ids: Optional[np.ndarray],
+    hop_channels: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    batch = generate_test_batch(config, n_bursts, snr_db, k, rng, slot_ids=slot_ids)
+    """Transmission of one modality, with the channel tied to the hop sequence.
+
+    ``hop_channels`` is forwarded to the channel so that ``hold_mode = per_hop``
+    selects the realization by visited frequency. Without it the channel would
+    rebuild the sequence from the configuration and the dwell sweep would then
+    measure a channel with a different dwell than the one it is jamming.
+    """
+    batch = generate_test_batch(
+        config,
+        n_bursts,
+        snr_db,
+        k,
+        rng,
+        slot_ids=slot_ids,
+        hop_channels=hop_channels,
+    )
     return (
         np.asarray(batch["x"]),
         np.asarray(batch["bit"], dtype=np.int64),
@@ -281,12 +312,12 @@ def evaluate_frequency_agility(
                 # differ only by the hop sequence and the jammer coverage.
                 rng = np.random.default_rng(seed)
                 mask_rng = np.random.default_rng(seed + _MASK_STREAM_OFFSET)
-                _, slot_ids, mask = _modality_inputs(
+                hop_channels, slot_ids, mask = _modality_inputs(
                     n_bursts, hop_cfg, modality, jammer_model, params, mask_rng,
                 )
                 jammer_rng = np.random.default_rng(seed + _JAMMER_STREAM_OFFSET)
                 x_clean, bit, x_ref = _generate_batch(
-                    config, n_bursts, snr_db, k, rng, slot_ids
+                    config, n_bursts, snr_db, k, rng, slot_ids, hop_channels
                 )
                 ber_clean = _predict_ber(
                     model, x_clean, bit, x_ref, feature_mode, feature_norm
@@ -311,6 +342,7 @@ def evaluate_frequency_agility(
                         row = {
                             "arch": arch,
                             "modality": modality,
+                            "jammer_knowledge": _JAMMER_KNOWLEDGE[modality],
                             "jammer_model": jammer_model,
                             "in_channel": in_channel,
                             "jsr_db": float(jsr_db),
@@ -343,24 +375,31 @@ def evaluate_frequency_agility(
         grouped.setdefault(tuple(row[key] for key in keys), []).append(row)
     summary: List[Dict[str, Any]] = []
     for group_key, group in grouped.items():
-        ber = np.asarray([r["ber"] for r in group], dtype=np.float64)
+        spread = describe([float(row["ber"]) for row in group])
         summary.append({
             "arch": group_key[0],
             "modality": group_key[1],
+            "jammer_knowledge": _JAMMER_KNOWLEDGE[group_key[1]],
             "jammer_model": group_key[2],
             "in_channel": group_key[3],
             "jsr_db": float(group_key[4]),
-            "ber": float(ber.mean()),
-            "ber_std": float(ber.std(ddof=0)),
-            "ber_min": float(ber.min()),
-            "ber_max": float(ber.max()),
+            "ber": spread["mean"],
+            "ber_std": spread["std"],
+            "ber_sem": spread["sem"],
+            "ber_ci_lo": spread["ci_lo"],
+            "ber_ci_hi": spread["ci_hi"],
+            "ber_min": spread["min"],
+            "ber_max": spread["max"],
+            "ber_q05": spread["q05"],
+            "ber_q50": spread["q50"],
+            "ber_q95": spread["q95"],
             "jammed_fraction": float(np.mean([r["jammed_fraction"] for r in group])),
             "ber_clean": float(np.mean([r["ber_clean"] for r in group])),
             "hop_rate_hz": float(group[0]["hop_rate_hz"]),
             "dwell_bursts": int(group[0]["dwell_bursts"]),
             "slot_duration_us": float(group[0]["slot_duration_us"]),
             "num_channels": int(group[0]["num_channels"]),
-            "n_realizations": len(group),
+            "n_realizations": int(spread["n"]),
         })
     summary_df = pd.DataFrame(summary).sort_values(
         ["jammer_model", "in_channel", "modality", "jsr_db"]
@@ -400,7 +439,7 @@ def evaluate_frequency_agility(
                 in_channel = in_channel_types[0]
                 jammer_rng = np.random.default_rng(seed + _JAMMER_STREAM_OFFSET)
                 x_clean, bit, x_ref = _generate_batch(
-                    config, n_bursts, snr_db, k, rng, slot_ids
+                    config, n_bursts, snr_db, k, rng, slot_ids, hop_channels
                 )
                 jammer = sample_jammer_waveform(
                     (n_bursts, burst_length),
@@ -415,7 +454,7 @@ def evaluate_frequency_agility(
                     _predict_ber(model, x_jammed, bit, x_ref, feature_mode, feature_norm)
                 )
                 frac_samples.append(float(np.mean(mask)))
-            ber_arr = np.asarray(ber_samples, dtype=np.float64)
+            spread = describe(ber_samples)
             frac_arr = np.asarray(frac_samples, dtype=np.float64)
             dwell_rows.append({
                 "arch": arch,
@@ -425,27 +464,114 @@ def evaluate_frequency_agility(
                 "slot_duration_us": float(dwell_cfg.slot_duration_us),
                 "hop_rate_hz": float(dwell_cfg.hop_rate_hz),
                 "jsr_db": dwell_jsr,
-                "ber": float(ber_arr.mean()),
-                "ber_std": float(ber_arr.std(ddof=0)),
+                "ber": spread["mean"],
+                "ber_std": spread["std"],
+                "ber_sem": spread["sem"],
+                "ber_ci_lo": spread["ci_lo"],
+                "ber_ci_hi": spread["ci_hi"],
+                "ber_min": spread["min"],
+                "ber_max": spread["max"],
+                "ber_q05": spread["q05"],
+                "ber_q95": spread["q95"],
                 "jammed_fraction": float(frac_arr.mean()),
-                "n_realizations": int(ber_arr.size),
+                "n_realizations": int(spread["n"]),
             })
             logger.info(
                 "[frequency_agility %s] dwell=%d (%.0f Hz) %-13s JSR=%.1f dB "
-                "jammed=%.3f BER=%.4f",
+                "jammed=%.3f BER=%.4f [%.4f, %.4f]",
                 arch, dwell, dwell_cfg.hop_rate_hz, jammer_model, dwell_jsr,
-                float(frac_arr.mean()), float(ber_arr.mean()),
+                float(frac_arr.mean()), spread["mean"], spread["ci_lo"], spread["ci_hi"],
             )
     dwell_df = pd.DataFrame(dwell_rows).sort_values(["jammer_model", "dwell_bursts"])
     dwell_path = output_dir / "frequency_agility_vs_dwell.csv"
     dwell_df.to_csv(dwell_path, index=False)
     logger.info("[frequency_agility %s] BER-vs-hop-rate summary saved to %s", arch, dwell_path)
 
+    reaction_values = [int(value) for value in (fa.get("reaction_sweep") or [])]
+    reaction_models = list(fa.get("reaction_sweep_models") or ["follower"])
+    reaction_jsr = float(fa.get("reaction_sweep_jsr", dwell_jsr))
+    reaction_dwell = int(fa.get("reaction_sweep_dwell", hop_cfg.dwell_bursts))
+    reaction_path = output_dir / "frequency_agility_vs_reaction.csv"
+    reaction_rows: List[Dict[str, Any]] = []
+    if reaction_values:
+        reaction_cfg = with_dwell(hop_cfg, reaction_dwell)
+        hop_channels = build_hop_sequence(n_bursts, reaction_cfg)
+        slot_ids = build_slot_ids(n_bursts, reaction_cfg)
+        for reaction in reaction_values:
+            if reaction < 0:
+                raise ValueError(
+                    f"frequency_hopping.reaction_sweep entries must be >= 0, got: {reaction}"
+                )
+            reaction_params = dict(params)
+            reaction_params["follower_reaction_bursts"] = reaction
+            reaction_params["dwell_bursts"] = reaction_dwell
+            for jammer_model in reaction_models:
+                ber_samples: List[float] = []
+                frac_samples: List[float] = []
+                for realization in range(n_realizations):
+                    seed = (
+                        base_seed
+                        + (sum(ord(ch) for ch in jammer_model) % 10000)
+                        + realization * _REALIZATION_STRIDE
+                    )
+                    rng = np.random.default_rng(seed)
+                    mask = jammed_mask(
+                        hop_channels, slot_ids, jammer_model,
+                        int(reaction_cfg.num_channels), reaction_params, rng,
+                    )
+                    in_channel = in_channel_types[0]
+                    jammer_rng = np.random.default_rng(seed + _JAMMER_STREAM_OFFSET)
+                    x_clean, bit, x_ref = _generate_batch(
+                        config, n_bursts, snr_db, k, rng, slot_ids, hop_channels
+                    )
+                    jammer = sample_jammer_waveform(
+                        (n_bursts, burst_length),
+                        in_channel,
+                        jammer_rng,
+                        partial_band_fraction=partial_band_fraction,
+                        realization=realization,
+                        n_realizations=n_realizations,
+                    )
+                    x_jammed = _add_jammer_masked(x_clean, jammer, mask, reaction_jsr)
+                    ber_samples.append(
+                        _predict_ber(model, x_jammed, bit, x_ref, feature_mode, feature_norm)
+                    )
+                    frac_samples.append(float(np.mean(mask)))
+                spread = describe(ber_samples)
+                reaction_rows.append({
+                    "arch": arch,
+                    "jammer_model": jammer_model,
+                    "in_channel": in_channel,
+                    "reaction_bursts": reaction,
+                    "latency_us": float(reaction) * float(fa.get("burst_duration_us", 10.0)),
+                    "dwell_bursts": reaction_dwell,
+                    "hop_rate_hz": float(reaction_cfg.hop_rate_hz),
+                    "jsr_db": reaction_jsr,
+                    "ber": spread["mean"],
+                    "ber_std": spread["std"],
+                    "ber_sem": spread["sem"],
+                    "ber_ci_lo": spread["ci_lo"],
+                    "ber_ci_hi": spread["ci_hi"],
+                    "ber_min": spread["min"],
+                    "ber_max": spread["max"],
+                    "jammed_fraction": float(np.mean(frac_samples)),
+                    "n_realizations": int(spread["n"]),
+                })
+        pd.DataFrame(reaction_rows).sort_values(
+            ["jammer_model", "reaction_bursts"]
+        ).to_csv(reaction_path, index=False)
+        logger.info(
+            "[frequency_agility %s] BER-vs-reaction-latency summary saved to %s",
+            arch, reaction_path,
+        )
+
     metadata = {
         "experiment": "frequency_agility",
         "arch": arch,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "tensorflow_version": tf.__version__,
+        "modalities": list(_MODALITIES),
+        "jammer_knowledge": dict(_JAMMER_KNOWLEDGE),
         "jammer_models": jammer_models,
         "in_channel_types": in_channel_types,
         "jsr_values": jsr_values,
@@ -455,8 +581,16 @@ def evaluate_frequency_agility(
         "num_echoes": k,
         "dwell_sweep": dwell_values,
         "dwell_sweep_jsr": dwell_jsr,
+        "reaction_sweep": reaction_values,
+        "reaction_sweep_models": reaction_models,
+        "reaction_sweep_jsr": reaction_jsr,
+        "reaction_sweep_dwell": reaction_dwell,
         "hop": hop_counters(n_bursts, hop_cfg),
-        "channel_process": "per_slot; identical slot_ids in fh_off and fh_on",
+        "channel": channel_models.channel_metadata(config),
+        "shared_process": (
+            "the modalities share the waveform stream and the slot ids; the hold "
+            "mode of the channel decides how the realization is selected"
+        ),
         "mask_rng_offset": _MASK_STREAM_OFFSET,
     }
     with open(output_dir / "run_metadata.json", "w", encoding="utf-8") as f:
