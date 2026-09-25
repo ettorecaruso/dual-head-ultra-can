@@ -42,6 +42,7 @@ echo "== figures =="
 echo "== cross-channel and jamming synthesis =="
 "${PYTHON}" scripts/figures/make_fig_channel_summary.py
 "${PYTHON}" scripts/figures/make_fig_sensing_observability.py
+"${PYTHON}" scripts/figures/make_fig_retraining_control.py
 "${PYTHON}" scripts/figures/make_fig_agility_law.py
 "${PYTHON}" scripts/figures/make_fig_jamaware_margin.py
 "${PYTHON}" scripts/figures/make_fig_jamming_tone_selectivity.py
