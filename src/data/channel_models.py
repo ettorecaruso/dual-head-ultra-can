@@ -49,6 +49,7 @@ class TapGeometry:
     valid: np.ndarray
     echo_power: np.ndarray
     k_geometric: int
+    is_peer: Optional[np.ndarray] = None
 
     def __post_init__(self) -> None:
         for name in ("taus", "dopplers", "amplitudes", "dominance", "valid"):
@@ -67,6 +68,20 @@ class TapGeometry:
                 f"echo_power must have shape ({self.taus.shape[0]},), "
                 f"got {self.echo_power.shape}"
             )
+        if self.is_peer is not None:
+            if self.is_peer.shape != self.taus.shape:
+                raise ValueError(
+                    f"is_peer must match the tap shape {self.taus.shape}, "
+                    f"got {self.is_peer.shape}"
+                )
+            if self.is_peer.dtype != bool:
+                raise ValueError(f"is_peer must be boolean, got {self.is_peer.dtype}")
+
+    @property
+    def peer_mask(self) -> np.ndarray:
+        if self.is_peer is None:
+            return np.zeros(self.taus.shape, dtype=bool)
+        return self.is_peer
 
     @property
     def k_total(self) -> int:
@@ -87,6 +102,7 @@ class TapGeometry:
             dominance=self.dominance[idx],
             valid=self.valid[idx],
             echo_power=self.echo_power[idx],
+            is_peer=None if self.is_peer is None else self.is_peer[idx],
         )
 
 def channel_model(config: Dict[str, Any]) -> str:
@@ -174,6 +190,13 @@ def add_taps(
         valid=np.concatenate([geometry.valid, new_valid], axis=1),
         echo_power=existing_power * (1.0 - share) + clutter_power,
         k_geometric=int(geometry.k_geometric),
+        is_peer=(
+            None
+            if geometry.is_peer is None
+            else np.concatenate(
+                [geometry.is_peer, np.zeros(taus_arr.shape, dtype=bool)], axis=1
+            )
+        ),
     )
 
 

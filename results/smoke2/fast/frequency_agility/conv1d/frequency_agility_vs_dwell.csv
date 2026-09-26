@@ -1,0 +1,3 @@
+arch,jammer_model,in_channel,dwell_bursts,slot_duration_us,hop_rate_hz,jsr_db,ber,ber_std,ber_sem,ber_ci_lo,ber_ci_hi,ber_min,ber_max,ber_q05,ber_q95,jammed_fraction,n_realizations
+conv1d,follower,cw,1,10.0,100000.0,6.0,0.4675,0.0,0.0,0.4675,0.4675,0.4675,0.4675,0.4675,0.4675,0.0,1
+conv1d,follower,cw,4,40.0,25000.0,6.0,0.49,0.0,0.0,0.49,0.49,0.49,0.49,0.49,0.49,0.5,1

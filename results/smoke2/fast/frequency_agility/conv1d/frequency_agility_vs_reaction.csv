@@ -1,0 +1,6 @@
+arch,jammer_model,in_channel,reaction_bursts,latency_us,dwell_bursts,hop_rate_hz,jsr_db,ber,ber_std,ber_sem,ber_ci_lo,ber_ci_hi,ber_min,ber_max,jammed_fraction,n_realizations
+conv1d,follower,cw,0,0.0,8,12500.0,6.0,0.495,0.0,0.0,0.495,0.495,0.495,0.495,1.0,1
+conv1d,follower,cw,1,10.0,8,12500.0,6.0,0.495,0.0,0.0,0.495,0.495,0.495,0.495,0.875,1
+conv1d,follower,cw,2,20.0,8,12500.0,6.0,0.495,0.0,0.0,0.495,0.495,0.495,0.495,0.75,1
+conv1d,follower,cw,4,40.0,8,12500.0,6.0,0.4925,0.0,0.0,0.4925,0.4925,0.4925,0.4925,0.5,1
+conv1d,follower,cw,8,80.0,8,12500.0,6.0,0.48,0.0,0.0,0.48,0.48,0.48,0.48,0.0,1

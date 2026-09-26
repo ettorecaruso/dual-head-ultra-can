@@ -27,7 +27,11 @@ from src.data.data_loader import (
     verify_snr_balance,
 )
 from src.data.dataset_generator import build_snr_grid
-from src.evaluation.metrics import bit_error_count, mse_delay_doppler
+from src.evaluation.metrics import (
+    argmax_delay_from_profile,
+    bit_error_count,
+    mse_delay_doppler,
+)
 from src.models.baselines import build_baseline
 from src.models.ultra_can import build_dual_head_ultra_can
 from src.models.ultra_can_qkv import build_dual_head_ultra_can_qkv
@@ -39,6 +43,7 @@ logger = get_logger(__name__)
 
 _SNR_ROUND_DECIMALS = 6
 _RANGE_TOL = 1e-9
+_EXACT_TOL = 0.5
 _MIN_BATCH_SIZE = 1
 _MSE_NEG_TOL = 1e-9
 
@@ -146,6 +151,10 @@ def evaluate_model(
     n_symbols_list: List[int] = []
     corr_tau_list: List[float] = []
     corr_fd_list: List[float] = []
+    mse_tau_argmax_list: List[float] = []
+    corr_tau_argmax_list: List[float] = []
+    exact_tau_list: List[float] = []
+    exact_tau_argmax_list: List[float] = []
 
     logger.info("Starting evaluation over %d SNR points", len(snr_test_range))
 
@@ -170,6 +179,9 @@ def evaluate_model(
         fd_pred_all: List[float] = []
         tau_true_all: List[float] = []
         fd_true_all: List[float] = []
+        tau_argmax_all: List[float] = []
+        n_exact_tau = 0
+        n_exact_argmax = 0
         n_out_range = 0
         n_out_range_total = 0
         n_out_range_min: Optional[float] = None
@@ -190,6 +202,9 @@ def evaluate_model(
                 batch_ref = build_reference_matrix(batch_bit, seed[raw_idx], config)
             batch_x = _build_feature_matrix(
                 x[raw_idx], feature_mode, feature_norm, batch_ref
+            )
+            batch_argmax = argmax_delay_from_profile(
+                x[raw_idx], batch_ref, int(tau_max)
             )
 
             pred = model(batch_x, training=False)
@@ -257,6 +272,14 @@ def evaluate_model(
             fd_pred_all.extend(float(v) for v in fd_pred)
             tau_true_all.extend(float(v) for v in batch_tau)
             fd_true_all.extend(float(v) for v in batch_fd)
+            tau_argmax_all.extend(float(v) for v in batch_argmax)
+            batch_tau_np = np.asarray(batch_tau, dtype=np.float64)
+            n_exact_tau += int(
+                np.count_nonzero(np.abs(tau_pred - batch_tau_np) <= _EXACT_TOL)
+            )
+            n_exact_argmax += int(
+                np.count_nonzero(np.abs(batch_argmax - batch_tau_np) <= _EXACT_TOL)
+            )
 
             start = end
 
@@ -296,6 +319,13 @@ def evaluate_model(
         corr_fd_snr = _pearson(
             np.asarray(fd_pred_all), np.asarray(fd_true_all)
         )
+        tau_true_np = np.asarray(tau_true_all, dtype=np.float64)
+        tau_argmax_np = np.asarray(tau_argmax_all, dtype=np.float64)
+        mse_tau_argmax = float(np.mean((tau_argmax_np - tau_true_np) ** 2))
+        corr_tau_argmax = _pearson(tau_argmax_np, tau_true_np)
+        n_scored = max(1, int(tau_true_np.size))
+        exact_tau = float(n_exact_tau) / n_scored
+        exact_tau_argmax = float(n_exact_argmax) / n_scored
 
         snr_values.append(float(snr_target))
         ber_list.append(float(ber))
@@ -305,6 +335,10 @@ def evaluate_model(
         n_symbols_list.append(accum_symbols)
         corr_tau_list.append(corr_tau_snr)
         corr_fd_list.append(corr_fd_snr)
+        mse_tau_argmax_list.append(mse_tau_argmax)
+        corr_tau_argmax_list.append(corr_tau_argmax)
+        exact_tau_list.append(exact_tau)
+        exact_tau_argmax_list.append(exact_tau_argmax)
 
         logger.debug(
             "SNR=%.1f dB: BER=%.6f, MSE_tau=%.6f, MSE_fd=%.6e, "
@@ -325,6 +359,10 @@ def evaluate_model(
         "n_symbols": np.array(n_symbols_list, dtype=np.int64),
         "corr_tau": np.array(corr_tau_list, dtype=np.float64),
         "corr_fd": np.array(corr_fd_list, dtype=np.float64),
+        "mse_tau_argmax": np.array(mse_tau_argmax_list, dtype=np.float64),
+        "corr_tau_argmax": np.array(corr_tau_argmax_list, dtype=np.float64),
+        "exact_tau": np.array(exact_tau_list, dtype=np.float64),
+        "exact_tau_argmax": np.array(exact_tau_argmax_list, dtype=np.float64),
     }
 
     logger.info("Evaluation completed for %d SNR points", len(snr_values))
@@ -418,6 +456,10 @@ def evaluate_model_online(
     n_symbols_list: List[int] = []
     corr_tau_list: List[float] = []
     corr_fd_list: List[float] = []
+    mse_tau_argmax_list: List[float] = []
+    corr_tau_argmax_list: List[float] = []
+    exact_tau_list: List[float] = []
+    exact_tau_argmax_list: List[float] = []
 
     logger.info(
         "ONLINE evaluation over %d SNR points (batch=%d, max_symbols=%d, "
@@ -434,6 +476,10 @@ def evaluate_model_online(
         n_corr = 0
         tau_sum_t = 0.0; tau_sum_p = 0.0; tau_sum_t2 = 0.0; tau_sum_p2 = 0.0; tau_sum_tp = 0.0
         fd_sum_t = 0.0; fd_sum_p = 0.0; fd_sum_t2 = 0.0; fd_sum_p2 = 0.0; fd_sum_tp = 0.0
+        mse_argmax_acc = 0.0
+        argmax_sum_p = 0.0; argmax_sum_p2 = 0.0; argmax_sum_tp = 0.0
+        n_exact_tau = 0
+        n_exact_argmax = 0
         n_out_range = 0
         n_out_range_total = 0
         n_out_range_min: Optional[float] = None
@@ -459,6 +505,9 @@ def evaluate_model_online(
 
             batch_x = _build_feature_matrix(
                 batch["x"], feature_mode, feature_norm, batch["x_ref"]
+            )
+            batch_argmax = argmax_delay_from_profile(
+                batch["x"], batch["x_ref"], int(tau_max)
             )
             comm_logits, sensing_pred = _predict_online_chunked(
                 model, batch_x, predict_batch
@@ -528,6 +577,17 @@ def evaluate_model_online(
             fd_t = np.asarray(batch_fd, dtype=np.float64)
             fd_p = np.asarray(fd_pred, dtype=np.float64)
             n_corr += batch_size_actual
+            batch_tau_np = np.asarray(batch_tau, dtype=np.float64)
+            n_exact_tau += int(
+                np.count_nonzero(np.abs(tau_p - batch_tau_np) <= _EXACT_TOL)
+            )
+            n_exact_argmax += int(
+                np.count_nonzero(np.abs(batch_argmax - batch_tau_np) <= _EXACT_TOL)
+            )
+            mse_argmax_acc += float(np.sum((batch_argmax - batch_tau_np) ** 2))
+            argmax_sum_p += float(batch_argmax.sum())
+            argmax_sum_p2 += float((batch_argmax * batch_argmax).sum())
+            argmax_sum_tp += float((batch_tau_np * batch_argmax).sum())
             tau_sum_t += float(tau_t.sum()); tau_sum_p += float(tau_p.sum())
             tau_sum_t2 += float((tau_t * tau_t).sum()); tau_sum_p2 += float((tau_p * tau_p).sum())
             tau_sum_tp += float((tau_t * tau_p).sum())
@@ -583,6 +643,13 @@ def evaluate_model_online(
         corr_fd_snr = _pearson_from_sums(
             n_corr, fd_sum_t, fd_sum_t2, fd_sum_p, fd_sum_p2, fd_sum_tp
         )
+        mse_tau_argmax = mse_argmax_acc / max(1, accum_symbols)
+        corr_tau_argmax = _pearson_from_sums(
+            n_corr, tau_sum_t, tau_sum_t2, argmax_sum_p, argmax_sum_p2, argmax_sum_tp
+        )
+        n_scored = max(1, accum_symbols)
+        exact_tau = float(n_exact_tau) / n_scored
+        exact_tau_argmax = float(n_exact_argmax) / n_scored
 
         snr_values.append(float(snr_target))
         ber_list.append(float(ber))
@@ -592,6 +659,10 @@ def evaluate_model_online(
         n_symbols_list.append(accum_symbols)
         corr_tau_list.append(corr_tau_snr)
         corr_fd_list.append(corr_fd_snr)
+        mse_tau_argmax_list.append(mse_tau_argmax)
+        corr_tau_argmax_list.append(corr_tau_argmax)
+        exact_tau_list.append(exact_tau)
+        exact_tau_argmax_list.append(exact_tau_argmax)
 
         logger.debug(
             "SNR=%.1f dB: BER=%.3e (err=%d/%d), MSE_tau=%.6f, corr(tau)=%.3f",
@@ -610,6 +681,10 @@ def evaluate_model_online(
         "n_symbols": np.array(n_symbols_list, dtype=np.int64),
         "corr_tau": np.array(corr_tau_list, dtype=np.float64),
         "corr_fd": np.array(corr_fd_list, dtype=np.float64),
+        "mse_tau_argmax": np.array(mse_tau_argmax_list, dtype=np.float64),
+        "corr_tau_argmax": np.array(corr_tau_argmax_list, dtype=np.float64),
+        "exact_tau": np.array(exact_tau_list, dtype=np.float64),
+        "exact_tau_argmax": np.array(exact_tau_argmax_list, dtype=np.float64),
     }
 
     logger.info("Online evaluation completed for %d SNR points", len(snr_values))
@@ -634,6 +709,10 @@ def compute_ber_curve(results: Dict[str, np.ndarray]) -> pd.DataFrame:
         "n_symbols": results["n_symbols"],
         "corr_tau": results.get("corr_tau", np.zeros(len(results["snr_db"]))),
         "corr_fd": results.get("corr_fd", np.zeros(len(results["snr_db"]))),
+        "mse_tau_argmax": results.get("mse_tau_argmax", np.zeros(len(results["snr_db"]))),
+        "corr_tau_argmax": results.get("corr_tau_argmax", np.zeros(len(results["snr_db"]))),
+        "exact_tau": results.get("exact_tau", np.zeros(len(results["snr_db"]))),
+        "exact_tau_argmax": results.get("exact_tau_argmax", np.zeros(len(results["snr_db"]))),
     })
 
     ber = df["ber"].to_numpy(dtype=np.float64)

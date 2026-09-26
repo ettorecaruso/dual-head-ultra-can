@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-09-26T12:32:29.895107",
+  "tensorflow_version": "2.21.0",
+  "config_snapshot_path": "results/smoke2/fast/jamming/qkv/logs/config_used.yaml",
+  "lambda_mse": 2.0,
+  "sensing_range_penalty": 1.0,
+  "sensing_component_weights": [
+    1.0,
+    1.0
+  ],
+  "epochs": 1,
+  "batch_size": 16,
+  "learning_rate": 0.001,
+  "early_stopping_patience": 10,
+  "model_name": "dual_head_ultra_can_qkv",
+  "train_batches": 7
+}

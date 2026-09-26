@@ -487,6 +487,14 @@ def _apply_scenario_config(config: Dict[str, Any], scenario: Dict[str, Any]) -> 
             )
         data_overrides.update(scenario_data)
     sc_cfg["data"] = {**config["data"], **data_overrides}
+    scenario_peers = scenario.get("peers")
+    if scenario_peers is not None:
+        if not isinstance(scenario_peers, dict):
+            raise ValueError(
+                f"scenario '{scenario.get('name', '?')}': the 'peers' field must be "
+                f"a dict of peers.* overrides, got: {type(scenario_peers).__name__}"
+            )
+        sc_cfg["peers"] = {**(config.get("peers") or {}), **scenario_peers}
     return sc_cfg
 
 def prepare_all_datasets(

@@ -63,7 +63,8 @@ def _log_rss(tag: str) -> None:
 
 _EXPERIMENT_ORDER = ("ber_vs_snr", "classical_receivers", "jamming",
                      "jamming_interpretability", "frequency_agility",
-                     "channel_generalization", "final_report")
+                     "channel_generalization", "peer_estimation",
+                     "final_report")
 
 _CHANNEL_HOLD_MODES = ("per_symbol", "per_slot", "per_hop")
 
@@ -331,6 +332,26 @@ def _evaluate_model(
                 "Sensing OK: corr(tau) max = %.3f, MSE_tau high-SNR = %.2f",
                 corr_tau_max, mse_tau_high,
             )
+        if "corr_tau_argmax" in df_ber.columns and "exact_tau" in df_ber.columns:
+            corr_argmax_max = float(df_ber["corr_tau_argmax"].max())
+            exact_tau_high = float(df_ber["exact_tau"].iloc[-1])
+            exact_argmax_high = float(df_ber["exact_tau_argmax"].iloc[-1])
+            if corr_argmax_max - corr_tau_max > 0.05:
+                logger.warning(
+                    "Sensing head below its own peak picker: corr(tau) max = %.3f "
+                    "vs argmax of the residual profile %.3f (exact delay rate "
+                    "%.3f vs %.3f at the top of the grid): inspect the delay "
+                    "head, delay_mode/use_position_feature in model %s",
+                    corr_tau_max, corr_argmax_max,
+                    exact_tau_high, exact_argmax_high, model.name,
+                )
+            else:
+                logger.info(
+                    "Sensing head matches its peak picker: corr(tau) %.3f vs %.3f, "
+                    "exact delay rate %.3f vs %.3f",
+                    corr_tau_max, corr_argmax_max,
+                    exact_tau_high, exact_argmax_high,
+                )
         if "corr_fd" in df_ber.columns:
             corr_fd_max = float(df_ber["corr_fd"].max())
             if corr_fd_max < 0.1:
@@ -1177,6 +1198,51 @@ def run_channel_generalization(
     logger.info("channel_generalization experiment completed. Output in %s", output_dir)
     return results
 
+def run_peer_estimation(
+    config: Dict[str, Any],
+    mode: str,
+    model_type: Optional[str],
+    no_regen: bool,
+    output_dir: Path,
+) -> Dict[str, Any]:
+    
+    from src.experiments.peer_estimation import evaluate_peer_estimation
+
+    pe_cfg = (config.get("experiments") or {}).get("peer_estimation") or {}
+    models_to_test = list(pe_cfg.get("models") or ["conv1d"])
+    if model_type is not None:
+        wanted = {model_type} if isinstance(model_type, str) else set(model_type)
+        models_to_test = [m for m in models_to_test if m in wanted]
+    preferred_scenario = str(pe_cfg.get("model_scenario", "iod_peers"))
+
+    logger.info("=" * 60)
+    logger.info("peer_estimation experiment (models=%s)", models_to_test)
+    logger.info("=" * 60)
+
+    results: Dict[str, Any] = {"models": {}}
+    for arch in models_to_test:
+        ckpt_path = _resolve_arch_checkpoint(
+            config, arch, output_dir, preferred_scenario
+        )
+        if ckpt_path is None:
+            logger.warning("peer_estimation %s: checkpoint not found, skipping", arch)
+            continue
+        logger.info("peer_estimation %s: model loaded from %s", arch, ckpt_path)
+        model = load_model(ckpt_path)
+        results["models"][arch] = evaluate_peer_estimation(
+            model=model,
+            config=config,
+            output_dir=output_dir / arch,
+            arch=arch,
+        )
+        del model
+        gc.collect()
+        tf.keras.backend.clear_session()
+        _log_rss(f"peer_estimation {arch}")
+
+    logger.info("peer_estimation experiment completed. Output in %s", output_dir)
+    return results
+
 def run_final_report(
     config: Dict[str, Any],
     mode: str,
@@ -1600,7 +1666,7 @@ def _log_plan(
         logger.info("[plan]   variants   : %s", variants)
     populated = exp_output_dir.exists() and any(exp_output_dir.iterdir())
     logger.info("[plan]   output     : %s (populated: %s)", exp_output_dir, populated)
-    if exp_name in ("channel_generalization", "frequency_agility"):
+    if exp_name in ("channel_generalization", "frequency_agility", "peer_estimation"):
         section = (config.get("experiments") or {}).get(exp_name) or {}
         scenario = str(section.get("model_scenario", "k3_doppler_full"))
         for arch in _planned_models(config, exp_name):
@@ -1675,6 +1741,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         "jamming_interpretability": run_jamming_interpretability,
         "frequency_agility": run_frequency_agility,
         "channel_generalization": run_channel_generalization,
+        "peer_estimation": run_peer_estimation,
         "final_report": run_final_report,
     }
 

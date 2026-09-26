@@ -36,6 +36,7 @@ if str(_REPO_ROOT) not in sys.path:
 from src.utils.config_loader import DEFAULT_BASE_CONFIG_PATH, load_config, save_config_snapshot
 from src.utils.logger import log_config_summary, setup_logging
 from src.data.channel_models import (
+    LABEL_EXCLUDED,
     TapGeometry,
     apply_overlay,
     channel_model,
@@ -56,6 +57,8 @@ _ENERGY_EPS = 1e-12
 _POWER_EPS = 1e-9
 _FIXED_POINT_TOL = 1e-12
 _SPREAD_EPS = 1e-9
+_DRONE_SEED_BASE = 1_000_003
+_DRONE_SEED_STRIDE = 10_000_019
 _SPLITS = frozenset({"train", "val", "test"})
 _SEED_HIGH = 2**63 - 1
 
@@ -75,6 +78,8 @@ class EchoParams:
     tau: int
     f_doppler: float
     alpha: float
+    is_peer: bool = False
+    peer_distance_m: float = 0.0
 
     def __post_init__(self) -> None:
         if not isinstance(self.tau, int) or self.tau < 1:
@@ -83,6 +88,13 @@ class EchoParams:
             raise ValueError(f"f_doppler must be in [0, 0.5), got: {self.f_doppler!r}")
         if not math.isfinite(self.alpha) or not (0.0 < self.alpha < 1.0):
             raise ValueError(f"alpha must be in (0, 1), got: {self.alpha!r}")
+        if not isinstance(self.is_peer, bool):
+            raise ValueError(f"is_peer must be a bool, got: {self.is_peer!r}")
+        if not math.isfinite(self.peer_distance_m) or self.peer_distance_m < 0.0:
+            raise ValueError(
+                "peer_distance_m must be finite and >= 0, got: "
+                f"{self.peer_distance_m!r}"
+            )
 
 @dataclass(frozen=True)
 class DirectPathParams:
@@ -310,6 +322,7 @@ def _validate_config(config: Dict[str, Any]) -> None:
 
     if float(data["alpha_min"]) >= float(data["alpha_max"]):
         raise ValueError("data.alpha_min must be < data.alpha_max")
+    peer_echo_count(config)
 
     rician_kappa_db = float(data["rician_kappa_db"])
     if not math.isfinite(rician_kappa_db) or rician_kappa_db < 0.0:
@@ -427,6 +440,108 @@ def generate_chaotic_sequence(
         f"map {map_type!r} degenerate: NaN/Inf or zero energy"
     )
 
+_C_LIGHT_M_S = 299_792_458.0
+
+def _peer_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    
+    peers_cfg = config.get("peers")
+    if peers_cfg is None:
+        return {}
+    if not isinstance(peers_cfg, dict):
+        raise ValueError(
+            f"'peers' section must be a dict, got: {type(peers_cfg).__name__}"
+        )
+    return peers_cfg
+
+def drone_symbol_seeds(drone_id: int, n: int) -> np.ndarray:
+    
+    if isinstance(drone_id, bool) or not isinstance(drone_id, int) or int(drone_id) < 0:
+        raise ValueError(f"drone_id must be an int >= 0, got: {drone_id!r}")
+    if isinstance(n, bool) or not isinstance(n, int) or int(n) < 0:
+        raise ValueError(f"n must be an int >= 0, got: {n!r}")
+    start = _DRONE_SEED_BASE + int(drone_id) * _DRONE_SEED_STRIDE
+    return start + np.arange(int(n), dtype=np.int64)
+
+def peer_echo_count(config: Dict[str, Any]) -> int:
+    
+    peers_cfg = _peer_config(config)
+    if not bool(peers_cfg.get("enable", False)):
+        return 0
+    n_peers = peers_cfg.get("n_peers", 0)
+    if isinstance(n_peers, bool) or not isinstance(n_peers, (int, float)):
+        raise ValueError(
+            f"peers.n_peers must be a non-negative integer, got: {n_peers!r}"
+        )
+    if (
+        not math.isfinite(float(n_peers))
+        or not float(n_peers).is_integer()
+        or float(n_peers) < 0.0
+    ):
+        raise ValueError(
+            f"peers.n_peers must be a non-negative integer, got: {n_peers!r}"
+        )
+    return int(n_peers)
+
+def peer_delay_samples(distances_m: np.ndarray, config: Dict[str, Any]) -> np.ndarray:
+    
+    fs_hz = float(config["data"]["fs_hz"])
+    if not (math.isfinite(fs_hz) and fs_hz > 0.0):
+        raise ValueError(f"data.fs_hz must be > 0, got: {fs_hz!r}")
+    return 2.0 * np.asarray(distances_m, dtype=np.float64) * fs_hz / _C_LIGHT_M_S
+
+def _sample_peer_taps(
+    config: Dict[str, Any],
+    rng: np.random.Generator,
+    n: int,
+    max_delay: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    
+    n_peers = peer_echo_count(config)
+    if n_peers == 0:
+        empty = np.zeros((n, 0), dtype=np.float64)
+        return empty, empty, empty, empty
+    peers_cfg = _peer_config(config)
+    fd_max = float(config["data"]["max_doppler"])
+    range_cfg = peers_cfg.get("peer_range_m", [10.0, 120.0])
+    if not isinstance(range_cfg, (list, tuple)) or len(range_cfg) != 2:
+        raise ValueError(
+            f"peers.peer_range_m must be a [min, max] pair, got: {range_cfg!r}"
+        )
+    range_lo = float(range_cfg[0])
+    range_hi = float(range_cfg[1])
+    if not (math.isfinite(range_lo) and math.isfinite(range_hi)):
+        raise ValueError(f"peers.peer_range_m must be finite, got: {range_cfg!r}")
+    if not (0.0 < range_lo < range_hi):
+        raise ValueError(
+            f"peers.peer_range_m must satisfy 0 < min < max, got: {range_cfg!r}"
+        )
+    alpha_ref = float(peers_cfg.get("peer_alpha_ref", 0.25))
+    alpha_cap = float(peers_cfg.get("peer_alpha_max", 0.6))
+    range_ref = float(peers_cfg.get("peer_range_ref_m", 30.0))
+    fd_fraction = float(peers_cfg.get("peer_doppler_fraction", 0.5))
+    if not (0.0 < alpha_ref < 1.0) or not (0.0 < alpha_cap <= 1.0):
+        raise ValueError(
+            "peers.peer_alpha_ref must be in (0, 1) and peers.peer_alpha_max in "
+            f"(0, 1], got: {alpha_ref!r} / {alpha_cap!r}"
+        )
+    if not (math.isfinite(range_ref) and range_ref > 0.0):
+        raise ValueError(f"peers.peer_range_ref_m must be > 0, got: {range_ref!r}")
+    if not (0.0 <= fd_fraction <= 1.0):
+        raise ValueError(
+            f"peers.peer_doppler_fraction must be in [0, 1], got: {fd_fraction!r}"
+        )
+    distances = rng.uniform(range_lo, range_hi, size=(n, n_peers))
+    taus = np.clip(
+        np.rint(peer_delay_samples(distances, config)).astype(np.int64),
+        1,
+        int(max_delay),
+    )
+    alphas = np.clip(alpha_ref * (range_ref / distances) ** 2, 0.0, alpha_cap)
+    dopplers = rng.uniform(0.0, fd_max * fd_fraction, size=(n, n_peers))
+    if not (np.all(np.isfinite(alphas)) and np.all(np.isfinite(dopplers))):
+        raise RuntimeError("peer geometry is not finite")
+    return distances, taus, alphas, dopplers
+
 def sample_echo_parameters(
     k: int,
     rng: np.random.Generator,
@@ -464,6 +579,19 @@ def sample_echo_parameters(
         EchoParams(tau=int(taus[i]), f_doppler=float(dopplers[i]), alpha=float(alphas[i]))
         for i in range(k)
     ]
+    peer_distances, peer_taus, peer_alphas, peer_dopplers = _sample_peer_taps(
+        config, rng, 1, max_delay
+    )
+    for index in range(int(peer_taus.shape[1])):
+        echoes.append(
+            EchoParams(
+                tau=int(peer_taus[0, index]),
+                f_doppler=float(peer_dopplers[0, index]),
+                alpha=float(peer_alphas[0, index]),
+                is_peer=True,
+                peer_distance_m=float(peer_distances[0, index]),
+            )
+        )
     if not all(math.isfinite(e.f_doppler) and math.isfinite(e.alpha) for e in echoes):
         raise ValueError("echo parameters not finite during sampling")
     logger.debug(
@@ -869,6 +997,7 @@ def generate_transmitted_batch_fast(
     config: Dict[str, Any],
     bits: np.ndarray,
     rng: np.random.Generator,
+    seeds: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     data = config["data"]
     seq_len = int(data["sequence_length"])
@@ -882,13 +1011,30 @@ def generate_transmitted_batch_fast(
     if n == 0:
         return np.empty((0, seq_len), dtype=np.float64)
 
+    seeds_arr: Optional[np.ndarray] = None
+    if seeds is not None:
+        seeds_arr = np.asarray(seeds, dtype=np.int64)
+        if seeds_arr.shape != (n,):
+            raise ValueError(f"seeds must have shape ({n},), got {seeds_arr.shape}")
+        if np.any(seeds_arr < 0):
+            raise ValueError("seeds must be non-negative")
+
     maps = _map_types_for_bits(map_type, bits_arr)
     out = np.empty((n, seq_len), dtype=np.float64)
     for mt in sorted(_MAP_TYPES):
         idx = np.where(maps == mt)[0]
         if idx.size == 0:
             continue
-        x0 = rng.uniform(_X0_MIN, _X0_MAX, size=idx.size)
+        if seeds_arr is None:
+            x0 = rng.uniform(_X0_MIN, _X0_MAX, size=idx.size)
+        else:
+            x0 = np.array(
+                [
+                    _x0_from_seed(int(seed), mt, float(map_param))
+                    for seed in seeds_arr[idx]
+                ],
+                dtype=np.float64,
+            )
         if mt == "logistic":
             forbidden = (0.25, 0.5, 0.75, 1.0 - 1.0 / float(map_param))
         else:
@@ -977,7 +1123,8 @@ def apply_channel_batch(
     rng: np.random.Generator,
     slot_ids: Optional[np.ndarray] = None,
     hop_channels: Optional[np.ndarray] = None,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return_peer_info: bool = False,
+) -> Tuple:
     x_arr = np.asarray(x_norm, dtype=np.float64)
     if x_arr.ndim != 2:
         raise ValueError(f"x_norm must be 2D (N, N_seq), got: {x_arr.shape}")
@@ -1060,6 +1207,32 @@ def apply_channel_batch(
     )
     f_dc = rng.uniform(0.0, doppler_direct_max, size=n)
 
+    peer_distances, peer_taus, peer_alphas, peer_dopplers = _sample_peer_taps(
+        config, rng, n, max_delay
+    )
+    n_peers = int(peer_taus.shape[1])
+    is_peer = None
+    peers_cfg = _peer_config(config)
+    if n_peers > 0:
+        n_obstacle = int(taus.shape[1])
+        taus = np.concatenate([taus, peer_taus], axis=1)
+        dopplers = np.concatenate([dopplers, peer_dopplers], axis=1)
+        alphas = np.concatenate([alphas, peer_alphas], axis=1)
+        valid = np.concatenate([valid, np.ones((n, n_peers), dtype=bool)], axis=1)
+        echo_power = echo_power + np.sum(peer_alphas ** 2, axis=1)
+        if np.any(echo_power >= 1.0 - _POWER_EPS):
+            raise ValueError(
+                "sum of alpha_k^2 >= 1 with the peer taps: normalization Eq. (4) "
+                "is impossible"
+            )
+        is_peer = np.concatenate(
+            [
+                np.zeros((n, n_obstacle), dtype=bool),
+                np.ones((n, n_peers), dtype=bool),
+            ],
+            axis=1,
+        )
+
     if echo_fading == "none":
         amplitudes = alphas
         dominance = alphas
@@ -1068,6 +1241,8 @@ def apply_channel_batch(
             alphas, valid, echo_fading, echo_fading_kappa_db, rng
         )
         dominance = np.abs(amplitudes)
+    if is_peer is not None:
+        dominance = np.where(is_peer, LABEL_EXCLUDED, dominance)
 
     geometry = TapGeometry(
         taus=np.asarray(taus, dtype=np.float64),
@@ -1077,6 +1252,7 @@ def apply_channel_batch(
         valid=np.asarray(valid, dtype=bool),
         echo_power=np.asarray(echo_power, dtype=np.float64),
         k_geometric=int(k_max),
+        is_peer=None if is_peer is None else np.asarray(is_peer, dtype=bool),
     )
     geometry = apply_overlay(
         config, geometry, rng, slot_ids=slot_ids, hop_channels=hop_channels
@@ -1146,6 +1322,40 @@ def apply_channel_batch(
     )
     y = y + w
 
+    direct_interference_power = np.zeros(n, dtype=np.float64)
+    if bool(peers_cfg.get("direct_interference", False)) and n_peers > 0:
+        gain_ref = float(peers_cfg.get("direct_gain_ref", 1.0))
+        if not (0.0 <= gain_ref <= 100.0):
+            raise ValueError(
+                f"peers.direct_gain_ref must be in [0, 100], got: {gain_ref!r}"
+            )
+        reference_range = float(peers_cfg.get("peer_range_ref_m", 30.0))
+        for column in range(n_peers):
+            peer_seeds = drone_symbol_seeds(column + 1, n)
+            x_peer = generate_transmitted_batch_fast(
+                config, peer_seeds % 2, rng, seeds=peer_seeds
+            )
+            lag = np.clip(
+                np.rint(peer_taus[:, column]).astype(np.int64), 0, seq_len - 1
+            )
+            shifted_index = n_idx_i - lag[:, None]
+            shifted = np.where(
+                shifted_index >= 0,
+                np.take_along_axis(
+                    x_peer, np.clip(shifted_index, 0, seq_len - 1), axis=1
+                ),
+                0.0,
+            )
+            gain = gain_ref * (
+                reference_range / np.maximum(peer_distances[:, column], 1e-9)
+            )
+            phase = np.exp(
+                1j * 2.0 * math.pi * peer_dopplers[:, column, None] * n_idx
+            )
+            term = gain[:, None] * shifted * phase
+            y = y + term
+            direct_interference_power += np.mean(np.abs(term) ** 2, axis=1)
+
     if not np.all(np.isfinite(y)):
         raise RuntimeError("channel output not finite (NaN/Inf)")
 
@@ -1162,7 +1372,19 @@ def apply_channel_batch(
         tau_labels = np.zeros(n, dtype=np.float64)
         f_d_labels = np.zeros(n, dtype=np.float64)
 
-    return y, tau_labels, f_d_labels
+    if not bool(return_peer_info):
+        return y, tau_labels, f_d_labels
+    peer_info = {
+        "peer_taus": np.asarray(peer_taus, dtype=np.float64),
+        "peer_distances_m": np.asarray(peer_distances, dtype=np.float64),
+        "peer_alphas": np.asarray(peer_alphas, dtype=np.float64),
+        "peer_dopplers": np.asarray(peer_dopplers, dtype=np.float64),
+        "is_peer": None if is_peer is None else np.asarray(is_peer, dtype=bool),
+        "direct_interference_power": np.asarray(
+            direct_interference_power, dtype=np.float64
+        ),
+    }
+    return y, tau_labels, f_d_labels, peer_info
 
 
 def generate_test_batch(
@@ -1192,9 +1414,18 @@ def generate_test_batch(
         hop_channels = build_hop_sequence(n, hop_config(config))
 
     bits = rng.integers(0, 2, size=n, dtype=np.int64)
-    seeds = rng.integers(0, _SEED_HIGH, size=n, dtype=np.int64)
-    x_ref = generate_transmitted_batch_fast(config, bits, rng)
-    y, tau, f_d = apply_channel_batch(
+    peers_cfg = _peer_config(config)
+    per_drone = (
+        bool(peers_cfg.get("enable", False))
+        and str(peers_cfg.get("sequence_id_scheme", "shared")) == "per_drone"
+    )
+    if per_drone:
+        seeds = drone_symbol_seeds(0, n)
+        x_ref = generate_transmitted_batch_fast(config, bits, rng, seeds=seeds)
+    else:
+        seeds = rng.integers(0, _SEED_HIGH, size=n, dtype=np.int64)
+        x_ref = generate_transmitted_batch_fast(config, bits, rng)
+    y, tau, f_d, peer_info = apply_channel_batch(
         x_ref,
         int(k),
         float(snr_db),
@@ -1202,8 +1433,9 @@ def generate_test_batch(
         rng,
         slot_ids=slot_ids,
         hop_channels=hop_channels,
+        return_peer_info=True,
     )
-    return {
+    batch = {
         "x": y,
         "bit": bits,
         "tau": tau,
@@ -1211,6 +1443,18 @@ def generate_test_batch(
         "seed": seeds,
         "x_ref": x_ref.astype(np.float32),
     }
+    if peer_info["is_peer"] is not None:
+        batch.update(
+            {
+                "peer_taus": peer_info["peer_taus"],
+                "peer_distances_m": peer_info["peer_distances_m"],
+                "peer_alphas": peer_info["peer_alphas"],
+                "peer_dopplers": peer_info["peer_dopplers"],
+                "is_peer": peer_info["is_peer"],
+                "direct_interference_power": peer_info["direct_interference_power"],
+            }
+        )
+    return batch
 
 
 def generate_dataset(

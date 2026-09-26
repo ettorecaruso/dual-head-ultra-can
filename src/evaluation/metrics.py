@@ -10,6 +10,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 _MSE_NEGATIVE_TOL = 1e-9
+_ENERGY_EPS = 1e-12
 
 def _validate_logits_labels(logits: np.ndarray, labels: np.ndarray) -> Tuple[int, int]:
     
@@ -184,4 +185,70 @@ def bit_error_count(logits: np.ndarray, labels: np.ndarray) -> Tuple[int, int]:
 
     logger.debug("bit_error_count: B=%d, M=%d, n_errors=%d, n_total=%d", B, M, n_errors, n_total)
     return n_errors, n_total
+
+def argmax_delay_from_profile(
+    y_complex: np.ndarray,
+    x_ref: np.ndarray,
+    max_delay: int,
+) -> np.ndarray:
+    
+    reference = np.asarray(x_ref, dtype=np.float64)
+    received = np.asarray(y_complex)
+    if reference.ndim != 2 or received.ndim != 2:
+        raise ValueError(
+            f"y_complex and x_ref must be 2D, got {received.shape} and {reference.shape}"
+        )
+    if reference.shape != received.shape:
+        raise ValueError(
+            f"y_complex and x_ref must share the shape, got {received.shape} "
+            f"and {reference.shape}"
+        )
+    if int(max_delay) < 1 or int(max_delay) >= int(reference.shape[1]):
+        raise ValueError(
+            f"max_delay must be in [1, {int(reference.shape[1]) - 1}], got: {max_delay!r}"
+        )
+    if not (np.all(np.isfinite(reference)) and np.all(np.isfinite(received))):
+        raise ValueError("y_complex/x_ref contain NaN/Inf")
+
+    length = int(reference.shape[1])
+    energy = np.sum(reference * reference, axis=1)
+    energy = np.where(energy < _ENERGY_EPS, 1.0, energy)
+    direct = np.sum(reference * received, axis=1) / energy
+    residual = received - direct[:, None] * reference
+
+    lag_best = np.zeros(received.shape[0], dtype=np.float64)
+    peak = np.full(received.shape[0], -np.inf)
+    for lag in range(1, int(max_delay) + 1):
+        value = np.abs(
+            np.sum(reference[:, : length - lag] * residual[:, lag:], axis=1)
+        )
+        better = value > peak
+        lag_best = np.where(better, float(lag), lag_best)
+        peak = np.where(better, value, peak)
+
+    logger.debug("argmax_delay_from_profile: B=%d, max_delay=%d", received.shape[0], max_delay)
+    return lag_best
+
+def exact_delay_rate(
+    tau_pred: np.ndarray,
+    tau_true: np.ndarray,
+    tolerance: float = 0.5,
+) -> float:
+    
+    pred = np.asarray(tau_pred, dtype=np.float64)
+    true = np.asarray(tau_true, dtype=np.float64)
+    if pred.ndim != 1 or true.ndim != 1:
+        raise ValueError(f"tau arrays must be 1D, got {pred.shape} and {true.shape}")
+    if pred.shape != true.shape:
+        raise ValueError(f"tau arrays must share the shape, got {pred.shape} and {true.shape}")
+    if pred.size == 0:
+        raise ValueError("no samples to score")
+    if not (np.all(np.isfinite(pred)) and np.all(np.isfinite(true))):
+        raise ValueError("tau arrays contain NaN/Inf")
+    if not np.isfinite(float(tolerance)) or float(tolerance) < 0.0:
+        raise ValueError(f"tolerance must be finite and >= 0, got: {tolerance!r}")
+
+    rate = float(np.mean(np.abs(pred - true) <= float(tolerance)))
+    logger.debug("exact_delay_rate: B=%d, tol=%.3f, rate=%.6f", pred.size, tolerance, rate)
+    return rate
 

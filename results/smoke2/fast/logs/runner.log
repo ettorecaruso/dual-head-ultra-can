@@ -1,0 +1,1021 @@
+2026-09-26 12:31:33 | root                           | INFO   | Logging configured: file=/home/ettore/Documents/vs_code/dual-head-ultra-can/results/smoke2/fast/logs/runner.log level=INFO
+2026-09-26 12:31:33 | __main__                       | INFO   | Mode: fast
+2026-09-26 12:31:33 | __main__                       | INFO   | Run root: results/smoke2/fast
+2026-09-26 12:31:33 | __main__                       | INFO   | Models: ALL (config)
+2026-09-26 12:31:33 | __main__                       | INFO   | No dataset regeneration: False
+2026-09-26 12:31:33 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:31:33 | __main__                       | INFO   | EXPERIMENT ber_vs_snr
+2026-09-26 12:31:33 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:31:33 | __main__                       | INFO   | experiment_name = ber_vs_snr_fast
+2026-09-26 12:31:33 | __main__                       | INFO   | seed = 42
+2026-09-26 12:31:33 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:31:33 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:31:33 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:31:33 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:31:33 | __main__                       | INFO   | epochs = 2
+2026-09-26 12:31:33 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/ber_vs_snr/logs/config_used.yaml
+2026-09-26 12:31:33 | __main__                       | INFO   | ============================================================
+2026-09-26 12:31:33 | __main__                       | INFO   | ber_vs_snr experiment: BER vs SNR (5 architectures, 3 scenarios)
+2026-09-26 12:31:33 | __main__                       | INFO   | ============================================================
+2026-09-26 12:31:33 | __main__                       | INFO   | --- Scenario: k1_doppler_full ---
+2026-09-26 12:31:33 | src.experiments.pipeline       | INFO   | Dataset not found in data/raw/b52a3617, generating...
+2026-09-26 12:31:33 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/train_snr0_echo1.npz: 36 symbols, x shape=(36, 100), tau in [1, 5], f_d in [7.014e-07, 7.941e-05]
+2026-09-26 12:31:33 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/train_snr5_echo1.npz: 36 symbols, x shape=(36, 100), tau in [1, 5], f_d in [1.121e-06, 7.760e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/train_snr10_echo1.npz: 36 symbols, x shape=(36, 100), tau in [1, 5], f_d in [3.058e-07, 7.982e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | split 'train': 3 files generated, 36 symbols per combination (combos=3)
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/val_snr0_echo1.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [8.205e-06, 7.927e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/val_snr5_echo1.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [4.894e-07, 7.229e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/val_snr10_echo1.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [8.417e-07, 7.868e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | split 'val': 3 files generated, 20 symbols per combination (combos=3)
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/test_snr0_echo1.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [1.873e-06, 7.985e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/test_snr5_echo1.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [3.067e-07, 7.989e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | saved data/raw/b52a3617/test_snr10_echo1.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [1.423e-06, 7.956e-05]
+2026-09-26 12:31:34 | src.data.dataset_generator     | INFO   | split 'test': 3 files generated, 50 symbols per combination (combos=3)
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | split 'train': 108 total samples, x shape=(108, 100), tau in [1.00, 5.00], f_d in [3.058e-07, 7.982e-05]
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | balancing verified: 36 samples for each of the 3 (SNR, K) combinations
+2026-09-26 12:31:34 | src.experiments.pipeline       | INFO   | Split 'train': 108 samples
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | split 'val': 60 total samples, x shape=(60, 100), tau in [1.00, 5.00], f_d in [4.894e-07, 7.927e-05]
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | balancing verified: 20 samples for each of the 3 (SNR, K) combinations
+2026-09-26 12:31:34 | src.experiments.pipeline       | INFO   | Split 'val': 60 samples
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | split 'test': 150 total samples, x shape=(150, 100), tau in [1.00, 5.00], f_d in [3.067e-07, 7.989e-05]
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 3 (SNR, K) combinations
+2026-09-26 12:31:34 | src.experiments.pipeline       | INFO   | Split 'test': 150 samples
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | dataset built: n=108, batch_size=32, feature_mode=iq, shuffle=True, seed=42
+2026-09-26 12:31:34 | src.data.data_loader           | INFO   | dataset built: n=60, batch_size=32, feature_mode=iq, shuffle=False, seed=42
+2026-09-26 12:31:34 | __main__                       | INFO   | Architecture: conv1d
+2026-09-26 12:31:34 | src.experiments.pipeline       | INFO   | build_model 'conv1d': model seed applied = 21 (from model.seeds.conv1d, dataset seed stays 42)
+2026-09-26 12:31:34 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:31:34 | src.models.heads               | INFO   | sensing_head built: input_dim=228, units=32, output_units=2, params=7394
+2026-09-26 12:31:35 | src.models.ultra_can           | INFO   | model 'dual_head_ultra_can' built: comm=8578 params, sensing=7394 params, TOTAL=26629 params
+2026-09-26 12:31:35 | src.experiments.pipeline       | INFO   | Model 'dual_head_ultra_can' built: 26629 trainable parameters.
+2026-09-26 12:31:35 | src.experiments.pipeline       | INFO   | Training for 2 epochs, lambda_mse=2.0000
+2026-09-26 12:31:35 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:31:35 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:31:35 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:31:35 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:31:35 | src.training.trainer           | INFO   | Starting training: epochs=2, batch_size=32
+2026-09-26 12:31:39 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/logs/history.csv
+2026-09-26 12:31:39 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/logs/run_metadata.json
+2026-09-26 12:31:39 | src.training.trainer           | INFO   | Training completed in 2 epochs. Best val_loss = 1.004920, best loss = 0.936734
+2026-09-26 12:31:39 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:31:39 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:31:39 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:31:39 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/metrics.csv
+2026-09-26 12:31:40 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:31:40 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:31:40 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/best_model.keras
+2026-09-26 12:31:40 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/logs/config_used.yaml
+2026-09-26 12:31:41 | __main__                       | INFO   | RSS [ber_vs_snr k1_doppler_full/conv1d] = 0.83 GB
+2026-09-26 12:31:41 | __main__                       | INFO   | Architecture: qkv
+2026-09-26 12:31:41 | src.experiments.pipeline       | INFO   | build_model 'qkv': model seed applied = 15 (from model.seeds.qkv, dataset seed stays 42)
+2026-09-26 12:31:41 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:31:41 | src.models.heads               | INFO   | sensing_head built: input_dim=228, units=32, output_units=2, params=7394
+2026-09-26 12:31:42 | src.models.ultra_can_qkv       | INFO   | model 'dual_head_ultra_can_qkv' built: comm=8578 params, sensing=7394 params, TOTAL=43204 params, lambda_mse=2
+2026-09-26 12:31:42 | src.experiments.pipeline       | INFO   | Model 'dual_head_ultra_can_qkv' built: 43204 trainable parameters.
+2026-09-26 12:31:42 | src.experiments.pipeline       | INFO   | Training for 2 epochs, lambda_mse=2.0000
+2026-09-26 12:31:42 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:31:42 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:31:42 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:31:42 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:31:42 | src.training.trainer           | INFO   | Starting training: epochs=2, batch_size=32
+2026-09-26 12:31:47 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/logs/history.csv
+2026-09-26 12:31:47 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/logs/run_metadata.json
+2026-09-26 12:31:47 | src.training.trainer           | INFO   | Training completed in 2 epochs. Best val_loss = 1.030549, best loss = 1.216570
+2026-09-26 12:31:47 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:31:47 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:31:48 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:31:48 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/metrics.csv
+2026-09-26 12:31:48 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:31:48 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:31:48 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/best_model.keras
+2026-09-26 12:31:48 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/logs/config_used.yaml
+2026-09-26 12:31:49 | __main__                       | INFO   | RSS [ber_vs_snr k1_doppler_full/qkv] = 1.10 GB
+2026-09-26 12:31:49 | __main__                       | INFO   | Architecture: blind_stat
+2026-09-26 12:31:49 | src.evaluation.compare_baselines | WARNING | Fallback style for unknown architecture: 'blind_stat'
+2026-09-26 12:31:49 | src.evaluation.compare_baselines | INFO   | BER plot saved to results/smoke2/fast/ber_vs_snr/plots/ber_vs_snr_k1_doppler_full.pdf
+2026-09-26 12:31:49 | src.experiments.pipeline       | INFO   | Overlay saved to results/smoke2/fast/ber_vs_snr/plots/ber_vs_snr_k1_doppler_full.pdf
+2026-09-26 12:31:49 | __main__                       | INFO   | RSS [ber_vs_snr k1_doppler_full scenario done] = 1.10 GB
+2026-09-26 12:31:49 | __main__                       | INFO   | --- Scenario: iod_peers ---
+2026-09-26 12:31:49 | src.experiments.pipeline       | INFO   | Dataset not found in data/raw/7666726d, generating...
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/train_snr0_echo3.npz: 36 symbols, x shape=(36, 100), tau in [1, 5], f_d in [1.873e-06, 7.941e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/train_snr5_echo3.npz: 36 symbols, x shape=(36, 100), tau in [1, 5], f_d in [3.067e-07, 7.535e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/train_snr10_echo3.npz: 36 symbols, x shape=(36, 100), tau in [1, 5], f_d in [3.058e-07, 7.956e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | split 'train': 3 files generated, 36 symbols per combination (combos=3)
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/val_snr0_echo3.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [8.636e-06, 7.927e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/val_snr5_echo3.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [6.796e-06, 7.798e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/val_snr10_echo3.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [9.167e-08, 7.737e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | split 'val': 3 files generated, 20 symbols per combination (combos=3)
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/test_snr0_echo3.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [3.402e-07, 7.730e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/test_snr5_echo3.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [3.067e-07, 7.848e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | saved data/raw/7666726d/test_snr10_echo3.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [1.481e-06, 7.947e-05]
+2026-09-26 12:31:49 | src.data.dataset_generator     | INFO   | split 'test': 3 files generated, 50 symbols per combination (combos=3)
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | split 'train': 108 total samples, x shape=(108, 100), tau in [1.00, 5.00], f_d in [3.058e-07, 7.956e-05]
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | balancing verified: 36 samples for each of the 3 (SNR, K) combinations
+2026-09-26 12:31:49 | src.experiments.pipeline       | INFO   | Split 'train': 108 samples
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | split 'val': 60 total samples, x shape=(60, 100), tau in [1.00, 5.00], f_d in [9.167e-08, 7.927e-05]
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | balancing verified: 20 samples for each of the 3 (SNR, K) combinations
+2026-09-26 12:31:49 | src.experiments.pipeline       | INFO   | Split 'val': 60 samples
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | split 'test': 150 total samples, x shape=(150, 100), tau in [1.00, 5.00], f_d in [3.067e-07, 7.947e-05]
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 3 (SNR, K) combinations
+2026-09-26 12:31:49 | src.experiments.pipeline       | INFO   | Split 'test': 150 samples
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | dataset built: n=108, batch_size=32, feature_mode=iq, shuffle=True, seed=42
+2026-09-26 12:31:49 | src.data.data_loader           | INFO   | dataset built: n=60, batch_size=32, feature_mode=iq, shuffle=False, seed=42
+2026-09-26 12:31:49 | __main__                       | INFO   | Architecture: conv1d
+2026-09-26 12:31:49 | src.experiments.pipeline       | INFO   | build_model 'conv1d': model seed applied = 21 (from model.seeds.conv1d, dataset seed stays 42)
+2026-09-26 12:31:49 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:31:50 | src.models.heads               | INFO   | sensing_head built: input_dim=228, units=32, output_units=2, params=7394
+2026-09-26 12:31:50 | src.models.ultra_can           | INFO   | model 'dual_head_ultra_can' built: comm=8578 params, sensing=7394 params, TOTAL=26629 params
+2026-09-26 12:31:50 | src.experiments.pipeline       | INFO   | Model 'dual_head_ultra_can' built: 26629 trainable parameters.
+2026-09-26 12:31:50 | src.experiments.pipeline       | INFO   | Training for 2 epochs, lambda_mse=2.0000
+2026-09-26 12:31:50 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:31:50 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:31:50 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:31:50 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:31:50 | src.training.trainer           | INFO   | Starting training: epochs=2, batch_size=32
+2026-09-26 12:31:54 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/logs/history.csv
+2026-09-26 12:31:54 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/logs/run_metadata.json
+2026-09-26 12:31:54 | src.training.trainer           | INFO   | Training completed in 2 epochs. Best val_loss = 1.084674, best loss = 1.037742
+2026-09-26 12:31:54 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:31:54 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:31:54 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:31:54 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/metrics.csv
+2026-09-26 12:31:54 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:31:54 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:31:54 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/best_model.keras
+2026-09-26 12:31:54 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/logs/config_used.yaml
+2026-09-26 12:31:55 | __main__                       | INFO   | RSS [ber_vs_snr iod_peers/conv1d] = 1.11 GB
+2026-09-26 12:31:55 | __main__                       | INFO   | Architecture: qkv
+2026-09-26 12:31:55 | src.experiments.pipeline       | INFO   | build_model 'qkv': model seed applied = 15 (from model.seeds.qkv, dataset seed stays 42)
+2026-09-26 12:31:55 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:31:55 | src.models.heads               | INFO   | sensing_head built: input_dim=228, units=32, output_units=2, params=7394
+2026-09-26 12:31:56 | src.models.ultra_can_qkv       | INFO   | model 'dual_head_ultra_can_qkv' built: comm=8578 params, sensing=7394 params, TOTAL=43204 params, lambda_mse=2
+2026-09-26 12:31:56 | src.experiments.pipeline       | INFO   | Model 'dual_head_ultra_can_qkv' built: 43204 trainable parameters.
+2026-09-26 12:31:56 | src.experiments.pipeline       | INFO   | Training for 2 epochs, lambda_mse=2.0000
+2026-09-26 12:31:56 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:31:56 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:31:56 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:31:57 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:31:57 | src.training.trainer           | INFO   | Starting training: epochs=2, batch_size=32
+2026-09-26 12:32:01 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/ber_vs_snr/iod_peers/qkv/logs/history.csv
+2026-09-26 12:32:01 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/ber_vs_snr/iod_peers/qkv/logs/run_metadata.json
+2026-09-26 12:32:01 | src.training.trainer           | INFO   | Training completed in 2 epochs. Best val_loss = 1.115646, best loss = 1.305534
+2026-09-26 12:32:01 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/ber_vs_snr/iod_peers/qkv/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:32:01 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:01 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:01 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/ber_vs_snr/iod_peers/qkv/metrics.csv
+2026-09-26 12:32:02 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/ber_vs_snr/iod_peers/qkv/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:32:02 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/ber_vs_snr/iod_peers/qkv/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:32:02 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/ber_vs_snr/iod_peers/qkv/best_model.keras
+2026-09-26 12:32:02 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/ber_vs_snr/iod_peers/qkv/logs/config_used.yaml
+2026-09-26 12:32:02 | __main__                       | INFO   | RSS [ber_vs_snr iod_peers/qkv] = 1.25 GB
+2026-09-26 12:32:02 | __main__                       | INFO   | Architecture: blind_stat
+2026-09-26 12:32:02 | src.evaluation.compare_baselines | WARNING | Fallback style for unknown architecture: 'blind_stat'
+2026-09-26 12:32:03 | src.evaluation.compare_baselines | INFO   | BER plot saved to results/smoke2/fast/ber_vs_snr/plots/ber_vs_snr_iod_peers.pdf
+2026-09-26 12:32:03 | src.experiments.pipeline       | INFO   | Overlay saved to results/smoke2/fast/ber_vs_snr/plots/ber_vs_snr_iod_peers.pdf
+2026-09-26 12:32:03 | __main__                       | INFO   | RSS [ber_vs_snr iod_peers scenario done] = 1.25 GB
+2026-09-26 12:32:03 | __main__                       | INFO   | ber_vs_snr experiment completed.
+2026-09-26 12:32:03 | __main__                       | INFO   | Experiment ber_vs_snr completed successfully.
+2026-09-26 12:32:03 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:32:03 | __main__                       | INFO   | EXPERIMENT classical_receivers
+2026-09-26 12:32:03 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:32:03 | __main__                       | INFO   | experiment_name = classical_receivers_fast
+2026-09-26 12:32:03 | __main__                       | INFO   | seed = 42
+2026-09-26 12:32:03 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:32:03 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:32:03 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:32:03 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:32:03 | __main__                       | INFO   | epochs = 5
+2026-09-26 12:32:03 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/classical_receivers/logs/config_used.yaml
+2026-09-26 12:32:03 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:03 | __main__                       | INFO   | Experiment classical_receivers: equations only (no DL) - classical receivers
+2026-09-26 12:32:03 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=114, BER=0.285000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=14, BER=0.035000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=114, BER=0.285000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=21, BER=0.052500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=112, BER=0.280000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=24, BER=0.060000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=110, BER=0.275000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=30, BER=0.075000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=109, BER=0.272500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=37, BER=0.092500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=113, BER=0.282500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=43, BER=0.107500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=119, BER=0.297500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=51, BER=0.127500
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=126, BER=0.315000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=62, BER=0.155000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=126, BER=0.315000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=74, BER=0.185000
+2026-09-26 12:32:03 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=129, BER=0.322500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=85, BER=0.212500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=112, BER=0.280000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=24, BER=0.060000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=112, BER=0.280000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=24, BER=0.060000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=112, BER=0.280000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=24, BER=0.060000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=112, BER=0.280000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=27, BER=0.067500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=122, BER=0.305000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=36, BER=0.090000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=122, BER=0.305000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=49, BER=0.122500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=120, BER=0.300000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=61, BER=0.152500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=129, BER=0.322500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=71, BER=0.177500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=133, BER=0.332500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=89, BER=0.222500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=138, BER=0.345000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=109, BER=0.272500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=144, BER=0.360000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=129, BER=0.322500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=dcsk, n_bits=400, n_errors=141, BER=0.352500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=matched_filter, n_bits=400, n_errors=149, BER=0.372500
+2026-09-26 12:32:04 | src.models.dcsk_correlator     | INFO   | evaluate_classical: detector=energy_detector, n_bits=400, n_errors=200, BER=0.500000
+2026-09-26 12:32:04 | __main__                       | INFO   | classical_receivers results saved to results/smoke2/fast/classical_receivers/{ber_vs_k,ber_vs_doppler}.csv
+2026-09-26 12:32:04 | __main__                       | INFO   | classical_receivers experiment completed.
+2026-09-26 12:32:04 | __main__                       | INFO   | Experiment classical_receivers completed successfully.
+2026-09-26 12:32:04 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:32:04 | __main__                       | INFO   | EXPERIMENT jamming
+2026-09-26 12:32:04 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:32:04 | __main__                       | INFO   | experiment_name = jamming_fast
+2026-09-26 12:32:04 | __main__                       | INFO   | seed = 42
+2026-09-26 12:32:04 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:32:04 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:32:04 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:32:04 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:32:04 | __main__                       | INFO   | epochs = 1
+2026-09-26 12:32:04 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/jamming/logs/config_used.yaml
+2026-09-26 12:32:04 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:04 | __main__                       | INFO   | Experiment jamming: jamming robustness + explainability
+2026-09-26 12:32:04 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:04 | __main__                       | INFO   | Models to test: ['conv1d', 'qkv', 'lstm', 'mc_dlsk']
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | Dataset not found in data/raw/809325ad, generating...
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/train_snr0_echo0.npz: 18 symbols, x shape=(18, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/train_snr0_echo1.npz: 18 symbols, x shape=(18, 100), tau in [2, 5], f_d in [4.894e-07, 7.466e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/train_snr5_echo0.npz: 18 symbols, x shape=(18, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/train_snr5_echo1.npz: 18 symbols, x shape=(18, 100), tau in [1, 5], f_d in [4.362e-07, 7.069e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/train_snr10_echo0.npz: 18 symbols, x shape=(18, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/train_snr10_echo1.npz: 18 symbols, x shape=(18, 100), tau in [1, 4], f_d in [4.203e-06, 7.460e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | split 'train': 6 files generated, 18 symbols per combination (combos=6)
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/val_snr0_echo0.npz: 20 symbols, x shape=(20, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/val_snr0_echo1.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [4.894e-07, 7.229e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/val_snr5_echo0.npz: 20 symbols, x shape=(20, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/val_snr5_echo1.npz: 20 symbols, x shape=(20, 100), tau in [1, 5], f_d in [1.461e-07, 7.277e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/val_snr10_echo0.npz: 20 symbols, x shape=(20, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/val_snr10_echo1.npz: 20 symbols, x shape=(20, 100), tau in [1, 4], f_d in [4.203e-06, 7.503e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | split 'val': 6 files generated, 20 symbols per combination (combos=6)
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/test_snr0_echo0.npz: 50 symbols, x shape=(50, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/test_snr0_echo1.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [3.067e-07, 7.989e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/test_snr5_echo0.npz: 50 symbols, x shape=(50, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/test_snr5_echo1.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [3.961e-06, 7.723e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/test_snr10_echo0.npz: 50 symbols, x shape=(50, 100), tau in [0, 0], f_d in [0.000e+00, 0.000e+00]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | saved data/raw/809325ad/test_snr10_echo1.npz: 50 symbols, x shape=(50, 100), tau in [1, 5], f_d in [1.336e-07, 7.929e-05]
+2026-09-26 12:32:04 | src.data.dataset_generator     | INFO   | split 'test': 6 files generated, 50 symbols per combination (combos=6)
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | split 'test': 300 total samples, x shape=(300, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.989e-05]
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | Static test set loaded: 300 samples
+2026-09-26 12:32:04 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:04 | __main__                       | INFO   | Model: conv1d
+2026-09-26 12:32:04 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | Dataset already present in data/raw/809325ad
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | split 'train': 108 total samples, x shape=(108, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.466e-05]
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | balancing verified: 18 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | Split 'train': 108 samples
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | split 'val': 120 total samples, x shape=(120, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.503e-05]
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | balancing verified: 20 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | Split 'val': 120 samples
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | split 'test': 300 total samples, x shape=(300, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.989e-05]
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | Split 'test': 300 samples
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | dataset built: n=108, batch_size=16, feature_mode=iq, shuffle=True, seed=42
+2026-09-26 12:32:04 | src.data.data_loader           | INFO   | dataset built: n=120, batch_size=16, feature_mode=iq, shuffle=False, seed=42
+2026-09-26 12:32:04 | src.experiments.pipeline       | INFO   | build_model 'conv1d': model seed applied = 21 (from model.seeds.conv1d, dataset seed stays 42)
+2026-09-26 12:32:04 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:32:05 | src.models.heads               | INFO   | sensing_head built: input_dim=228, units=32, output_units=2, params=7394
+2026-09-26 12:32:05 | src.models.ultra_can           | INFO   | model 'dual_head_ultra_can' built: comm=8578 params, sensing=7394 params, TOTAL=26629 params
+2026-09-26 12:32:05 | src.experiments.pipeline       | INFO   | Model 'dual_head_ultra_can' built: 26629 trainable parameters.
+2026-09-26 12:32:05 | src.experiments.pipeline       | INFO   | Training for 1 epochs, lambda_mse=2.0000
+2026-09-26 12:32:05 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:32:05 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:32:05 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:32:05 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:32:05 | src.training.trainer           | INFO   | Starting training: epochs=1, batch_size=16
+2026-09-26 12:32:09 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/jamming/conv1d/logs/history.csv
+2026-09-26 12:32:09 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/jamming/conv1d/logs/run_metadata.json
+2026-09-26 12:32:09 | src.training.trainer           | INFO   | Training completed in 1 epochs. Best val_loss = 0.993620, best loss = 1.007576
+2026-09-26 12:32:09 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/jamming/conv1d/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:32:09 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:09 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:10 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/jamming/conv1d/metrics.csv
+2026-09-26 12:32:10 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/conv1d/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:32:10 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/jamming/conv1d/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:32:10 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/jamming/conv1d/best_model.keras
+2026-09-26 12:32:10 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/jamming/conv1d/logs/config_used.yaml
+2026-09-26 12:32:10 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:11 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:11 | __main__                       | WARNING | SENSING COLLAPSED? max corr(tau) = -0.248 (threshold 0.15), MSE_tau high-SNR = 5.74 (~variance 90.8): check use_reference_profile/feature_mode in model dual_head_ultra_can
+2026-09-26 12:32:11 | __main__                       | WARNING | Sensing head below its own peak picker: corr(tau) max = -0.248 vs argmax of the residual profile 0.467 (exact delay rate 0.040 vs 0.480 at the top of the grid): inspect the delay head, delay_mode/use_position_feature in model dual_head_ultra_can
+2026-09-26 12:32:11 | __main__                       | WARNING | fD is not resolvable from the current parameters (max corr(fD) = 0.080): the Doppler phase accumulated over N_seq=100 samples with max_doppler=8e-05 is ~0.05 rad (Cramer-Rao bound). Estimating fD requires longer windows or a larger max_doppler.
+2026-09-26 12:32:11 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/conv1d/jamming/plots/ber_vs_snr_dual_head_ultra_can.pdf
+2026-09-26 12:32:11 | src.experiments.pipeline       | INFO   | Starting jamming evaluation for JSR = [0.0, 2.0, 4.0], types = ['cw', 'barrage', 'partial_band']
+2026-09-26 12:32:11 | src.experiments.run_jamming    | INFO   | Running baseline evaluation...
+2026-09-26 12:32:11 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:12 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:12 | src.experiments.run_jamming    | INFO   | Baseline saved to results/smoke2/fast/jamming/conv1d/jamming/baseline_metrics.csv
+2026-09-26 12:32:12 | src.experiments.run_jamming    | INFO   | Baseline mean BER = 0.500000
+2026-09-26 12:32:12 | src.experiments.run_jamming    | INFO   | Processing jamming: cw (1 realization(s))
+2026-09-26 12:32:12 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:13 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:13 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:32:13 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:14 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:14 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:32:14 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:15 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:15 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:32:15 | src.experiments.run_jamming    | INFO   | Results for cw saved to results/smoke2/fast/jamming/conv1d/jamming/jamming_results_cw.csv
+2026-09-26 12:32:15 | src.experiments.run_jamming    | INFO   | Per-realization results for cw saved to results/smoke2/fast/jamming/conv1d/jamming/jamming_realizations_cw.csv
+2026-09-26 12:32:15 | src.experiments.run_jamming    | INFO   | Processing jamming: barrage (1 realization(s))
+2026-09-26 12:32:15 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:16 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:16 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:32:16 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:17 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:17 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:32:17 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:17 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:17 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:32:17 | src.experiments.run_jamming    | INFO   | Results for barrage saved to results/smoke2/fast/jamming/conv1d/jamming/jamming_results_barrage.csv
+2026-09-26 12:32:17 | src.experiments.run_jamming    | INFO   | Per-realization results for barrage saved to results/smoke2/fast/jamming/conv1d/jamming/jamming_realizations_barrage.csv
+2026-09-26 12:32:17 | src.experiments.run_jamming    | INFO   | Processing jamming: partial_band (1 realization(s))
+2026-09-26 12:32:17 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:18 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:18 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:32:18 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:19 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:19 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:32:19 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:20 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:20 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:32:20 | src.experiments.run_jamming    | INFO   | Results for partial_band saved to results/smoke2/fast/jamming/conv1d/jamming/jamming_results_partial_band.csv
+2026-09-26 12:32:20 | src.experiments.run_jamming    | INFO   | Per-realization results for partial_band saved to results/smoke2/fast/jamming/conv1d/jamming/jamming_realizations_partial_band.csv
+2026-09-26 12:32:20 | src.experiments.run_jamming    | INFO   | Overlay plot saved to results/smoke2/fast/jamming/conv1d/jamming/plots/ber_vs_jsr_overlay.pdf
+2026-09-26 12:32:21 | src.experiments.run_jamming    | INFO   | Jammed vs clean plot saved to results/smoke2/fast/jamming/conv1d/jamming/plots/ber_vs_jsr_conv1d_vs_clean.pdf
+2026-09-26 12:32:21 | src.experiments.run_jamming    | INFO   | Separate plot for cw saved to results/smoke2/fast/jamming/conv1d/jamming/plots/ber_vs_jsr_cw.pdf
+2026-09-26 12:32:22 | src.experiments.run_jamming    | INFO   | Separate plot for barrage saved to results/smoke2/fast/jamming/conv1d/jamming/plots/ber_vs_jsr_barrage.pdf
+2026-09-26 12:32:22 | src.experiments.run_jamming    | INFO   | Separate plot for partial_band saved to results/smoke2/fast/jamming/conv1d/jamming/plots/ber_vs_jsr_partial_band.pdf
+2026-09-26 12:32:22 | src.experiments.pipeline       | INFO   | Jamming evaluation completed. Results saved to results/smoke2/fast/jamming/conv1d/jamming
+2026-09-26 12:32:22 | __main__                       | INFO   | Jamming vs clean ber_vs_snr comparison saved to results/smoke2/fast/jamming/conv1d/jamming/ber_vs_jsr_conv1d_vs_clean.pdf
+2026-09-26 12:32:23 | __main__                       | INFO   | RSS [jamming conv1d] = 1.29 GB
+2026-09-26 12:32:23 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:23 | __main__                       | INFO   | Model: qkv
+2026-09-26 12:32:23 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:23 | src.experiments.pipeline       | INFO   | Dataset already present in data/raw/809325ad
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | split 'train': 108 total samples, x shape=(108, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.466e-05]
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | balancing verified: 18 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:23 | src.experiments.pipeline       | INFO   | Split 'train': 108 samples
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | split 'val': 120 total samples, x shape=(120, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.503e-05]
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | balancing verified: 20 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:23 | src.experiments.pipeline       | INFO   | Split 'val': 120 samples
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | split 'test': 300 total samples, x shape=(300, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.989e-05]
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:23 | src.experiments.pipeline       | INFO   | Split 'test': 300 samples
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | dataset built: n=108, batch_size=16, feature_mode=iq, shuffle=True, seed=42
+2026-09-26 12:32:23 | src.data.data_loader           | INFO   | dataset built: n=120, batch_size=16, feature_mode=iq, shuffle=False, seed=42
+2026-09-26 12:32:23 | src.experiments.pipeline       | INFO   | build_model 'qkv': model seed applied = 15 (from model.seeds.qkv, dataset seed stays 42)
+2026-09-26 12:32:23 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:32:23 | src.models.heads               | INFO   | sensing_head built: input_dim=228, units=32, output_units=2, params=7394
+2026-09-26 12:32:24 | src.models.ultra_can_qkv       | INFO   | model 'dual_head_ultra_can_qkv' built: comm=8578 params, sensing=7394 params, TOTAL=43204 params, lambda_mse=2
+2026-09-26 12:32:24 | src.experiments.pipeline       | INFO   | Model 'dual_head_ultra_can_qkv' built: 43204 trainable parameters.
+2026-09-26 12:32:24 | src.experiments.pipeline       | INFO   | Training for 1 epochs, lambda_mse=2.0000
+2026-09-26 12:32:24 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:32:24 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:32:24 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:32:24 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:32:24 | src.training.trainer           | INFO   | Starting training: epochs=1, batch_size=16
+2026-09-26 12:32:29 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/jamming/qkv/logs/history.csv
+2026-09-26 12:32:29 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/jamming/qkv/logs/run_metadata.json
+2026-09-26 12:32:29 | src.training.trainer           | INFO   | Training completed in 1 epochs. Best val_loss = 0.989664, best loss = 1.568840
+2026-09-26 12:32:29 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/jamming/qkv/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:32:29 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:31 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 2/32 sensing elements outside [0,1] (min=-0.0054, max=0.6162) -> clamped
+2026-09-26 12:32:31 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:31 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/jamming/qkv/metrics.csv
+2026-09-26 12:32:31 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/qkv/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:32:31 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/jamming/qkv/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:32:31 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/jamming/qkv/best_model.keras
+2026-09-26 12:32:31 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/jamming/qkv/logs/config_used.yaml
+2026-09-26 12:32:31 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:32 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 2/32 sensing elements outside [0,1] (min=-0.0054, max=0.6162) -> clamped
+2026-09-26 12:32:32 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:32 | __main__                       | WARNING | SENSING COLLAPSED? max corr(tau) = -0.247 (threshold 0.15), MSE_tau high-SNR = 5.81 (~variance 90.8): check use_reference_profile/feature_mode in model dual_head_ultra_can_qkv
+2026-09-26 12:32:32 | __main__                       | WARNING | Sensing head below its own peak picker: corr(tau) max = -0.247 vs argmax of the residual profile 0.467 (exact delay rate 0.040 vs 0.480 at the top of the grid): inspect the delay head, delay_mode/use_position_feature in model dual_head_ultra_can_qkv
+2026-09-26 12:32:32 | __main__                       | WARNING | fD is not resolvable from the current parameters (max corr(fD) = 0.034): the Doppler phase accumulated over N_seq=100 samples with max_doppler=8e-05 is ~0.05 rad (Cramer-Rao bound). Estimating fD requires longer windows or a larger max_doppler.
+2026-09-26 12:32:32 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/qkv/jamming/plots/ber_vs_snr_dual_head_ultra_can_qkv.pdf
+2026-09-26 12:32:32 | src.experiments.pipeline       | INFO   | Starting jamming evaluation for JSR = [0.0, 2.0, 4.0], types = ['cw', 'barrage', 'partial_band']
+2026-09-26 12:32:32 | src.experiments.run_jamming    | INFO   | Running baseline evaluation...
+2026-09-26 12:32:32 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:33 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 2/32 sensing elements outside [0,1] (min=-0.0054, max=0.6162) -> clamped
+2026-09-26 12:32:33 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:33 | src.experiments.run_jamming    | INFO   | Baseline saved to results/smoke2/fast/jamming/qkv/jamming/baseline_metrics.csv
+2026-09-26 12:32:33 | src.experiments.run_jamming    | INFO   | Baseline mean BER = 0.493333
+2026-09-26 12:32:33 | src.experiments.run_jamming    | INFO   | Processing jamming: cw (1 realization(s))
+2026-09-26 12:32:33 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:35 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0020, max=0.6103) -> clamped
+2026-09-26 12:32:35 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:35 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=0.0 dB | BER=0.49000
+2026-09-26 12:32:35 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:36 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0045, max=0.7158) -> clamped
+2026-09-26 12:32:36 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:36 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=2.0 dB | BER=0.49000
+2026-09-26 12:32:36 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:36 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0520, max=0.7429) -> clamped
+2026-09-26 12:32:37 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0676, max=0.7152) -> clamped
+2026-09-26 12:32:37 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:37 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=4.0 dB | BER=0.49000
+2026-09-26 12:32:37 | src.experiments.run_jamming    | INFO   | Results for cw saved to results/smoke2/fast/jamming/qkv/jamming/jamming_results_cw.csv
+2026-09-26 12:32:37 | src.experiments.run_jamming    | INFO   | Per-realization results for cw saved to results/smoke2/fast/jamming/qkv/jamming/jamming_realizations_cw.csv
+2026-09-26 12:32:37 | src.experiments.run_jamming    | INFO   | Processing jamming: barrage (1 realization(s))
+2026-09-26 12:32:37 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:38 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:38 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=0.0 dB | BER=0.47333
+2026-09-26 12:32:38 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:39 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:39 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=2.0 dB | BER=0.46667
+2026-09-26 12:32:39 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:40 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0519, max=0.6980) -> clamped
+2026-09-26 12:32:40 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:40 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=4.0 dB | BER=0.47667
+2026-09-26 12:32:40 | src.experiments.run_jamming    | INFO   | Results for barrage saved to results/smoke2/fast/jamming/qkv/jamming/jamming_results_barrage.csv
+2026-09-26 12:32:40 | src.experiments.run_jamming    | INFO   | Per-realization results for barrage saved to results/smoke2/fast/jamming/qkv/jamming/jamming_realizations_barrage.csv
+2026-09-26 12:32:40 | src.experiments.run_jamming    | INFO   | Processing jamming: partial_band (1 realization(s))
+2026-09-26 12:32:40 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:41 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0294, max=0.5643) -> clamped
+2026-09-26 12:32:41 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:41 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=0.0 dB | BER=0.47333
+2026-09-26 12:32:41 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:42 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0008, max=0.6609) -> clamped
+2026-09-26 12:32:43 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.1522, max=0.5806) -> clamped
+2026-09-26 12:32:43 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:43 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=2.0 dB | BER=0.49000
+2026-09-26 12:32:43 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:43 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0755, max=0.6922) -> clamped
+2026-09-26 12:32:44 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 4/96 sensing elements outside [0,1] (min=-0.2811, max=0.8014) -> clamped
+2026-09-26 12:32:44 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:44 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=4.0 dB | BER=0.46000
+2026-09-26 12:32:44 | src.experiments.run_jamming    | INFO   | Results for partial_band saved to results/smoke2/fast/jamming/qkv/jamming/jamming_results_partial_band.csv
+2026-09-26 12:32:44 | src.experiments.run_jamming    | INFO   | Per-realization results for partial_band saved to results/smoke2/fast/jamming/qkv/jamming/jamming_realizations_partial_band.csv
+2026-09-26 12:32:44 | src.experiments.run_jamming    | INFO   | Overlay plot saved to results/smoke2/fast/jamming/qkv/jamming/plots/ber_vs_jsr_overlay.pdf
+2026-09-26 12:32:44 | src.experiments.run_jamming    | INFO   | Jammed vs clean plot saved to results/smoke2/fast/jamming/qkv/jamming/plots/ber_vs_jsr_qkv_vs_clean.pdf
+2026-09-26 12:32:45 | src.experiments.run_jamming    | INFO   | Separate plot for cw saved to results/smoke2/fast/jamming/qkv/jamming/plots/ber_vs_jsr_cw.pdf
+2026-09-26 12:32:45 | src.experiments.run_jamming    | INFO   | Separate plot for barrage saved to results/smoke2/fast/jamming/qkv/jamming/plots/ber_vs_jsr_barrage.pdf
+2026-09-26 12:32:46 | src.experiments.run_jamming    | INFO   | Separate plot for partial_band saved to results/smoke2/fast/jamming/qkv/jamming/plots/ber_vs_jsr_partial_band.pdf
+2026-09-26 12:32:46 | src.experiments.pipeline       | INFO   | Jamming evaluation completed. Results saved to results/smoke2/fast/jamming/qkv/jamming
+2026-09-26 12:32:46 | __main__                       | INFO   | Jamming vs clean ber_vs_snr comparison saved to results/smoke2/fast/jamming/qkv/jamming/ber_vs_jsr_qkv_vs_clean.pdf
+2026-09-26 12:32:47 | __main__                       | INFO   | RSS [jamming qkv] = 1.37 GB
+2026-09-26 12:32:47 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:47 | __main__                       | INFO   | Model: lstm
+2026-09-26 12:32:47 | __main__                       | INFO   | ============================================================
+2026-09-26 12:32:47 | src.experiments.pipeline       | INFO   | Dataset already present in data/raw/809325ad
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | split 'train': 108 total samples, x shape=(108, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.466e-05]
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | balancing verified: 18 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:47 | src.experiments.pipeline       | INFO   | Split 'train': 108 samples
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | split 'val': 120 total samples, x shape=(120, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.503e-05]
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | balancing verified: 20 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:47 | src.experiments.pipeline       | INFO   | Split 'val': 120 samples
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | split 'test': 300 total samples, x shape=(300, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.989e-05]
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:32:47 | src.experiments.pipeline       | INFO   | Split 'test': 300 samples
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | dataset built: n=108, batch_size=16, feature_mode=iq, shuffle=True, seed=42
+2026-09-26 12:32:47 | src.data.data_loader           | INFO   | dataset built: n=120, batch_size=16, feature_mode=iq, shuffle=False, seed=42
+2026-09-26 12:32:47 | src.experiments.pipeline       | INFO   | build_model 'lstm': model seed applied = 92 (from model.seeds.lstm, dataset seed stays 42)
+2026-09-26 12:32:47 | src.models.baselines           | WARNING | baselines.lstm.units[-1]=77 != v contract in R^64: adding Dense(64) projection before the shared heads
+2026-09-26 12:32:47 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:32:47 | src.models.heads               | INFO   | sensing_head built: input_dim=241, units=32, output_units=2, params=7810
+2026-09-26 12:32:48 | src.models.baselines           | INFO   | model 'lstm_baseline' built: backbone=29632 params, comm=8578 params, sensing=7810 params, TOTAL=46020 params
+2026-09-26 12:32:48 | src.models.baselines           | INFO   | baseline 'lstm' built: input=(None, 100, 3), output=['comm', 'sensing'], params=46020
+2026-09-26 12:32:49 | src.experiments.pipeline       | INFO   | Model 'lstm_baseline' built: 46020 trainable parameters.
+2026-09-26 12:32:49 | src.experiments.pipeline       | INFO   | Training for 1 epochs, lambda_mse=2.0000
+2026-09-26 12:32:49 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:32:49 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:32:49 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:32:49 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:32:49 | src.training.trainer           | INFO   | Starting training: epochs=1, batch_size=16
+2026-09-26 12:32:53 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/jamming/lstm/logs/history.csv
+2026-09-26 12:32:53 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/jamming/lstm/logs/run_metadata.json
+2026-09-26 12:32:53 | src.training.trainer           | INFO   | Training completed in 1 epochs. Best val_loss = 0.984945, best loss = 1.016539
+2026-09-26 12:32:53 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/jamming/lstm/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:32:53 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:32:58 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:32:58 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/jamming/lstm/metrics.csv
+2026-09-26 12:32:58 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/lstm/plots/ber_vs_snr_lstm_baseline.pdf
+2026-09-26 12:32:58 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/jamming/lstm/plots/ber_vs_snr_lstm_baseline.pdf
+2026-09-26 12:32:58 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/jamming/lstm/best_model.keras
+2026-09-26 12:32:58 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/jamming/lstm/logs/config_used.yaml
+2026-09-26 12:32:58 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:03 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:03 | __main__                       | WARNING | SENSING COLLAPSED? max corr(tau) = -0.247 (threshold 0.15), MSE_tau high-SNR = 5.73 (~variance 90.8): check use_reference_profile/feature_mode in model lstm_baseline
+2026-09-26 12:33:03 | __main__                       | WARNING | Sensing head below its own peak picker: corr(tau) max = -0.247 vs argmax of the residual profile 0.467 (exact delay rate 0.040 vs 0.480 at the top of the grid): inspect the delay head, delay_mode/use_position_feature in model lstm_baseline
+2026-09-26 12:33:03 | __main__                       | WARNING | fD is not resolvable from the current parameters (max corr(fD) = -0.040): the Doppler phase accumulated over N_seq=100 samples with max_doppler=8e-05 is ~0.05 rad (Cramer-Rao bound). Estimating fD requires longer windows or a larger max_doppler.
+2026-09-26 12:33:03 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/lstm/jamming/plots/ber_vs_snr_lstm_baseline.pdf
+2026-09-26 12:33:03 | src.experiments.pipeline       | INFO   | Starting jamming evaluation for JSR = [0.0, 2.0, 4.0], types = ['cw', 'barrage', 'partial_band']
+2026-09-26 12:33:03 | src.experiments.run_jamming    | INFO   | Running baseline evaluation...
+2026-09-26 12:33:03 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:08 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:08 | src.experiments.run_jamming    | INFO   | Baseline saved to results/smoke2/fast/jamming/lstm/jamming/baseline_metrics.csv
+2026-09-26 12:33:08 | src.experiments.run_jamming    | INFO   | Baseline mean BER = 0.500000
+2026-09-26 12:33:08 | src.experiments.run_jamming    | INFO   | Processing jamming: cw (1 realization(s))
+2026-09-26 12:33:08 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:09 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0064, max=0.5301) -> clamped
+2026-09-26 12:33:11 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0551, max=0.7580) -> clamped
+2026-09-26 12:33:12 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:12 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:33:12 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:14 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 2/32 sensing elements outside [0,1] (min=-0.0281, max=0.5138) -> clamped
+2026-09-26 12:33:15 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0741, max=0.7560) -> clamped
+2026-09-26 12:33:17 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:17 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:33:17 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:18 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 2/32 sensing elements outside [0,1] (min=-0.0526, max=0.5046) -> clamped
+2026-09-26 12:33:20 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0962, max=0.7564) -> clamped
+2026-09-26 12:33:21 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0037, max=0.7602) -> clamped
+2026-09-26 12:33:21 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:21 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:33:21 | src.experiments.run_jamming    | INFO   | Results for cw saved to results/smoke2/fast/jamming/lstm/jamming/jamming_results_cw.csv
+2026-09-26 12:33:21 | src.experiments.run_jamming    | INFO   | Per-realization results for cw saved to results/smoke2/fast/jamming/lstm/jamming/jamming_realizations_cw.csv
+2026-09-26 12:33:21 | src.experiments.run_jamming    | INFO   | Processing jamming: barrage (1 realization(s))
+2026-09-26 12:33:21 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:26 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:26 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:33:26 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:30 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:30 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:33:30 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:35 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:35 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:33:35 | src.experiments.run_jamming    | INFO   | Results for barrage saved to results/smoke2/fast/jamming/lstm/jamming/jamming_results_barrage.csv
+2026-09-26 12:33:35 | src.experiments.run_jamming    | INFO   | Per-realization results for barrage saved to results/smoke2/fast/jamming/lstm/jamming/jamming_realizations_barrage.csv
+2026-09-26 12:33:35 | src.experiments.run_jamming    | INFO   | Processing jamming: partial_band (1 realization(s))
+2026-09-26 12:33:36 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:40 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:40 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:33:40 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:43 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0069, max=0.8297) -> clamped
+2026-09-26 12:33:45 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:45 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:33:45 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:33:48 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 2/64 sensing elements outside [0,1] (min=-0.0461, max=0.8287) -> clamped
+2026-09-26 12:33:50 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 2/64 sensing elements outside [0,1] (min=-0.0040, max=0.7078) -> clamped
+2026-09-26 12:33:50 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:33:50 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:33:50 | src.experiments.run_jamming    | INFO   | Results for partial_band saved to results/smoke2/fast/jamming/lstm/jamming/jamming_results_partial_band.csv
+2026-09-26 12:33:50 | src.experiments.run_jamming    | INFO   | Per-realization results for partial_band saved to results/smoke2/fast/jamming/lstm/jamming/jamming_realizations_partial_band.csv
+2026-09-26 12:33:50 | src.experiments.run_jamming    | INFO   | Overlay plot saved to results/smoke2/fast/jamming/lstm/jamming/plots/ber_vs_jsr_overlay.pdf
+2026-09-26 12:33:50 | src.experiments.run_jamming    | INFO   | Jammed vs clean plot saved to results/smoke2/fast/jamming/lstm/jamming/plots/ber_vs_jsr_lstm_vs_clean.pdf
+2026-09-26 12:33:51 | src.experiments.run_jamming    | INFO   | Separate plot for cw saved to results/smoke2/fast/jamming/lstm/jamming/plots/ber_vs_jsr_cw.pdf
+2026-09-26 12:33:51 | src.experiments.run_jamming    | INFO   | Separate plot for barrage saved to results/smoke2/fast/jamming/lstm/jamming/plots/ber_vs_jsr_barrage.pdf
+2026-09-26 12:33:51 | src.experiments.run_jamming    | INFO   | Separate plot for partial_band saved to results/smoke2/fast/jamming/lstm/jamming/plots/ber_vs_jsr_partial_band.pdf
+2026-09-26 12:33:51 | src.experiments.pipeline       | INFO   | Jamming evaluation completed. Results saved to results/smoke2/fast/jamming/lstm/jamming
+2026-09-26 12:33:52 | __main__                       | INFO   | Jamming vs clean ber_vs_snr comparison saved to results/smoke2/fast/jamming/lstm/jamming/ber_vs_jsr_lstm_vs_clean.pdf
+2026-09-26 12:33:52 | __main__                       | INFO   | RSS [jamming lstm] = 1.38 GB
+2026-09-26 12:33:52 | __main__                       | INFO   | ============================================================
+2026-09-26 12:33:52 | __main__                       | INFO   | Model: mc_dlsk
+2026-09-26 12:33:52 | __main__                       | INFO   | ============================================================
+2026-09-26 12:33:52 | src.experiments.pipeline       | INFO   | Dataset already present in data/raw/809325ad
+2026-09-26 12:33:52 | src.data.data_loader           | INFO   | split 'train': 108 total samples, x shape=(108, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.466e-05]
+2026-09-26 12:33:52 | src.data.data_loader           | INFO   | balancing verified: 18 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:33:52 | src.experiments.pipeline       | INFO   | Split 'train': 108 samples
+2026-09-26 12:33:52 | src.data.data_loader           | INFO   | split 'val': 120 total samples, x shape=(120, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.503e-05]
+2026-09-26 12:33:52 | src.data.data_loader           | INFO   | balancing verified: 20 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:33:52 | src.experiments.pipeline       | INFO   | Split 'val': 120 samples
+2026-09-26 12:33:52 | src.data.data_loader           | INFO   | split 'test': 300 total samples, x shape=(300, 100), tau in [0.00, 5.00], f_d in [0.000e+00, 7.989e-05]
+2026-09-26 12:33:52 | src.data.data_loader           | INFO   | balancing verified: 50 samples for each of the 6 (SNR, K) combinations
+2026-09-26 12:33:53 | src.experiments.pipeline       | INFO   | Split 'test': 300 samples
+2026-09-26 12:33:53 | src.data.data_loader           | INFO   | dataset built: n=108, batch_size=16, feature_mode=iq, shuffle=True, seed=42
+2026-09-26 12:33:53 | src.data.data_loader           | INFO   | dataset built: n=120, batch_size=16, feature_mode=iq, shuffle=False, seed=42
+2026-09-26 12:33:53 | src.experiments.pipeline       | INFO   | build_model 'mc_dlsk': model seed applied = 24 (from model.seeds.mc_dlsk, dataset seed stays 42)
+2026-09-26 12:33:53 | src.models.baselines           | WARNING | baselines.mc_dlsk: 2*units[-1]=100 != v contract in R^64: adding Dense(64) projection before the shared heads
+2026-09-26 12:33:53 | src.models.heads               | INFO   | communication_head built: input_dim=64, units=128, M=2, params=8578
+2026-09-26 12:33:53 | src.models.heads               | INFO   | sensing_head built: input_dim=264, units=32, output_units=2, params=8546
+2026-09-26 12:33:54 | src.models.baselines           | INFO   | model 'mc_dlsk_baseline' built: backbone=27664 params, comm=8578 params, sensing=8546 params, TOTAL=44788 params
+2026-09-26 12:33:55 | src.models.baselines           | INFO   | baseline 'mc_dlsk' built: input=(None, 100, 3), output=['comm', 'sensing'], params=44788
+2026-09-26 12:33:55 | src.experiments.pipeline       | INFO   | Model 'mc_dlsk_baseline' built: 44788 trainable parameters.
+2026-09-26 12:33:55 | src.experiments.pipeline       | INFO   | Training for 1 epochs, lambda_mse=2.0000
+2026-09-26 12:33:55 | src.training.trainer           | INFO   | Sensing component weights: delay=1.000, f_doppler=1.000
+2026-09-26 12:33:55 | src.training.trainer           | INFO   | Trainer initialized: lambda_mse = 2.0
+2026-09-26 12:33:55 | src.training.trainer           | INFO   | Model compiled: loss_weights = {'comm': 1.0, 'sensing': 2}, lr=0.001000, optimizer=adam, label_smoothing=0.1, lr_schedule=cosine, sensing_range_penalty=1.0, sensing_component_weights=[1.0, 1.0]
+2026-09-26 12:33:56 | src.training.trainer           | INFO   | Callbacks configured: 5
+2026-09-26 12:33:56 | src.training.trainer           | INFO   | Starting training: epochs=1, batch_size=16
+2026-09-26 12:34:01 | src.training.trainer           | INFO   | History saved to results/smoke2/fast/jamming/mc_dlsk/logs/history.csv
+2026-09-26 12:34:01 | src.training.trainer           | INFO   | Metadata saved to results/smoke2/fast/jamming/mc_dlsk/logs/run_metadata.json
+2026-09-26 12:34:01 | src.training.trainer           | INFO   | Training completed in 1 epochs. Best val_loss = 0.992075, best loss = 1.025889
+2026-09-26 12:34:01 | src.training.trainer           | INFO   | Best weights reloaded from results/smoke2/fast/jamming/mc_dlsk/logs/best_weights.weights.h5 before evaluation/saving
+2026-09-26 12:34:01 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:09 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:34:09 | src.experiments.pipeline       | INFO   | Metrics saved to results/smoke2/fast/jamming/mc_dlsk/metrics.csv
+2026-09-26 12:34:10 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/mc_dlsk/plots/ber_vs_snr_mc_dlsk_baseline.pdf
+2026-09-26 12:34:10 | src.experiments.pipeline       | INFO   | BER vs SNR plot saved to results/smoke2/fast/jamming/mc_dlsk/plots/ber_vs_snr_mc_dlsk_baseline.pdf
+2026-09-26 12:34:10 | src.experiments.pipeline       | INFO   | Model saved to results/smoke2/fast/jamming/mc_dlsk/best_model.keras
+2026-09-26 12:34:10 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/jamming/mc_dlsk/logs/config_used.yaml
+2026-09-26 12:34:10 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:18 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:34:18 | __main__                       | WARNING | SENSING COLLAPSED? max corr(tau) = -0.247 (threshold 0.15), MSE_tau high-SNR = 5.73 (~variance 90.8): check use_reference_profile/feature_mode in model mc_dlsk_baseline
+2026-09-26 12:34:18 | __main__                       | WARNING | Sensing head below its own peak picker: corr(tau) max = -0.247 vs argmax of the residual profile 0.467 (exact delay rate 0.040 vs 0.480 at the top of the grid): inspect the delay head, delay_mode/use_position_feature in model mc_dlsk_baseline
+2026-09-26 12:34:18 | __main__                       | WARNING | fD is not resolvable from the current parameters (max corr(fD) = 0.100): the Doppler phase accumulated over N_seq=100 samples with max_doppler=8e-05 is ~0.05 rad (Cramer-Rao bound). Estimating fD requires longer windows or a larger max_doppler.
+2026-09-26 12:34:18 | src.evaluation.evaluator       | INFO   | BER plot saved to results/smoke2/fast/jamming/mc_dlsk/jamming/plots/ber_vs_snr_mc_dlsk_baseline.pdf
+2026-09-26 12:34:18 | src.experiments.pipeline       | INFO   | Starting jamming evaluation for JSR = [0.0, 2.0, 4.0], types = ['cw', 'barrage', 'partial_band']
+2026-09-26 12:34:18 | src.experiments.run_jamming    | INFO   | Running baseline evaluation...
+2026-09-26 12:34:18 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:27 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:34:27 | src.experiments.run_jamming    | INFO   | Baseline saved to results/smoke2/fast/jamming/mc_dlsk/jamming/baseline_metrics.csv
+2026-09-26 12:34:27 | src.experiments.run_jamming    | INFO   | Baseline mean BER = 0.500000
+2026-09-26 12:34:27 | src.experiments.run_jamming    | INFO   | Processing jamming: cw (1 realization(s))
+2026-09-26 12:34:27 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:29 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0048, max=0.6885) -> clamped
+2026-09-26 12:34:32 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0117, max=0.7629) -> clamped
+2026-09-26 12:34:35 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:34:35 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:34:35 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:38 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0208, max=0.7028) -> clamped
+2026-09-26 12:34:40 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0300, max=0.7611) -> clamped
+2026-09-26 12:34:43 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0048, max=0.7482) -> clamped
+2026-09-26 12:34:43 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:34:43 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:34:43 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:46 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 2/64 sensing elements outside [0,1] (min=-0.0398, max=0.7122) -> clamped
+2026-09-26 12:34:49 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/8 sensing elements outside [0,1] (min=-0.0548, max=0.7618) -> clamped
+2026-09-26 12:34:51 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0307, max=0.7664) -> clamped
+2026-09-26 12:34:51 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:34:51 | src.experiments.run_jamming    | INFO   | jamming cw r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:34:51 | src.experiments.run_jamming    | INFO   | Results for cw saved to results/smoke2/fast/jamming/mc_dlsk/jamming/jamming_results_cw.csv
+2026-09-26 12:34:51 | src.experiments.run_jamming    | INFO   | Per-realization results for cw saved to results/smoke2/fast/jamming/mc_dlsk/jamming/jamming_realizations_cw.csv
+2026-09-26 12:34:51 | src.experiments.run_jamming    | INFO   | Processing jamming: barrage (1 realization(s))
+2026-09-26 12:34:51 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:34:54 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0333, max=0.5165) -> clamped
+2026-09-26 12:34:57 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0334, max=0.5968) -> clamped
+2026-09-26 12:35:00 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:35:00 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:35:00 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:35:02 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0670, max=0.5391) -> clamped
+2026-09-26 12:35:05 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0623, max=0.5935) -> clamped
+2026-09-26 12:35:08 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0292, max=0.8103) -> clamped
+2026-09-26 12:35:08 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:35:08 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:35:08 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:35:11 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.1079, max=0.5598) -> clamped
+2026-09-26 12:35:14 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0968, max=0.6033) -> clamped
+2026-09-26 12:35:17 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0706, max=0.8088) -> clamped
+2026-09-26 12:35:17 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:35:17 | src.experiments.run_jamming    | INFO   | jamming barrage r=0 JSR=4.0 dB | BER=0.49000
+2026-09-26 12:35:17 | src.experiments.run_jamming    | INFO   | Results for barrage saved to results/smoke2/fast/jamming/mc_dlsk/jamming/jamming_results_barrage.csv
+2026-09-26 12:35:17 | src.experiments.run_jamming    | INFO   | Per-realization results for barrage saved to results/smoke2/fast/jamming/mc_dlsk/jamming/jamming_realizations_barrage.csv
+2026-09-26 12:35:17 | src.experiments.run_jamming    | INFO   | Processing jamming: partial_band (1 realization(s))
+2026-09-26 12:35:17 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:35:20 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0091, max=0.7632) -> clamped
+2026-09-26 12:35:25 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:35:25 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=0.0 dB | BER=0.50000
+2026-09-26 12:35:25 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:35:28 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 2/64 sensing elements outside [0,1] (min=-0.0338, max=0.7722) -> clamped
+2026-09-26 12:35:31 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0154, max=0.6853) -> clamped
+2026-09-26 12:35:34 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:35:34 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=2.0 dB | BER=0.50000
+2026-09-26 12:35:34 | src.evaluation.evaluator       | INFO   | Starting evaluation over 3 SNR points
+2026-09-26 12:35:37 | src.evaluation.evaluator       | WARNING | SNR=0.0 dB: 2/64 sensing elements outside [0,1] (min=-0.0581, max=0.7756) -> clamped
+2026-09-26 12:35:40 | src.evaluation.evaluator       | WARNING | SNR=5.0 dB: 2/64 sensing elements outside [0,1] (min=-0.0380, max=0.8308) -> clamped
+2026-09-26 12:35:42 | src.evaluation.evaluator       | WARNING | SNR=10.0 dB: 1/32 sensing elements outside [0,1] (min=-0.0051, max=0.7361) -> clamped
+2026-09-26 12:35:42 | src.evaluation.evaluator       | INFO   | Evaluation completed for 3 SNR points
+2026-09-26 12:35:42 | src.experiments.run_jamming    | INFO   | jamming partial_band r=0 JSR=4.0 dB | BER=0.50000
+2026-09-26 12:35:42 | src.experiments.run_jamming    | INFO   | Results for partial_band saved to results/smoke2/fast/jamming/mc_dlsk/jamming/jamming_results_partial_band.csv
+2026-09-26 12:35:42 | src.experiments.run_jamming    | INFO   | Per-realization results for partial_band saved to results/smoke2/fast/jamming/mc_dlsk/jamming/jamming_realizations_partial_band.csv
+2026-09-26 12:35:43 | src.experiments.run_jamming    | INFO   | Overlay plot saved to results/smoke2/fast/jamming/mc_dlsk/jamming/plots/ber_vs_jsr_overlay.pdf
+2026-09-26 12:35:43 | src.experiments.run_jamming    | INFO   | Jammed vs clean plot saved to results/smoke2/fast/jamming/mc_dlsk/jamming/plots/ber_vs_jsr_mc_dlsk_vs_clean.pdf
+2026-09-26 12:35:44 | src.experiments.run_jamming    | INFO   | Separate plot for cw saved to results/smoke2/fast/jamming/mc_dlsk/jamming/plots/ber_vs_jsr_cw.pdf
+2026-09-26 12:35:44 | src.experiments.run_jamming    | INFO   | Separate plot for barrage saved to results/smoke2/fast/jamming/mc_dlsk/jamming/plots/ber_vs_jsr_barrage.pdf
+2026-09-26 12:35:44 | src.experiments.run_jamming    | INFO   | Separate plot for partial_band saved to results/smoke2/fast/jamming/mc_dlsk/jamming/plots/ber_vs_jsr_partial_band.pdf
+2026-09-26 12:35:44 | src.experiments.pipeline       | INFO   | Jamming evaluation completed. Results saved to results/smoke2/fast/jamming/mc_dlsk/jamming
+2026-09-26 12:35:45 | __main__                       | INFO   | Jamming vs clean ber_vs_snr comparison saved to results/smoke2/fast/jamming/mc_dlsk/jamming/ber_vs_jsr_mc_dlsk_vs_clean.pdf
+2026-09-26 12:35:46 | __main__                       | INFO   | RSS [jamming mc_dlsk] = 1.44 GB
+2026-09-26 12:35:47 | __main__                       | INFO   | Multi-model plot saved to results/smoke2/fast/jamming/plots/ber_vs_jsr_all_models.pdf
+2026-09-26 12:35:47 | __main__                       | INFO   | jamming experiment completed.
+2026-09-26 12:35:47 | __main__                       | INFO   | Experiment jamming completed successfully.
+2026-09-26 12:35:47 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:35:47 | __main__                       | INFO   | EXPERIMENT jamming_interpretability
+2026-09-26 12:35:47 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:35:47 | __main__                       | INFO   | experiment_name = jamming_interpretability_fast
+2026-09-26 12:35:47 | __main__                       | INFO   | seed = 42
+2026-09-26 12:35:47 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:35:47 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:35:47 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:35:47 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:35:47 | __main__                       | INFO   | epochs = 1
+2026-09-26 12:35:47 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/jamming_interpretability/logs/config_used.yaml
+2026-09-26 12:35:47 | __main__                       | INFO   | Experiment jamming_interpretability (models=['conv1d', 'qkv'])
+2026-09-26 12:35:47 | __main__                       | INFO   |   snr_eval=[-1.0, 7.0, 15.0] jsr=[-10.0, 10.0] jammer=['cw'] ret_subset=500 realizations=1 max_symbols=None
+2026-09-26 12:35:47 | src.experiments.pipeline       | INFO   | Dataset not found in data/raw/9f7629cb, generating...
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr-5_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.740e-06, 7.951e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr-5_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.013e-06, 7.985e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr-3_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.236e-07, 7.995e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr-3_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [8.814e-07, 7.928e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr-1_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [3.078e-08, 7.959e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr-1_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [2.670e-08, 7.914e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr1_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [3.339e-07, 7.968e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr1_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [8.841e-08, 7.988e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr3_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [7.000e-08, 7.988e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr3_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.078e-06, 7.939e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr5_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [8.662e-07, 7.932e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr5_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [6.771e-08, 7.840e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr7_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.342e-06, 7.899e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr7_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [6.780e-08, 7.912e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr9_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.866e-07, 7.967e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr9_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [3.675e-07, 7.983e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr11_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [3.035e-07, 7.999e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr11_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [3.234e-07, 7.980e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr13_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [6.412e-07, 7.980e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr13_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.026e-06, 7.973e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr15_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [8.516e-07, 7.872e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr15_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [3.127e-07, 7.975e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr17_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.203e-06, 7.969e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr17_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [2.193e-07, 7.912e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr19_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [4.719e-07, 7.974e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr19_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [1.989e-07, 7.999e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr21_echo1.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [6.557e-07, 7.976e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/train_snr21_echo3.npz: 180 symbols, x shape=(180, 100), tau in [1, 33], f_d in [2.851e-07, 7.986e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | split 'train': 28 files generated, 180 symbols per combination (combos=28)
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr-5_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [8.319e-08, 7.958e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr-5_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [2.479e-09, 7.991e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr-3_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [3.861e-08, 7.995e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr-3_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.040e-08, 7.999e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr-1_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [2.183e-08, 7.999e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr-1_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.463e-07, 7.982e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr1_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.546e-07, 8.000e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr1_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.378e-07, 7.990e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr3_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.006e-07, 7.989e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr3_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [7.497e-08, 7.999e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr5_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.303e-08, 7.995e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr5_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [9.857e-08, 7.999e-05]
+2026-09-26 12:35:47 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr7_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [4.240e-08, 7.992e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr7_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [2.336e-08, 7.993e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr9_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [7.771e-08, 8.000e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr9_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [4.189e-08, 7.992e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr11_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.515e-08, 7.983e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr11_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.851e-08, 7.997e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr13_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [3.657e-08, 7.991e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr13_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [3.219e-07, 7.989e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr15_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [2.023e-08, 7.996e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr15_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [7.634e-09, 7.997e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr17_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.106e-07, 7.998e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr17_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [6.355e-08, 7.997e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr19_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [3.305e-08, 7.999e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr19_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [1.496e-07, 8.000e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr21_echo1.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [2.083e-07, 7.993e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/val_snr21_echo3.npz: 1000 symbols, x shape=(1000, 100), tau in [1, 33], f_d in [2.421e-07, 7.994e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | split 'val': 28 files generated, 1000 symbols per combination (combos=28)
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr-5_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [1.283e-07, 7.996e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr-5_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [2.480e-07, 7.940e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr-3_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [3.085e-07, 7.997e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr-3_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [3.148e-08, 7.992e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr-1_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [5.539e-08, 7.985e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr-1_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [8.353e-08, 7.976e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr1_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [6.210e-09, 7.993e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr1_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [1.180e-07, 7.963e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr3_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [1.726e-08, 7.993e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr3_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [3.661e-07, 8.000e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr5_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [1.833e-07, 7.997e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr5_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [9.515e-08, 7.996e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr7_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [1.412e-07, 7.977e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr7_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [8.819e-09, 7.986e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr9_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [2.843e-07, 7.990e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr9_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [9.156e-08, 7.991e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr11_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [5.208e-08, 7.980e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr11_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [5.913e-08, 7.971e-05]
+2026-09-26 12:35:48 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr13_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [1.376e-07, 7.990e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr13_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [2.528e-08, 7.997e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr15_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [2.825e-08, 7.983e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr15_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [4.556e-08, 7.993e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr17_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [4.978e-08, 7.994e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr17_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [2.748e-08, 7.995e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr19_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [3.473e-08, 7.993e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr19_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [2.697e-07, 7.974e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr21_echo1.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [9.387e-08, 7.973e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | saved data/raw/9f7629cb/test_snr21_echo3.npz: 600 symbols, x shape=(600, 100), tau in [1, 33], f_d in [8.316e-08, 7.991e-05]
+2026-09-26 12:35:49 | src.data.dataset_generator     | INFO   | split 'test': 28 files generated, 600 symbols per combination (combos=28)
+2026-09-26 12:35:49 | src.data.data_loader           | INFO   | split 'test': 3600 total samples, x shape=(3600, 100), tau in [1.00, 33.00], f_d in [8.819e-09, 7.993e-05]
+2026-09-26 12:35:49 | __main__                       | INFO   | jamming_interpretability: test set of 3600 samples (SNR [-1.0, 7.0, 15.0])
+2026-09-26 12:35:49 | __main__                       | INFO   | ============================================================
+2026-09-26 12:35:49 | __main__                       | INFO   | jamming_interpretability architecture: conv1d
+2026-09-26 12:35:49 | __main__                       | INFO   | jamming_interpretability conv1d: jamming model loaded from results/smoke2/fast/jamming/conv1d/best_model.keras
+2026-09-26 12:35:49 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability conv1d] probe ready: 7 captured layers
+2026-09-26 12:35:50 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability conv1d] clean | BER=0.5000 corr_tau=0.706 margin=0.00 (1 s)
+2026-09-26 12:35:51 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability conv1d] cw          JSR= -10.0 dB r=0 | BER=0.5000 corr_tau=0.627 margin=-0.00 (1 s)
+2026-09-26 12:35:51 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability conv1d] cw          JSR=  10.0 dB r=0 | BER=0.5000 corr_tau=0.079 margin=-0.00 (1 s)
+2026-09-26 12:35:51 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability conv1d] completed -> results/smoke2/fast/jamming_interpretability/conv1d (conditions=3)
+2026-09-26 12:35:51 | __main__                       | INFO   | ============================================================
+2026-09-26 12:35:51 | __main__                       | INFO   | jamming_interpretability architecture: qkv
+2026-09-26 12:35:51 | __main__                       | INFO   | jamming_interpretability qkv: jamming model loaded from results/smoke2/fast/jamming/qkv/best_model.keras
+2026-09-26 12:35:51 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability qkv] probe ready: 7 captured layers
+2026-09-26 12:35:55 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability qkv] clean | BER=0.5033 corr_tau=0.706 margin=0.00 (3 s)
+2026-09-26 12:35:58 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability qkv] cw          JSR= -10.0 dB r=0 | BER=0.5033 corr_tau=0.628 margin=0.00 (4 s)
+2026-09-26 12:36:02 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability qkv] cw          JSR=  10.0 dB r=0 | BER=0.5000 corr_tau=0.079 margin=-0.00 (3 s)
+2026-09-26 12:36:02 | src.experiments.jamming_interpretability | INFO   | [jamming_interpretability qkv] completed -> results/smoke2/fast/jamming_interpretability/qkv (conditions=3)
+2026-09-26 12:36:02 | __main__                       | INFO   | jamming_interpretability experiment completed. Output in results/smoke2/fast/jamming_interpretability
+2026-09-26 12:36:02 | __main__                       | INFO   | Experiment jamming_interpretability completed successfully.
+2026-09-26 12:36:02 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:36:02 | __main__                       | INFO   | EXPERIMENT frequency_agility
+2026-09-26 12:36:02 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:36:02 | __main__                       | INFO   | experiment_name = frequency_agility_fast
+2026-09-26 12:36:02 | __main__                       | INFO   | seed = 42
+2026-09-26 12:36:02 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:36:02 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:36:02 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:36:02 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:36:02 | __main__                       | INFO   | epochs = 5
+2026-09-26 12:36:02 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/frequency_agility/logs/config_used.yaml
+2026-09-26 12:36:02 | __main__                       | INFO   | ============================================================
+2026-09-26 12:36:02 | __main__                       | INFO   | frequency_agility experiment (models=['conv1d'])
+2026-09-26 12:36:02 | __main__                       | INFO   | ============================================================
+2026-09-26 12:36:02 | __main__                       | INFO   | frequency_agility conv1d: model loaded from /home/ettore/Documents/vs_code/dual-head-ultra-can/results/full/ber_vs_snr/k3_doppler_full/conv1d/best_model.keras
+2026-09-26 12:36:02 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] channels=8 dwell=1 slot=10.0 us hop_rate=100000 Hz bursts=400 realizations=1 snr=21.0 dB K=3
+2026-09-26 12:36:02 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] controlled comparison: fh_off and fh_on share the same per-slot channel process and the same transmission; only the hop sequence and the jammer coverage differ
+2026-09-26 12:36:02 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off barrage       cw            JSR= -10.0 dB r=0 jammed=1.000 BER=0.4650 (0 s)
+2026-09-26 12:36:02 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off barrage       cw            JSR=   0.0 dB r=0 jammed=1.000 BER=0.4725 (0 s)
+2026-09-26 12:36:02 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off barrage       cw            JSR=  10.0 dB r=0 jammed=1.000 BER=0.5075 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off barrage       partial_band  JSR= -10.0 dB r=0 jammed=1.000 BER=0.3750 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off barrage       partial_band  JSR=   0.0 dB r=0 jammed=1.000 BER=0.4475 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off barrage       partial_band  JSR=  10.0 dB r=0 jammed=1.000 BER=0.4925 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off fixed_partial cw            JSR= -10.0 dB r=0 jammed=1.000 BER=0.5150 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off fixed_partial cw            JSR=   0.0 dB r=0 jammed=1.000 BER=0.5200 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off fixed_partial cw            JSR=  10.0 dB r=0 jammed=1.000 BER=0.5350 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off fixed_partial partial_band  JSR= -10.0 dB r=0 jammed=1.000 BER=0.4050 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off fixed_partial partial_band  JSR=   0.0 dB r=0 jammed=1.000 BER=0.4300 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off fixed_partial partial_band  JSR=  10.0 dB r=0 jammed=1.000 BER=0.4650 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off sweep         cw            JSR= -10.0 dB r=0 jammed=1.000 BER=0.5000 (0 s)
+2026-09-26 12:36:03 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off sweep         cw            JSR=   0.0 dB r=0 jammed=1.000 BER=0.5225 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off sweep         cw            JSR=  10.0 dB r=0 jammed=1.000 BER=0.5475 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off sweep         partial_band  JSR= -10.0 dB r=0 jammed=1.000 BER=0.4200 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off sweep         partial_band  JSR=   0.0 dB r=0 jammed=1.000 BER=0.4225 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off sweep         partial_band  JSR=  10.0 dB r=0 jammed=1.000 BER=0.4525 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off follower      cw            JSR= -10.0 dB r=0 jammed=1.000 BER=0.4625 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off follower      cw            JSR=   0.0 dB r=0 jammed=1.000 BER=0.4775 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off follower      cw            JSR=  10.0 dB r=0 jammed=1.000 BER=0.4975 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off follower      partial_band  JSR= -10.0 dB r=0 jammed=1.000 BER=0.3875 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off follower      partial_band  JSR=   0.0 dB r=0 jammed=1.000 BER=0.4525 (0 s)
+2026-09-26 12:36:04 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off follower      partial_band  JSR=  10.0 dB r=0 jammed=1.000 BER=0.5025 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind barrage       cw            JSR= -10.0 dB r=0 jammed=1.000 BER=0.4650 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind barrage       cw            JSR=   0.0 dB r=0 jammed=1.000 BER=0.4725 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind barrage       cw            JSR=  10.0 dB r=0 jammed=1.000 BER=0.5075 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind barrage       partial_band  JSR= -10.0 dB r=0 jammed=1.000 BER=0.3750 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind barrage       partial_band  JSR=   0.0 dB r=0 jammed=1.000 BER=0.4475 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind barrage       partial_band  JSR=  10.0 dB r=0 jammed=1.000 BER=0.4925 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind fixed_partial cw            JSR= -10.0 dB r=0 jammed=0.000 BER=0.5125 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind fixed_partial cw            JSR=   0.0 dB r=0 jammed=0.000 BER=0.5125 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind fixed_partial cw            JSR=  10.0 dB r=0 jammed=0.000 BER=0.5125 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind fixed_partial partial_band  JSR= -10.0 dB r=0 jammed=0.000 BER=0.5125 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind fixed_partial partial_band  JSR=   0.0 dB r=0 jammed=0.000 BER=0.5125 (0 s)
+2026-09-26 12:36:05 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind fixed_partial partial_band  JSR=  10.0 dB r=0 jammed=0.000 BER=0.5125 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind sweep         cw            JSR= -10.0 dB r=0 jammed=0.125 BER=0.4950 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind sweep         cw            JSR=   0.0 dB r=0 jammed=0.125 BER=0.5000 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind sweep         cw            JSR=  10.0 dB r=0 jammed=0.125 BER=0.5025 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind sweep         partial_band  JSR= -10.0 dB r=0 jammed=0.125 BER=0.4850 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind sweep         partial_band  JSR=   0.0 dB r=0 jammed=0.125 BER=0.4775 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind sweep         partial_band  JSR=  10.0 dB r=0 jammed=0.125 BER=0.4825 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind follower      cw            JSR= -10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind follower      cw            JSR=   0.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind follower      cw            JSR=  10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind follower      partial_band  JSR= -10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:06 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind follower      partial_band  JSR=   0.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_off_blind follower      partial_band  JSR=  10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on barrage       cw            JSR= -10.0 dB r=0 jammed=1.000 BER=0.4650 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on barrage       cw            JSR=   0.0 dB r=0 jammed=1.000 BER=0.4725 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on barrage       cw            JSR=  10.0 dB r=0 jammed=1.000 BER=0.5075 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on barrage       partial_band  JSR= -10.0 dB r=0 jammed=1.000 BER=0.3750 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on barrage       partial_band  JSR=   0.0 dB r=0 jammed=1.000 BER=0.4475 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on barrage       partial_band  JSR=  10.0 dB r=0 jammed=1.000 BER=0.4925 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on fixed_partial cw            JSR= -10.0 dB r=0 jammed=0.250 BER=0.5175 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on fixed_partial cw            JSR=   0.0 dB r=0 jammed=0.250 BER=0.5225 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on fixed_partial cw            JSR=  10.0 dB r=0 jammed=0.250 BER=0.5300 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on fixed_partial partial_band  JSR= -10.0 dB r=0 jammed=0.250 BER=0.4875 (0 s)
+2026-09-26 12:36:07 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on fixed_partial partial_band  JSR=   0.0 dB r=0 jammed=0.250 BER=0.4575 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on fixed_partial partial_band  JSR=  10.0 dB r=0 jammed=0.250 BER=0.4650 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on sweep         cw            JSR= -10.0 dB r=0 jammed=0.147 BER=0.4950 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on sweep         cw            JSR=   0.0 dB r=0 jammed=0.147 BER=0.4950 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on sweep         cw            JSR=  10.0 dB r=0 jammed=0.147 BER=0.5025 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on sweep         partial_band  JSR= -10.0 dB r=0 jammed=0.147 BER=0.4775 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on sweep         partial_band  JSR=   0.0 dB r=0 jammed=0.147 BER=0.4800 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on sweep         partial_band  JSR=  10.0 dB r=0 jammed=0.147 BER=0.4850 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on follower      cw            JSR= -10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on follower      cw            JSR=   0.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:08 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on follower      cw            JSR=  10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on follower      partial_band  JSR= -10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on follower      partial_band  JSR=   0.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] fh_on follower      partial_band  JSR=  10.0 dB r=0 jammed=0.000 BER=0.4675 (0 s)
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] BER-vs-JSR summary saved to results/smoke2/fast/frequency_agility/conv1d/frequency_agility_vs_jsr.csv
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] dwell=1 (100000 Hz) follower      JSR=6.0 dB jammed=0.000 BER=0.4675 [0.4675, 0.4675]
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] dwell=4 (25000 Hz) follower      JSR=6.0 dB jammed=0.500 BER=0.4900 [0.4900, 0.4900]
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] BER-vs-hop-rate summary saved to results/smoke2/fast/frequency_agility/conv1d/frequency_agility_vs_dwell.csv
+2026-09-26 12:36:09 | src.experiments.frequency_agility | INFO   | [frequency_agility conv1d] BER-vs-reaction-latency summary saved to results/smoke2/fast/frequency_agility/conv1d/frequency_agility_vs_reaction.csv
+2026-09-26 12:36:10 | __main__                       | INFO   | RSS [frequency_agility conv1d] = 1.41 GB
+2026-09-26 12:36:10 | __main__                       | INFO   | frequency_agility experiment completed. Output in results/smoke2/fast/frequency_agility
+2026-09-26 12:36:10 | __main__                       | INFO   | Experiment frequency_agility completed successfully.
+2026-09-26 12:36:10 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:36:10 | __main__                       | INFO   | EXPERIMENT channel_generalization
+2026-09-26 12:36:10 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:36:10 | __main__                       | INFO   | experiment_name = channel_generalization_fast
+2026-09-26 12:36:10 | __main__                       | INFO   | seed = 42
+2026-09-26 12:36:10 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:36:10 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:36:10 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:36:10 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:36:10 | __main__                       | INFO   | epochs = 5
+2026-09-26 12:36:10 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/channel_generalization/logs/config_used.yaml
+2026-09-26 12:36:10 | __main__                       | INFO   | ============================================================
+2026-09-26 12:36:10 | __main__                       | INFO   | channel_generalization experiment (models=['conv1d', 'qkv'])
+2026-09-26 12:36:10 | __main__                       | INFO   | ============================================================
+2026-09-26 12:36:10 | __main__                       | INFO   | channel_generalization conv1d: model loaded from /home/ettore/Documents/vs_code/dual-head-ultra-can/results/full/ber_vs_snr/k3_doppler_full/conv1d/best_model.keras
+2026-09-26 12:36:20 | src.experiments.channel_generalization | INFO   | [channel_generalization conv1d] nominal            pooled_ber=0.470611 [0.465458, 0.475770] min_snr@target=n/a
+2026-09-26 12:36:30 | src.experiments.channel_generalization | INFO   | [channel_generalization conv1d] b_tdl_d            pooled_ber=0.493500 [0.488336, 0.498665] min_snr@target=n/a
+2026-09-26 12:36:31 | __main__                       | INFO   | RSS [channel_generalization conv1d] = 1.45 GB
+2026-09-26 12:36:31 | __main__                       | INFO   | channel_generalization qkv: model loaded from /home/ettore/Documents/vs_code/dual-head-ultra-can/results/full/ber_vs_snr/k3_doppler_full/qkv/best_model.keras
+2026-09-26 12:37:14 | src.experiments.channel_generalization | INFO   | [channel_generalization qkv] nominal            pooled_ber=0.429472 [0.424367, 0.434593] min_snr@target=n/a
+2026-09-26 12:37:59 | src.experiments.channel_generalization | INFO   | [channel_generalization qkv] b_tdl_d            pooled_ber=0.485972 [0.480811, 0.491136] min_snr@target=n/a
+2026-09-26 12:38:00 | __main__                       | INFO   | RSS [channel_generalization qkv] = 1.68 GB
+2026-09-26 12:38:00 | __main__                       | INFO   | channel_generalization experiment completed. Output in results/smoke2/fast/channel_generalization
+2026-09-26 12:38:00 | __main__                       | INFO   | Experiment channel_generalization completed successfully.
+2026-09-26 12:38:00 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:38:00 | __main__                       | INFO   | EXPERIMENT peer_estimation
+2026-09-26 12:38:00 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:38:00 | __main__                       | INFO   | experiment_name = peer_estimation_fast
+2026-09-26 12:38:00 | __main__                       | INFO   | seed = 42
+2026-09-26 12:38:00 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:38:00 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:38:00 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:38:00 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:38:00 | __main__                       | INFO   | epochs = 5
+2026-09-26 12:38:00 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/peer_estimation/logs/config_used.yaml
+2026-09-26 12:38:00 | __main__                       | INFO   | ============================================================
+2026-09-26 12:38:00 | __main__                       | INFO   | peer_estimation experiment (models=['conv1d'])
+2026-09-26 12:38:00 | __main__                       | INFO   | ============================================================
+2026-09-26 12:38:00 | __main__                       | INFO   | peer_estimation conv1d: model loaded from results/smoke2/fast/ber_vs_snr/iod_peers/conv1d/best_model.keras
+2026-09-26 12:38:01 | src.experiments.peer_estimation | INFO   | peer_estimation conv1d: 400 samples, target_id=0.1600, peer_false=0.0200 -> results/smoke2/fast/peer_estimation/conv1d
+2026-09-26 12:38:01 | __main__                       | INFO   | RSS [peer_estimation conv1d] = 1.42 GB
+2026-09-26 12:38:01 | __main__                       | INFO   | peer_estimation experiment completed. Output in results/smoke2/fast/peer_estimation
+2026-09-26 12:38:01 | __main__                       | INFO   | Experiment peer_estimation completed successfully.
+2026-09-26 12:38:01 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:38:01 | __main__                       | INFO   | EXPERIMENT final_report
+2026-09-26 12:38:01 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:38:01 | __main__                       | INFO   | experiment_name = final_report_fast
+2026-09-26 12:38:01 | __main__                       | INFO   | seed = 42
+2026-09-26 12:38:01 | __main__                       | INFO   | lambda_mse = 2
+2026-09-26 12:38:01 | __main__                       | INFO   | sequence_length = 100
+2026-09-26 12:38:01 | __main__                       | INFO   | map_type = logistic / map_param = 4.0
+2026-09-26 12:38:01 | __main__                       | INFO   | backbone_type = conv1d
+2026-09-26 12:38:01 | __main__                       | INFO   | epochs = 5
+2026-09-26 12:38:02 | src.utils.config_loader        | INFO   | config snapshot saved: results/smoke2/fast/final_report/logs/config_used.yaml
+2026-09-26 12:38:02 | __main__                       | INFO   | ============================================================
+2026-09-26 12:38:02 | __main__                       | INFO   | final_report experiment: final weight table (SWaP-C)
+2026-09-26 12:38:02 | __main__                       | INFO   | ============================================================
+2026-09-26 12:38:02 | __main__                       | INFO   | Loading model conv1d from results/smoke2/fast/ber_vs_snr/k1_doppler_full/conv1d/best_model.keras
+2026-09-26 12:38:02 | __main__                       | INFO   | Loading model qkv from results/smoke2/fast/ber_vs_snr/k1_doppler_full/qkv/best_model.keras
+2026-09-26 12:38:02 | __main__                       | INFO   | Loading model lstm from /home/ettore/Documents/vs_code/dual-head-ultra-can/results/full/ber_vs_snr/k1_doppler_full/lstm/best_model.keras
+2026-09-26 12:38:02 | __main__                       | INFO   | Loading model mc_dlsk from /home/ettore/Documents/vs_code/dual-head-ultra-can/results/full/ber_vs_snr/k1_doppler_full/mc_dlsk/best_model.keras
+2026-09-26 12:38:03 | src.evaluation.weight_comparison | INFO   | Weight table saved to results/smoke2/fast/final_report/weight_table.tex
+2026-09-26 12:38:03 | src.experiments.pipeline       | INFO   | Weight table generated: results/smoke2/fast/final_report/weight_table.tex
+2026-09-26 12:38:03 | __main__                       | ERROR  | pdflatex failed (code 1): 
+2026-09-26 12:38:03 | __main__                       | INFO   | Final report written to results/smoke2/fast/final_report/final_report.md
+2026-09-26 12:38:03 | __main__                       | INFO   | final_report experiment completed.
+2026-09-26 12:38:03 | __main__                       | INFO   | Experiment final_report completed successfully.
+2026-09-26 12:38:03 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:38:03 | __main__                       | INFO   | SUMMARY
+2026-09-26 12:38:03 | __main__                       | INFO   | ================================================================================
+2026-09-26 12:38:03 | __main__                       | INFO   | ber_vs_snr: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | classical_receivers: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | jamming: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | jamming_interpretability: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | frequency_agility: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | channel_generalization: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | peer_estimation: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | final_report: OK
+2026-09-26 12:38:03 | __main__                       | INFO   | All requested experiments finished. Output in: results/smoke2

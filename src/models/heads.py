@@ -30,6 +30,12 @@ _SENSING_POSITION_KEY = "use_position_feature"
 _SENSING_POSITION_EPS = 1e-8
 _SENSING_PROFILE_KEY = "use_reference_profile"
 _SENSING_PROFILE_LAG_KEY = "profile_max_lag"
+_SENSING_DELAY_MODE_KEY = "delay_mode"
+_SENSING_DELAY_MODE_DEFAULT = "regression"
+_SENSING_DELAY_MODES: Tuple[str, ...] = ("regression", "peak_residual")
+_SENSING_PEAK_KEY = "use_delay_peak_feature"
+_SENSING_PEAK_SHARPNESS_KEY = "peak_sharpness"
+_SENSING_PEAK_SHARPNESS_DEFAULT = 8.0
 _MIN_MODULATION_ORDER = 2
 _HEAD_NAMES: Tuple[str, ...] = ("communication_head", "sensing_head")
 _COMM_REQUIRED_KEYS: Tuple[str, ...] = ("units", "activation", "modulation_order")
@@ -291,6 +297,33 @@ def _dca_mf_profile(
     profile = tf.stack(abs_list + re_list + im_list, axis=1)
     return profile
 
+def _delay_peak_enabled(sensing_cfg: Any) -> bool:
+    
+    if not isinstance(sensing_cfg, dict):
+        return False
+    mode = str(sensing_cfg.get(_SENSING_DELAY_MODE_KEY, _SENSING_DELAY_MODE_DEFAULT))
+    if mode == "peak_residual":
+        return True
+    return bool(sensing_cfg.get(_SENSING_PEAK_KEY, False))
+
+@_register_serializable(package="src.models.heads")
+def _last_column(t: tf.Tensor) -> tf.Tensor:
+    
+    return t[..., -1:]
+
+@_register_serializable(package="src.models.heads")
+def _soft_argmax_lag(
+    profile: tf.Tensor, max_delay: int, sharpness: float
+) -> tf.Tensor:
+    
+    max_delay = int(max_delay)
+    magnitude = tf.abs(profile[:, :max_delay])
+    peak = tf.reduce_max(magnitude, axis=-1, keepdims=True)
+    normalised = magnitude / (peak + _SENSING_POSITION_EPS)
+    weights = tf.nn.softmax(float(sharpness) * normalised, axis=-1)
+    lags = tf.cast(tf.range(1, max_delay + 1), profile.dtype) / float(max_delay)
+    return tf.reduce_sum(weights * lags[None, :], axis=-1, keepdims=True)
+
 @_register_serializable(package="src.models.heads")
 def _attention_pool(alpha_and_h: list) -> tf.Tensor:
     
@@ -343,14 +376,15 @@ def build_sensing_features(
     if use_position:
         v_pos = tf.keras.layers.Lambda(_position_feature, name="sensing_position")(h_att)
         parts.append(v_pos)
-    elif use_max:
+    if use_max:
         v_max = tf.keras.layers.GlobalMaxPooling1D(name="sensing_max_pool")(h_att)
         parts.append(v_max)
 
+    profile_max_lag = int(sensing_cfg.get(
+        _SENSING_PROFILE_LAG_KEY, int(data_cfg.get("max_delay", 33))
+    ))
+    delay_profile = None
     if use_profile and received_input is not None:
-        profile_max_lag = int(sensing_cfg.get(
-            _SENSING_PROFILE_LAG_KEY, int(data_cfg.get("max_delay", 33))
-        ))
         num_features = 2 if str(data_cfg.get("feature_mode", "iq")) == "iq" else 1
         delay_profile = tf.keras.layers.Lambda(
             _dca_mf_profile,
@@ -358,6 +392,19 @@ def build_sensing_features(
             name="sensing_delay_profile",
         )(received_input)
         parts.append(delay_profile)
+
+    if _delay_peak_enabled(sensing_cfg) and delay_profile is not None:
+        peak_lag = tf.keras.layers.Lambda(
+            _soft_argmax_lag,
+            arguments={
+                "max_delay": profile_max_lag,
+                "sharpness": float(sensing_cfg.get(
+                    _SENSING_PEAK_SHARPNESS_KEY, _SENSING_PEAK_SHARPNESS_DEFAULT
+                )),
+            },
+            name="sensing_delay_peak",
+        )(delay_profile)
+        parts.append(peak_lag)
 
     if len(parts) == 1:
         v_sensing = v
@@ -394,11 +441,38 @@ def build_sensing_head(
             f"model.sensing_head.output_activation must be 'sigmoid' or 'linear', "
             f"got: {output_activation!r}"
         )
-    out = tf.keras.layers.Dense(
-        units=output_units,
-        activation=output_activation,
-        name="sensing_out",
-    )(x)
+    delay_mode = str(sens_cfg.get(_SENSING_DELAY_MODE_KEY, _SENSING_DELAY_MODE_DEFAULT))
+    if delay_mode not in _SENSING_DELAY_MODES:
+        raise ValueError(
+            f"model.sensing_head.{_SENSING_DELAY_MODE_KEY} must be one of "
+            f"{sorted(_SENSING_DELAY_MODES)}, got: {delay_mode!r}"
+        )
+    if delay_mode == "peak_residual":
+        if output_units != _SENSING_OUTPUT_UNITS:
+            raise ValueError(
+                f"delay_mode='peak_residual' emits [tau, fD] and requires "
+                f"output_units={_SENSING_OUTPUT_UNITS}, got: {output_units}"
+            )
+        tau_peak = tf.keras.layers.Lambda(
+            _last_column, name="sensing_delay_peak_in"
+        )(v)
+        tau_residual = tf.keras.layers.Dense(
+            1,
+            activation="linear",
+            kernel_initializer="zeros",
+            name="sensing_delay_residual",
+        )(x)
+        tau = tf.keras.layers.Add(name="sensing_delay")([tau_peak, tau_residual])
+        f_d = tf.keras.layers.Dense(
+            1, activation=output_activation, name="sensing_doppler",
+        )(x)
+        out = tf.keras.layers.Concatenate(name="sensing_out")([tau, f_d])
+    else:
+        out = tf.keras.layers.Dense(
+            units=output_units,
+            activation=output_activation,
+            name="sensing_out",
+        )(x)
     model = tf.keras.Model(inputs=v, outputs=out, name="sensing_head")
     _smoke_check(model, expected_output_shape=[None, output_units], tag="sensing")
     logger.info(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional, Sequence
 
 import numpy as np
 import tensorflow as tf
@@ -75,7 +75,32 @@ def comm_ce_loss_factory(label_smoothing: float = 0.0) -> Callable[[tf.Tensor, t
 
     return _comm_ce_loss
 
-def _mse_sensing_loss_core(y_true: tf.Tensor, y_pred: tf.Tensor, penalty: float) -> tf.Tensor:
+def _component_weight_vector(
+    component_weights: Optional[Sequence[float]],
+    dtype: tf.dtypes.DType,
+) -> Optional[tf.Tensor]:
+    
+    if component_weights is None:
+        return None
+    values = [float(weight) for weight in component_weights]
+    if len(values) != 2:
+        raise ValueError(
+            "component_weights needs one entry per sensing output ([delay, "
+            f"f_doppler]), got: {len(values)}"
+        )
+    if any(weight < 0.0 for weight in values):
+        raise ValueError(f"component_weights must be >= 0, got: {values}")
+    if sum(values) <= 0.0:
+        raise ValueError("component_weights must not be all zero")
+    weights = tf.constant(values, dtype=dtype)
+    return weights / tf.reduce_sum(weights)
+
+def _mse_sensing_loss_core(
+    y_true: tf.Tensor,
+    y_pred: tf.Tensor,
+    penalty: float,
+    component_weights: Optional[Sequence[float]] = None,
+) -> tf.Tensor:
     
     tf.debugging.assert_shapes([
         (y_true, ('B', 2)),
@@ -92,10 +117,12 @@ def _mse_sensing_loss_core(y_true: tf.Tensor, y_pred: tf.Tensor, penalty: float)
                 np.min(y_true_np), np.max(y_true_np)
             )
 
-    loss_fn = tf.keras.losses.MeanSquaredError(
-        reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
-    )
-    mse_loss = loss_fn(y_true, y_pred)
+    weights = _component_weight_vector(component_weights, y_pred.dtype)
+    error_sq = tf.square(y_true - y_pred)
+    if weights is None:
+        mse_loss = tf.reduce_mean(error_sq)
+    else:
+        mse_loss = tf.reduce_sum(weights * tf.reduce_mean(error_sq, axis=0))
 
     if penalty > 0.0:
         out_low = tf.reduce_mean(tf.square(tf.nn.relu(-y_pred)))
@@ -110,6 +137,7 @@ def _mse_sensing_loss_core(y_true: tf.Tensor, y_pred: tf.Tensor, penalty: float)
 
 def mse_sensing_loss_factory(
     range_penalty: float = 0.0,
+    component_weights: Optional[Sequence[float]] = None,
 ) -> Callable[[tf.Tensor, tf.Tensor], tf.Tensor]:
     
     if not isinstance(range_penalty, (int, float)) or not math.isfinite(float(range_penalty)) or float(range_penalty) < 0.0:
@@ -117,9 +145,16 @@ def mse_sensing_loss_factory(
             f"range_penalty must be a finite number >= 0, got: {range_penalty!r}"
         )
     penalty = float(range_penalty)
+    weights: Optional[list] = (
+        None
+        if component_weights is None
+        else [float(weight) for weight in component_weights]
+    )
+    if weights is not None:
+        _component_weight_vector(weights, tf.float32)
 
     def _mse_sensing_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        return _mse_sensing_loss_core(y_true, y_pred, penalty)
+        return _mse_sensing_loss_core(y_true, y_pred, penalty, weights)
 
     _mse_sensing_loss.__name__ = "mse_sensing_loss"
     _mse_sensing_loss.__qualname__ = "mse_sensing_loss"
@@ -129,7 +164,10 @@ def mse_sensing_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
     
     return _mse_sensing_loss_core(y_true, y_pred, 0.0)
 
-def combined_loss_factory(lambda_mse: float) -> Callable[[Dict[str, tf.Tensor], Dict[str, tf.Tensor]], tf.Tensor]:
+def combined_loss_factory(
+    lambda_mse: float,
+    component_weights: Optional[Sequence[float]] = None,
+) -> Callable[[Dict[str, tf.Tensor], Dict[str, tf.Tensor]], tf.Tensor]:
     
     if not isinstance(lambda_mse, (int, float)):
         raise TypeError(f"lambda_mse must be a number, got: {type(lambda_mse).__name__}")
@@ -138,7 +176,19 @@ def combined_loss_factory(lambda_mse: float) -> Callable[[Dict[str, tf.Tensor], 
     if lambda_mse < 0.0:
         raise ValueError(f"lambda_mse must be >= 0, got: {lambda_mse}")
 
-    logger.info("combined_loss_factory: lambda_mse = %s", lambda_mse)
+    weights: Optional[list] = (
+        None
+        if component_weights is None
+        else [float(weight) for weight in component_weights]
+    )
+    if weights is not None:
+        _component_weight_vector(weights, tf.float32)
+
+    logger.info(
+        "combined_loss_factory: lambda_mse = %s, sensing component weights = %s",
+        lambda_mse,
+        weights,
+    )
 
     def _inner_loss(y_true: Dict[str, tf.Tensor], y_pred: Dict[str, tf.Tensor]) -> tf.Tensor:
         
@@ -156,7 +206,9 @@ def combined_loss_factory(lambda_mse: float) -> Callable[[Dict[str, tf.Tensor], 
         assert_finite(y_true_sensing, "y_true_sensing")
 
         L_comm = comm_ce_loss(y_true_comm, y_pred_comm)
-        L_sensing = mse_sensing_loss(y_true_sensing, y_pred_sensing)
+        L_sensing = _mse_sensing_loss_core(
+            y_true_sensing, y_pred_sensing, 0.0, weights
+        )
 
         L_total = L_comm + lambda_mse * L_sensing
 

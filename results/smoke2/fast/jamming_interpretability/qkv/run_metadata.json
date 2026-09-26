@@ -1,0 +1,19 @@
+{
+  "experiment": "jamming_interpretability",
+  "arch": "qkv",
+  "timestamp": "2026-09-26T12:36:02",
+  "tensorflow_version": "2.21.0",
+  "jsr_grid": [
+    -10.0,
+    10.0
+  ],
+  "jammer_types": [
+    "cw"
+  ],
+  "n_test_samples": 3600,
+  "ret_subset": 500,
+  "batch_size": 1024,
+  "n_conditions": 3,
+  "n_realizations": 1,
+  "tag": "qkv"
+}

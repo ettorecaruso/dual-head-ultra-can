@@ -162,12 +162,25 @@ def main(argv=None) -> None:
         print("[warn] no metrics found under", RESULTS)
         return
 
+    reference = None
+    for df in curves.values():
+        if "corr_tau_argmax" in df.columns:
+            reference = df
+            break
+
     fig, ax_corr = plt.subplots(figsize=(5.8, 4.6))
     corr_all = []
     for arch, df in curves.items():
         ax_corr.plot(df["snr_db"], df["corr_tau"], label=LABELS[arch],
                      **_model_kwargs(arch))
         corr_all.extend(df["corr_tau"].to_numpy(dtype=float))
+    if reference is not None:
+        ax_corr.plot(
+            reference["snr_db"], reference["corr_tau_argmax"],
+            color="#7F7F7F", ls=(0, (1, 1.6)), lw=1.6,
+            label="argmax of the residual profile",
+        )
+        corr_all.extend(reference["corr_tau_argmax"].to_numpy(dtype=float))
 
     ax_corr.set_title("Delay correlation", pad=8)
     ax_corr.set_xlabel("SNR (dB)")

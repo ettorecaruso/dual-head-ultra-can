@@ -208,18 +208,39 @@ def build_lstm_baseline(config: Dict[str, Any]) -> tf.keras.Model:
         else:
             v_max = tf.keras.layers.GlobalMaxPooling1D(name="sensing_max_pool")(lstm_out)
             parts.append(v_max)
+        profile = None
+        profile_max_lag = 0
         if use_profile:
-            from src.models.heads import _SENSING_PROFILE_LAG_KEY, _dca_mf_profile
+            from src.models.heads import (
+                _SENSING_PEAK_SHARPNESS_DEFAULT,
+                _SENSING_PEAK_SHARPNESS_KEY,
+                _SENSING_PROFILE_LAG_KEY,
+                _dca_mf_profile,
+                _delay_peak_enabled,
+                _soft_argmax_lag,
+            )
 
             profile_max_lag = int(sensing_cfg.get(
                 _SENSING_PROFILE_LAG_KEY, int(config.get("data", {}).get("max_delay", 33))
             ))
             nf = 2 if str(config.get("data", {}).get("feature_mode", "iq")) == "iq" else 1
-            parts.append(tf.keras.layers.Lambda(
+            profile = tf.keras.layers.Lambda(
                 _dca_mf_profile,
                 arguments={"max_delay": profile_max_lag, "num_features": nf},
                 name="sensing_delay_profile",
-            )(model_input))
+            )(model_input)
+            parts.append(profile)
+        if profile is not None and _delay_peak_enabled(sensing_cfg):
+            parts.append(tf.keras.layers.Lambda(
+                _soft_argmax_lag,
+                arguments={
+                    "max_delay": profile_max_lag,
+                    "sharpness": float(sensing_cfg.get(
+                        _SENSING_PEAK_SHARPNESS_KEY, _SENSING_PEAK_SHARPNESS_DEFAULT
+                    )),
+                },
+                name="sensing_delay_peak",
+            )(profile))
         v_sensing = tf.keras.layers.Concatenate(name="sensing_features")(parts)
 
     comm_head = build_communication_head(config)
@@ -329,18 +350,39 @@ def build_mc_dlsk_baseline(config: Dict[str, Any]) -> tf.keras.Model:
         else:
             v_max = tf.keras.layers.GlobalMaxPooling1D(name="sensing_max_pool")(mc_out)
             parts.append(v_max)
+        profile = None
+        profile_max_lag = 0
         if use_profile:
-            from src.models.heads import _SENSING_PROFILE_LAG_KEY, _dca_mf_profile
+            from src.models.heads import (
+                _SENSING_PEAK_SHARPNESS_DEFAULT,
+                _SENSING_PEAK_SHARPNESS_KEY,
+                _SENSING_PROFILE_LAG_KEY,
+                _dca_mf_profile,
+                _delay_peak_enabled,
+                _soft_argmax_lag,
+            )
 
             profile_max_lag = int(sensing_cfg.get(
                 _SENSING_PROFILE_LAG_KEY, int(config.get("data", {}).get("max_delay", 33))
             ))
             nf = 2 if str(config.get("data", {}).get("feature_mode", "iq")) == "iq" else 1
-            parts.append(tf.keras.layers.Lambda(
+            profile = tf.keras.layers.Lambda(
                 _dca_mf_profile,
                 arguments={"max_delay": profile_max_lag, "num_features": nf},
                 name="sensing_delay_profile",
-            )(model_input))
+            )(model_input)
+            parts.append(profile)
+        if profile is not None and _delay_peak_enabled(sensing_cfg):
+            parts.append(tf.keras.layers.Lambda(
+                _soft_argmax_lag,
+                arguments={
+                    "max_delay": profile_max_lag,
+                    "sharpness": float(sensing_cfg.get(
+                        _SENSING_PEAK_SHARPNESS_KEY, _SENSING_PEAK_SHARPNESS_DEFAULT
+                    )),
+                },
+                name="sensing_delay_peak",
+            )(profile))
         v_sensing = tf.keras.layers.Concatenate(name="sensing_features")(parts)
 
     comm_head = build_communication_head(config)

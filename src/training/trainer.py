@@ -15,7 +15,6 @@ import tensorflow as tf
 from src.training.losses import (
     comm_ce_loss,
     comm_ce_loss_factory,
-    mse_sensing_loss,
     mse_sensing_loss_factory,
 )
 from src.utils.logger import get_logger
@@ -60,6 +59,9 @@ class Trainer:
         if not math.isfinite(self.lambda_mse):
             raise ValueError(f"training.lambda_mse must be a finite number, got: {self.lambda_mse!r}")
 
+        self.sensing_component_weights = None
+        self._validate_sensing_component_weights()
+
         logger.info("Trainer initialized: lambda_mse = %s", self.lambda_mse)
 
         try:
@@ -84,6 +86,38 @@ class Trainer:
                 self.val_ds = None
         else:
             logger.info("val_ds not provided: early stopping and validation disabled")
+
+    def _validate_sensing_component_weights(self) -> None:
+        
+        weights = self.training_cfg.get("sensing_component_weights")
+        if weights is None:
+            return
+        if not isinstance(weights, dict):
+            raise ValueError(
+                "config['training']['sensing_component_weights'] must be a dict "
+                "with the keys 'delay' and 'doppler'"
+            )
+        delay = weights.get("delay")
+        doppler = weights.get("doppler")
+        for name, value in (("delay", delay), ("doppler", doppler)):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(
+                    f"training.sensing_component_weights.{name} must be a number, "
+                    f"got: {value!r}"
+                )
+            if not math.isfinite(float(value)) or float(value) < 0.0:
+                raise ValueError(
+                    f"training.sensing_component_weights.{name} must be finite "
+                    f"and >= 0, got: {value!r}"
+                )
+        if float(delay) <= 0.0 and float(doppler) <= 0.0:
+            raise ValueError("sensing_component_weights must not be all zero")
+        self.sensing_component_weights = [float(delay), float(doppler)]
+        logger.info(
+            "Sensing component weights: delay=%.3f, f_doppler=%.3f",
+            self.sensing_component_weights[0],
+            self.sensing_component_weights[1],
+        )
 
     def _validate_loss_weights(self) -> None:
         
@@ -269,12 +303,16 @@ class Trainer:
         except Exception as e:
             raise RuntimeError(f"Unable to fetch a batch from train_ds: {e}")
 
+        sensing_loss_fn = mse_sensing_loss_factory(
+            float(self.training_cfg.get("sensing_range_penalty", 0.0)),
+            self.sensing_component_weights,
+        )
         with tf.GradientTape() as tape:
             predictions = self.model(batch_features, training=True)
             loss = (
                 comm_ce_loss(batch_labels["comm"], predictions["comm"])
                 + self.lambda_mse
-                * mse_sensing_loss(batch_labels["sensing"], predictions["sensing"])
+                * sensing_loss_fn(batch_labels["sensing"], predictions["sensing"])
             )
 
         gradients = tape.gradient(loss, self.model.trainable_variables)
@@ -311,6 +349,7 @@ class Trainer:
             "config_snapshot_path": str(log_dir / "config_used.yaml"),
             "lambda_mse": self.lambda_mse,
             "sensing_range_penalty": self.training_cfg.get("sensing_range_penalty", 0.0),
+            "sensing_component_weights": self.sensing_component_weights,
             "epochs": self.training_cfg.get("epochs"),
             "batch_size": self.training_cfg.get("batch_size"),
             "learning_rate": self.training_cfg.get("learning_rate"),
@@ -339,10 +378,8 @@ class Trainer:
         label_smoothing = float(self.training_cfg.get("label_smoothing", 0.0))
         comm_loss_fn = comm_ce_loss_factory(label_smoothing) if label_smoothing > 0.0 else comm_ce_loss
         sensing_range_penalty = float(self.training_cfg.get("sensing_range_penalty", 0.0))
-        sensing_loss_fn = (
-            mse_sensing_loss_factory(sensing_range_penalty)
-            if sensing_range_penalty > 0.0
-            else mse_sensing_loss
+        sensing_loss_fn = mse_sensing_loss_factory(
+            sensing_range_penalty, self.sensing_component_weights
         )
         self.model.compile(
             optimizer=optimizer,
@@ -354,13 +391,15 @@ class Trainer:
         )
         logger.info(
             "Model compiled: loss_weights = %s, lr=%f, optimizer=%s, "
-            "label_smoothing=%s, lr_schedule=%s, sensing_range_penalty=%s",
+            "label_smoothing=%s, lr_schedule=%s, sensing_range_penalty=%s, "
+            "sensing_component_weights=%s",
             loss_weights,
             learning_rate,
             optimizer_name,
             label_smoothing,
             self.training_cfg.get("lr_schedule", "none"),
             sensing_range_penalty,
+            self.sensing_component_weights,
         )
 
         try:
