@@ -280,7 +280,18 @@ def evaluate_jamming(
     output_dir: Path,
     model_name: str = "model",
     n_realizations: int = 1,
+    max_symbols: Optional[int] = None,
 ) -> Dict[str, Any]:
+    """BER-vs-JSR (and sensing) sweep under jamming.
+
+    Every point of the sweep is a full pass over the static test set, so the
+    cost is ``points x symbols``. ``max_symbols`` thins the set used by the
+    sweep with a uniform stride over its (SNR, echo) blocks (see
+    :func:`src.experiments.jamming_interpretability._subsample`), which trades
+    symbols per realization for realizations at a constant wall clock; the
+    clean baseline always runs on the full set, so it stays comparable across
+    runs. ``None`` keeps the previous behaviour (no thinning).
+    """
     
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -309,6 +320,10 @@ def evaluate_jamming(
     base_seed = int(config["general"].get("seed", 42))
     plot_format = config.get("visualization", {}).get("plot_format", "pdf")
 
+    from src.experiments.jamming_interpretability import _subsample
+
+    sweep_data = _subsample(test_data, max_symbols, tag="jamming")
+
     all_results: Dict[str, Dict[str, np.ndarray]] = {}
     all_dfs: Dict[str, pd.DataFrame] = {}
 
@@ -328,7 +343,7 @@ def evaluate_jamming(
             )
             rng = np.random.default_rng(seed)
             jammer = sample_jammer_waveform(
-                test_data["x"].shape,
+                sweep_data["x"].shape,
                 jt,
                 rng,
                 partial_band_fraction=partial_band_fraction,
@@ -338,9 +353,9 @@ def evaluate_jamming(
             for jsr_db in jsr_values:
                 try:
                     y_jammed = _add_jammer_at_jsr(
-                        test_data["x"], jammer, float(jsr_db)
+                        sweep_data["x"], jammer, float(jsr_db)
                     )
-                    jammed_data = test_data.copy()
+                    jammed_data = sweep_data.copy()
                     jammed_data["x"] = y_jammed
                     eval_res = evaluate_model(model, jammed_data, config)
                     ber_mean = float(np.mean(eval_res["ber"]))

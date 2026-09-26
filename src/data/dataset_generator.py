@@ -3,7 +3,7 @@
 Implements the chaotic maps and the multi-echo aerial channel used to build the
 train/val/test .npz files:
 
-  - Logistic map ``x[n+1] = mu x[n] (1 - x[n])``, ``mu = 3.9``.
+  - Logistic map ``x[n+1] = mu x[n] (1 - x[n])``, ``mu = 4.0`` (Ulam point).
   - Bernoulli map (two branches, threshold 0.5).
   - Multi-echo aerial channel.
   - Power normalization ``E[|h_c|^2] + sum(alpha_k^2) = 1``.

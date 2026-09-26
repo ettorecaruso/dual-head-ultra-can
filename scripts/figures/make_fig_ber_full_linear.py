@@ -29,7 +29,7 @@ from src.data.dataset_generator import (
 from src.models.blind_stat import blind_features, fit_lda, blind_decide
 
 SEQLEN = 100
-MU = 3.9
+MU = 4.0    # same value as configs/base_config.yaml (Ulam point)
 SNR_GRID = [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
 SCENARIOS = {
     "k1_doppler_full": (1, 8e-5),

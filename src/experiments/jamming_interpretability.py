@@ -256,7 +256,11 @@ def _aggregate_rows(
         aggregated.append(agg)
     return aggregated
 
-def _subsample(test_data: DataDict, max_symbols: Optional[int]) -> DataDict:
+def _subsample(
+    test_data: DataDict,
+    max_symbols: Optional[int],
+    tag: str = "jamming_interpretability",
+) -> DataDict:
     """Thin the test set with a uniform stride over its (SNR, echo) blocks.
 
     The blocks are laid out one after the other, so a uniform stride keeps every
@@ -278,8 +282,8 @@ def _subsample(test_data: DataDict, max_symbols: Optional[int]) -> DataDict:
         array = np.asarray(value)
         out[key] = array[index] if array.shape[:1] == (n,) else value
     logger.info(
-        "[jamming_interpretability] test set thinned to %d of %d symbols per realization",
-        cap, n,
+        "[%s] test set thinned to %d of %d symbols per realization",
+        tag, cap, n,
     )
     return out
 

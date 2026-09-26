@@ -340,7 +340,11 @@ def evaluate_with_jamming(
     jamming_cfg = config.get("jamming", {}) or {}
     jammer_types = list(jamming_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
     jsr_values = _build_jsr_values(jamming_cfg)
-    logger.info("Starting jamming evaluation for JSR = %s, types = %s", jsr_values, jammer_types)
+    max_symbols = (config.get("experiments", {}).get("jamming") or {}).get("max_symbols")
+    logger.info(
+        "Starting jamming evaluation for JSR = %s, types = %s, max_symbols = %s",
+        jsr_values, jammer_types, max_symbols,
+    )
 
     results = evaluate_jamming(
         model=model,
@@ -351,6 +355,7 @@ def evaluate_with_jamming(
         output_dir=output_dir,
         model_name=model_name,
         n_realizations=int(jamming_cfg.get("n_realizations", 1)),
+        max_symbols=int(max_symbols) if max_symbols is not None else None,
     )
 
     logger.info("Jamming evaluation completed. Results saved to %s", output_dir)

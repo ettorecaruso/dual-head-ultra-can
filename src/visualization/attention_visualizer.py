@@ -290,7 +290,7 @@ def _generate_random_sample(config: Optional[Dict[str, Any]] = None) -> np.ndarr
         data_cfg = config.get("data", {})
         seq_len = int(data_cfg.get("sequence_length", 100))
         map_type = str(data_cfg.get("map_type", "logistic"))
-        map_param = float(data_cfg.get("map_param", 3.9))
+        map_param = float(data_cfg.get("map_param", 4.0))
         max_delay = int(data_cfg.get("max_delay", 33))
         max_doppler = float(data_cfg.get("max_doppler", 8e-5))
         feature_mode = str(data_cfg.get("feature_mode", "real"))
@@ -299,7 +299,7 @@ def _generate_random_sample(config: Optional[Dict[str, Any]] = None) -> np.ndarr
     else:
         seq_len = 100
         map_type = "logistic"
-        map_param = 3.9
+        map_param = 4.0
         max_delay = 33
         max_doppler = 8e-5
         feature_mode = "real"
