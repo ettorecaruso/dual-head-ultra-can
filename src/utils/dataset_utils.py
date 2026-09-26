@@ -5,13 +5,15 @@ depends on the echo amplitudes: without them in the hash, a change in the
 paper parameters would silently reuse stale data. Bump _DATASET_VERSION when
 the generator semantics change so --no-regen runs never reuse old files.
 
-Version 4 adds the waveform parameters (map_type, map_param, sequence_length)
-and the direct-path distribution (rician_kappa_db, doppler_direct_max) to the
-digest: the revision moved the operating point to the Ulam parameter mu = 4.0,
-whose impulse-like ACF changes every sample, so the mu = 3.9 tree must never
-be reused. It also appends a digest of the cooperative peers when they are
-enabled, because their echoes change the samples while the scenario name does
-not.
+Version 4 adds the waveform parameters (map_type, map_param, sequence_length),
+the direct-path distribution (rician_kappa_db, doppler_direct_max), the sample
+counts, the carrier and sampling rates, the cooperative peers and the frequency
+hopping to the digest. The revision moved the operating point to the Ulam
+parameter mu = 4.0, whose impulse-like ACF changes every sample, so the
+mu = 3.9 tree must never be reused; the other keys close the same class of gap,
+where two configurations that differ only in them would share a directory (for
+example the 5040-symbol nominal tree and the 105000-symbol ber_vs_snr tree of
+the same echo scenario).
 """
 
 from __future__ import annotations
@@ -41,12 +43,18 @@ def get_dataset_dir(config: Dict[str, Any]) -> Path:
     sequence_length = data.get("sequence_length")
     kappa_db = data.get("rician_kappa_db")
     doppler_direct = data.get("doppler_direct_max")
+    n_train = data.get("num_symbols_train")
+    n_val = data.get("num_symbols_val")
+    n_test = data.get("num_symbols_test")
+    fc_hz = data.get("fc_hz")
+    fs_hz = data.get("fs_hz")
     params_str = (
         f"v{_DATASET_VERSION}_e{echoes}_d{max_delay}_D{max_doppler}_S{snr_range}"
         f"_s{snr_step}_f{feature_mode}_a{alpha_min}_{alpha_max}"
         f"_C{coupling}_F{floor}_m{map_type}{map_param}_n{sequence_length}"
-        f"_k{kappa_db}_p{doppler_direct}{_channel_suffix(config)}"
-        f"{_peers_suffix(config)}"
+        f"_k{kappa_db}_p{doppler_direct}"
+        f"_N{n_train}_{n_val}_{n_test}_c{fc_hz}_{fs_hz}"
+        f"{_channel_suffix(config)}{_peers_suffix(config)}{_hopping_suffix(config)}"
     )
     params_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
     raw_dir = Path(data.get("raw_dir", "data/raw"))
@@ -89,3 +97,22 @@ def _peers_suffix(config: Dict[str, Any]) -> str:
     if not isinstance(peers, dict) or not bool(peers.get("enable", False)):
         return ""
     return f"_P{fingerprint_of({str(key): value for key, value in peers.items()})}"
+
+
+def _hopping_suffix(config: Dict[str, Any]) -> str:
+    """Hop digest appended to the dataset hash when frequency hopping is on.
+
+    ``generate_dataset`` builds the hop sequence from this section, so the
+    per-slot and per-hop realisations of the channel depend on it while the
+    channel section does not carry it.
+    """
+    from dataclasses import asdict
+
+    from src.data.channel_models import fingerprint_of
+    from src.data.frequency_hopping import hop_config
+
+    hopping = config.get("frequency_hopping")
+    if not isinstance(hopping, dict) or not bool(hopping.get("enable", False)):
+        return ""
+    resolved = asdict(hop_config(config))
+    return f"_H{fingerprint_of({str(key): value for key, value in resolved.items()})}"
