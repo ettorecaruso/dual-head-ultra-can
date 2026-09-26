@@ -35,6 +35,7 @@ echo "== figures =="
 "${PYTHON}" scripts/figures/make_fig_ber_region_zoom.py
 "${PYTHON}" scripts/figures/make_fig_sensing_delay.py
 "${PYTHON}" scripts/figures/make_fig_layer_retention.py
+"${PYTHON}" scripts/figures/make_fig_sensing_under_jamming.py
 "${PYTHON}" scripts/figures/make_fig_jamming_aware_control.py
 "${PYTHON}" scripts/figures/make_fig_frequency_agility.py
 "${PYTHON}" scripts/figures/make_fig_frequency_agility_reaction.py

@@ -115,7 +115,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         )
 
     fs.apply_style()
-    fig, ax = plt.subplots(figsize=(6.4, 5.2))
+    fig, ax = plt.subplots(figsize=(3.5, 3.2))
     lo, hi = max(float(predicted.min()) * 0.6, 1e-6), float(measured.max()) * 1.6
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -135,12 +135,11 @@ def main(argv: Optional[List[str]] = None) -> None:
     ax.set_ylim(lo, hi)
     ax.grid(True, which="both", color=fs.GRID_COLOR, lw=1.0)
     ax.set_axisbelow(True)
-    ax.set_xlabel(r"predicted $f\cdot$BER$_{aligned}+(1-f)\cdot$BER$_{clean}$")
+    ax.set_xlabel("predicted BER")
     ax.set_ylabel("measured BER")
-    ax.set_title("Frequency agility is geometric: "
-                 f"{gated.shape[0]} conditions, worst {worst:.2f} dB", pad=8)
+    ax.set_title(f"Mixing law: {gated.shape[0]} conditions, worst {worst:.2f} dB", pad=6)
     fig.tight_layout()
-    fs.legend_below_fig(fig, [ax], ncol=4)
+    fs.legend_below_fig(fig, [ax], ncol=2)
     fs.save(fig, "frequency_agility_law")
     plt.close(fig)
 

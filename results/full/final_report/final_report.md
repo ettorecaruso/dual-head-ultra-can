@@ -1,5 +1,14 @@
 # Dual-Head Ultra-CAN ISAC - Results report
 
+> **Stale, superseded.** This report predates the 5-realization re-run of the
+> jamming experiments and the consolidation of the jamming-aware probe. Its
+> barrage row (BER at JSR $-2$ dB) does **not** match the released data: it quotes
+> $0.0221$, while `jamming_interpretability/.../comparison_clean_vs_jamaware.csv`
+> and `jamming/<arch>/jamming/jamming_results_*.csv` give $0.0220$ and $0.0423$
+> respectively under their own protocols. The paper quotes the
+> `jamming_interpretability` files only. Do not copy numbers from this report;
+> read the CSVs each section names.
+
 This report aggregates the outputs of the runner experiments and mirrors the evaluation flow of the paper.
 
 ## Communication benchmark (operating region, SNR >= 5 dB)
