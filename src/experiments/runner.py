@@ -1024,15 +1024,17 @@ def run_jamming_interpretability(
     snr_eval = [float(v) for v in (jamming_interpretability_cfg.get("snr_eval") or [-1.0, 3.0, 7.0, 11.0, 15.0, 21.0])]
     ret_subset = int(jamming_interpretability_cfg.get("ret_subset", 3000))
     max_symbols = jamming_interpretability_cfg.get("max_symbols")
-    n_realizations = int(
+    default_realizations = int(
         jamming_interpretability_cfg.get(
             "n_realizations", (config.get("jamming") or {}).get("n_realizations", 1)
         )
     )
+    per_arch_realizations = jamming_interpretability_cfg.get("n_realizations_by_arch") or {}
 
     logger.info("Experiment jamming_interpretability (models=%s)", models_to_test)
-    logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d realizations=%d max_symbols=%s",
-                snr_eval, jsr_values, jammer_types, ret_subset, n_realizations, max_symbols)
+    logger.info("  snr_eval=%s jsr=%s jammer=%s ret_subset=%d realizations=%s/%s max_symbols=%s",
+                snr_eval, jsr_values, jammer_types, ret_subset,
+                default_realizations, per_arch_realizations, max_symbols)
 
     data_dir = pipeline.prepare_dataset(config, no_regen)
     echoes = [int(k) for k in config["data"]["echoes"]]
@@ -1073,7 +1075,7 @@ def run_jamming_interpretability(
             jsr_values=jsr_values,
             jammer_types=jammer_types,
             ret_subset=ret_subset,
-            n_realizations=n_realizations,
+            n_realizations=int(per_arch_realizations.get(arch, default_realizations)),
             max_symbols=int(max_symbols) if max_symbols is not None else None,
         )
         results["models"][arch] = arch_res

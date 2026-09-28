@@ -341,9 +341,19 @@ def evaluate_with_jamming(
     jammer_types = list(jamming_cfg.get("jamming_types") or ["cw", "barrage", "partial_band"])
     jsr_values = _build_jsr_values(jamming_cfg)
     max_symbols = (config.get("experiments", {}).get("jamming") or {}).get("max_symbols")
+    # Realizations: the experiment config may specialise them per architecture
+    # (n_realizations_by_arch), which is how the reference campaign kept 15
+    # realizations for the qkv curve and 5 for the others.
+    per_arch = (config.get("experiments", {}).get("jamming") or {}).get(
+        "n_realizations_by_arch"
+    ) or {}
+    n_realizations = int(
+        per_arch.get(model_name, jamming_cfg.get("n_realizations", 1))
+    )
     logger.info(
-        "Starting jamming evaluation for JSR = %s, types = %s, max_symbols = %s",
-        jsr_values, jammer_types, max_symbols,
+        "Starting jamming evaluation for JSR = %s, types = %s, max_symbols = %s, "
+        "realizations = %d",
+        jsr_values, jammer_types, max_symbols, n_realizations,
     )
 
     results = evaluate_jamming(
@@ -354,7 +364,7 @@ def evaluate_with_jamming(
         jammer_types=jammer_types,
         output_dir=output_dir,
         model_name=model_name,
-        n_realizations=int(jamming_cfg.get("n_realizations", 1)),
+        n_realizations=n_realizations,
         max_symbols=int(max_symbols) if max_symbols is not None else None,
     )
 

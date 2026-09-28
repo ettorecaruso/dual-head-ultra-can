@@ -204,7 +204,29 @@ experiments:
     jsr_range: [-10, 10]
     jsr_step: 2
     n_realizations: 5
+    # 15 realizations for qkv: its BER-vs-JSR curve is the one shown in the
+    # paper and the reference campaign used the denser Monte Carlo for it
+    # (scripts/diagnostics/diagnose_jamming_mc.py documents the
+    # single-realization artifact that motivated it).
+    n_realizations_by_arch: {qkv: 15}
+    # Thinning of the swept test set, per realization: 40000 is the protocol of
+    # the reference results (results/full/jamming/logs/rerun_jamming_mc.log:
+    # "test set: 40000 samples (subsample cap 40000), realizations 15").
+    # null = no thinning.
+    max_symbols: 40000
     visualize_layers: true
+  jamming_interpretability:
+    models: [conv1d, qkv, lstm, mc_dlsk]
+    jamming_types: ["cw", "barrage", "partial_band"]
+    jsr_values: [-10, -6, -2, 2, 6, 10]
+    snr_eval: [-1, 3, 7, 11, 15, 21]
+    ret_subset: 3000
+    n_realizations: 5
+    n_realizations_by_arch: {qkv: 15}
+    # No thinning here: the reference interpretability tables run on the whole
+    # test set (per_snr.csv: 40000 symbols per SNR point = 240000 per
+    # realization), unlike the jamming sweep.
+    max_symbols: null
   channel_generalization:
     models: [conv1d, qkv, lstm, mc_dlsk]
     # The profile of channel_generalization declares its own variant list; the

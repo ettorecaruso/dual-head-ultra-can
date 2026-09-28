@@ -293,6 +293,12 @@ jamming:
         jsr_step: 2
         models: [conv1d, qkv, lstm, mc_dlsk]
         visualize_layers: false
+        # Protocol of the reference results: the sweep runs on a test set
+        # thinned to 40000 symbols per realization, with 15 realizations for
+        # the qkv curve (the one shown in the paper) and 5 for the others.
+        max_symbols: 40000
+        n_realizations: 5
+        n_realizations_by_arch: {qkv: 15}
     visualization:
       plot_format: "pdf"
   fast:
@@ -386,6 +392,10 @@ jamming_interpretability:
         snr_eval: [-1, 3, 7, 11, 15, 21]
         ret_subset: 3000
         n_realizations: 5
+        n_realizations_by_arch: {qkv: 15}
+        # Whole test set (no thinning): the reference interpretability tables
+        # are at 40000 symbols per SNR point per realization.
+        max_symbols: null
     visualization:
       plot_format: "pdf"
   fast:
