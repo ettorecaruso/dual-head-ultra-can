@@ -7,6 +7,7 @@ from __future__ import annotations
 import argparse
 import copy
 import gc
+import json
 import logging
 import math
 import shutil
@@ -189,12 +190,44 @@ Examples:
         ),
     )
     parser.add_argument(
+        "--checkpoint-root",
+        default=None,
+        help=(
+            "Extra run root(s) where the frozen receivers of the other experiments "
+            "are looked up, comma separated. <root>/ber_vs_snr/<scenario>/<arch>/"
+            "best_model.keras is searched, and <root>/<mode> too, so both the run "
+            "root and the directory that contains it can be passed. Needed by an "
+            "account that evaluates the checkpoints trained by another account."
+        ),
+    )
+    parser.add_argument(
+        "--jammers",
+        default=None,
+        help=(
+            "Jamming types of the sweep, comma separated (cw, barrage, "
+            "partial_band). The jamming and jamming_interpretability experiments "
+            "then process only those types: the per-type CSV files are written "
+            "for the subset, so a long leg can be split across sessions and the "
+            "results merged afterwards. Default: the profile's list."
+        ),
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help=(
+            "Override training.epochs (smoke tests of reproducibility: the "
+            "protocol of the paper stays in the config files)."
+        ),
+    )
+    parser.add_argument(
         "--supersede",
         action="store_true",
         help=(
             "When an experiment directory already contains results, move it to "
-            "results/archive/<experiment>_<timestamp>/ and write the new ones: the "
-            "previous version is never destroyed."
+            "<output-dir>/archive/<experiment>_<timestamp>/ and write the new ones: "
+            "the previous version is never destroyed, and it stays on the storage "
+            "of the outputs (Drive included)."
         ),
     )
     parser.add_argument(
@@ -1048,6 +1081,45 @@ def run_jamming_interpretability(
     logger.info("jamming_interpretability experiment completed. Output in %s", output_dir)
     return results
 
+# Provenance of every receiver loaded by an evaluation experiment, keyed by
+# "<experiment>:<arch>". Written to <experiment>/logs/checkpoint_provenance.json
+# so that a run that reused the wrong receiver cannot pass unnoticed.
+_CHECKPOINT_PROVENANCE: Dict[str, Dict[str, Any]] = {}
+
+
+def _record_checkpoint_provenance(
+    exp_name: str,
+    arch: str,
+    path: Path,
+    preferred_scenario: str,
+    matched_preferred_scenario: bool,
+) -> None:
+    _CHECKPOINT_PROVENANCE[f"{exp_name}:{arch}"] = {
+        "checkpoint": str(path),
+        "preferred_scenario": str(preferred_scenario),
+        "matched_preferred_scenario": bool(matched_preferred_scenario),
+    }
+
+
+def _checkpoint_extra_roots(config: Dict[str, Any]) -> List[Path]:
+    """Run roots declared with ``--checkpoint-root`` (``general.checkpoint_roots``).
+
+    Both the run root (``<output-dir>/full``) and the directory that contains it
+    are accepted, so the caller can pass either form.
+    """
+    general = config.get("general") or {}
+    raw = general.get("checkpoint_roots") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    roots: List[Path] = []
+    for item in raw:
+        base = Path(str(item))
+        for candidate in (base, base / "full", base / "fast"):
+            if candidate not in roots:
+                roots.append(candidate)
+    return roots
+
+
 def _find_trained_model(
     config: Dict[str, Any],
     arch: str,
@@ -1064,6 +1136,7 @@ def _find_trained_model(
         output_dir.parents[1],
         _REPO_ROOT / "results" / "full",
     ]
+    run_root_candidates.extend(_checkpoint_extra_roots(config))
     for scenario in scenarios:
         if isinstance(scenario, dict) and scenario.get("name"):
             for run_root in run_root_candidates:
@@ -1096,17 +1169,41 @@ def _resolve_arch_checkpoint(
 
     The sandbox of the current run wins, so that an in-domain retraining can be
     consumed by the other experiments of the same run; the frozen reference tree
-    of the paper is the fallback, because those four checkpoints are exactly the
-    receivers the validation experiments must reuse.
+    of the paper and the run roots declared with ``--checkpoint-root`` are the
+    fallbacks, because those checkpoints are exactly the receivers the validation
+    experiments must reuse.
+
+    The scenario of the chosen checkpoint is recorded and, when it is not the one
+    the experiment asked for, the fallback is logged as a WARNING: a receiver
+    trained on a different channel silently invalidates the comparison.
     """
+    exp_name = output_dir.name
     candidates = [
         output_dir.parent / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras",
         _REPO_ROOT / "results" / "full" / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras",
     ]
+    for root in _checkpoint_extra_roots(config):
+        candidates.append(
+            root / "ber_vs_snr" / str(preferred_scenario) / arch / "best_model.keras"
+        )
     for candidate in candidates:
         if candidate.is_file():
+            _record_checkpoint_provenance(exp_name, arch, candidate, preferred_scenario, True)
             return candidate
-    return _find_trained_model(config, arch, output_dir)
+
+    fallback = _find_trained_model(config, arch, output_dir)
+    if fallback is None:
+        return None
+    matched = str(preferred_scenario) in fallback.parts
+    if not matched:
+        logger.warning(
+            "%s %s: no checkpoint for scenario '%s'; falling back to %s, which was "
+            "trained on another channel: the comparison is not valid. Pass "
+            "--checkpoint-root <run-root> or retrain the missing scenario.",
+            exp_name, arch, preferred_scenario, fallback,
+        )
+    _record_checkpoint_provenance(exp_name, arch, fallback, preferred_scenario, matched)
+    return fallback
 
 def run_frequency_agility(
     config: Dict[str, Any],
@@ -1574,6 +1671,82 @@ def _apply_channel(
     return config
 
 
+def _cli_path_list(value: Optional[str]) -> List[Path]:
+    """Parse a comma separated list of paths from the CLI."""
+    if value is None:
+        return []
+    return [Path(part.strip()) for part in str(value).split(",") if part.strip()]
+
+
+def _apply_cli_protocol_overrides(
+    config: Dict[str, Any],
+    args: argparse.Namespace,
+) -> Dict[str, Any]:
+    """Apply the CLI escape hatches that do not belong to a profile.
+
+    They run after the profile merge and before the config snapshot, so the
+    recorded ``config_used.yaml`` describes exactly what was executed.
+    """
+    if args.checkpoint_root is not None:
+        roots = _cli_path_list(args.checkpoint_root)
+        if not roots:
+            raise SystemExit("--checkpoint-root does not contain a valid path")
+        config.setdefault("general", {})["checkpoint_roots"] = [str(root) for root in roots]
+        logger.info("Checkpoint roots (extra): %s", [str(root) for root in roots])
+    if args.epochs is not None:
+        epochs = int(args.epochs)
+        if epochs < 1:
+            raise SystemExit("--epochs must be >= 1")
+        config.setdefault("training", {})["epochs"] = epochs
+        logger.warning("--epochs: training.epochs overridden to %d (smoke run)", epochs)
+    if args.jammers is not None:
+        wanted = [name.strip() for name in str(args.jammers).split(",") if name.strip()]
+        if not wanted:
+            raise SystemExit("--jammers does not contain a valid name")
+        from src.experiments.run_jamming import _VALID_JAMMING_TYPES
+        unknown = [name for name in wanted if name not in _VALID_JAMMING_TYPES]
+        if unknown:
+            raise SystemExit(
+                f"unknown --jammers {unknown}; available: {sorted(_VALID_JAMMING_TYPES)}"
+            )
+        jamming = dict(config.get("jamming") or {})
+        jamming["jamming_types"] = list(wanted)
+        config["jamming"] = jamming
+        experiments = config.setdefault("experiments", {})
+        for name in ("jamming", "jamming_interpretability"):
+            section = dict(experiments.get(name) or {})
+            section["jamming_types"] = list(wanted)
+            experiments[name] = section
+        logger.warning(
+            "--jammers: the sweep is limited to %s. The per-type CSVs of the other "
+            "types are left untouched, so a leg can be completed in another session "
+            "on the same output directory; the aggregated plots then show the "
+            "types of the current invocation only.",
+            wanted,
+        )
+    return config
+
+
+def _write_checkpoint_provenance(
+    exp_name: str,
+    exp_output_dir: Path,
+) -> Dict[str, Dict[str, Any]]:
+    """Persist which receiver every architecture of one experiment loaded."""
+    entries = {
+        key: value for key, value in _CHECKPOINT_PROVENANCE.items()
+        if key.split(":", 1)[0] == exp_name
+    }
+    if not entries:
+        return {}
+    log_dir = exp_output_dir / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    path = log_dir / "checkpoint_provenance.json"
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(entries, handle, indent=2)
+    logger.info("checkpoint provenance saved: %s", path)
+    return entries
+
+
 def _apply_scenario_filter(
     config: Dict[str, Any],
     exp_name: str,
@@ -1615,20 +1788,27 @@ def _resolve_run_root(args: argparse.Namespace) -> Path:
     return base / args.mode
 
 
-def _supersede_directory(exp_output_dir: Path) -> Path:
-    """Move a populated result directory into ``results/archive`` and recreate it.
+def _archive_root(args: argparse.Namespace) -> Path:
+    """Where a superseded result directory is moved.
+
+    Next to the outputs (``<output-dir>/archive``) and not inside the clone, so
+    that a run whose output directory is on Drive keeps the previous version on
+    Drive: ``results/archive`` inside the VM would be lost with the session.
+    """
+    base = Path(args.output_dir) if args.output_dir is not None else _DEFAULT_OUTPUT_DIR
+    return base / "archive"
+
+
+def _supersede_directory(exp_output_dir: Path, archive_root: Optional[Path] = None) -> Path:
+    """Move a populated result directory into the archive and recreate it.
 
     The results of an experiment are written straight into the single ``results``
     tree, so a re-run has to decide what to do with the previous version. Archiving
     it keeps the single tree and loses nothing: the archived copy is the one that
     also serves as the comparison arm of the new one.
     """
-    archive = (
-        _REPO_ROOT
-        / "results"
-        / "archive"
-        / f"{exp_output_dir.name}_{time.strftime('%Y-%m-%dT%H%M%S')}"
-    )
+    root = archive_root if archive_root is not None else _REPO_ROOT / "results" / "archive"
+    archive = root / f"{exp_output_dir.name}_{time.strftime('%Y-%m-%dT%H%M%S')}"
     if archive.exists():
         raise SystemExit(f"archive target already exists: {archive}")
     archive.parent.mkdir(parents=True, exist_ok=True)
@@ -1763,6 +1943,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
             )
             config = _apply_channel(config, exp_name, args)
             config = _apply_scenario_filter(config, exp_name, args)
+            config = _apply_cli_protocol_overrides(config, args)
 
             exp_output_dir = run_root / exp_name
             if args.dry_run:
@@ -1778,15 +1959,17 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 continue
             if populated:
                 if args.supersede:
-                    _supersede_directory(exp_output_dir)
+                    _supersede_directory(exp_output_dir, _archive_root(args))
                 elif args.force:
                     logger.warning("--force: overwriting %s in place", exp_output_dir)
                 else:
-                    raise SystemExit(
+                    message = (
                         f"{exp_output_dir} already contains results: pass --supersede to "
                         "archive them and write the new ones, --resume to keep them, or "
                         "--force to overwrite them in place"
                     )
+                    logger.error("%s", message)
+                    raise SystemExit(message)
             exp_output_dir.mkdir(parents=True, exist_ok=True)
             log_config_summary(config, logger)
 
@@ -1804,6 +1987,9 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
                 output_dir=exp_output_dir,
             )
             all_results[exp_name] = result
+            provenance = _write_checkpoint_provenance(exp_name, exp_output_dir)
+            if provenance and isinstance(all_results.get(exp_name), dict):
+                all_results[exp_name]["checkpoint_provenance"] = provenance
             logger.info("Experiment %s completed successfully.", exp_name)
         except Exception as exc:
             logger.error("Experiment %s failed: %s", exp_name, exc, exc_info=True)

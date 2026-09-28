@@ -5,9 +5,11 @@ general:
 data:
   sequence_length: 100
   map_type: "logistic"
-  # mu = 4.0 (Ulam point): the ACF is impulsive instead of the 3-band residual
-  # structure of the period-3 window at mu ~ 3.8284.
-  map_param: 4.0
+  # mu = 3.9 (period-3 window of the logistic map): the paper parameter.
+  # mu = 4.0 (Ulam point) whitens the reference ACF (lag-1 0.49 -> 0.08) but
+  # costs 1.8-2.1x on the matched filter and stalls the recurrent baselines:
+  # it is a waveform-design alternative, not a run setting.
+  map_param: 3.9
   fc_hz: 2.4e9
   fs_hz: 1.0e7
   snr_range: [-5, 21]
@@ -205,6 +207,8 @@ experiments:
     visualize_layers: true
   channel_generalization:
     models: [conv1d, qkv, lstm, mc_dlsk]
+    # The profile of channel_generalization declares its own variant list; the
+    # base keeps the neutral default so that the two never disagree.
     channel_variants: [nominal]
     snr_test_range: [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
     bit_error_threshold: 100

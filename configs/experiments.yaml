@@ -6,8 +6,8 @@ defaults: &defaults
   data:
     sequence_length: 100
     map_type: "logistic"
-    # mu = 4.0 (Ulam point): ACF impulsive, no +-1 sample ghost. See base_config.yaml.
-    map_param: 4.0
+    # mu = 3.9: the paper parameter. See base_config.yaml for the mu = 4.0 note.
+    map_param: 3.9
     fc_hz: 2.4e9
     fs_hz: 1.0e7
     snr_range: [-5, 21]
@@ -480,7 +480,9 @@ channel_generalization:
     experiments:
       channel_generalization:
         models: [conv1d, qkv, lstm, mc_dlsk]
-        channel_variants: [nominal, b_tdl_d, b_tdl_a, c_two_ray_jakes]
+        # Five conditions, as in the reference results tree (b_tdl_d_light
+        # included): the archived campaign evaluates it, the config must match.
+        channel_variants: [nominal, b_tdl_d, b_tdl_d_light, b_tdl_a, c_two_ray_jakes]
         bit_error_threshold: 50
         max_symbols_per_snr: 200000
         eval_batch_symbols: 100000
