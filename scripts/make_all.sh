@@ -32,6 +32,17 @@ fi
 echo "== figures =="
 "${PYTHON}" scripts/figures/make_fig_architecture.py
 "${PYTHON}" scripts/figures/make_fig_ber_full_linear.py
+# The blind reference is generated inside results/newRes; copy it into the run
+# tree so every other consumer (tables, zoom figures, the merged tree shipped to
+# the paper repo) finds it there instead of looking for a curve that is not in
+# the tree it reads.
+for SCENARIO in k1_doppler_full k3_doppler_full k3_doppler_limited; do
+    SRC="${REPO_ROOT}/results/newRes/${SCENARIO}/blind_stat/metrics.csv"
+    if [ -f "${SRC}" ]; then
+        mkdir -p "${REPO_ROOT}/results/full/ber_vs_snr/${SCENARIO}/blind_stat"
+        cp "${SRC}" "${REPO_ROOT}/results/full/ber_vs_snr/${SCENARIO}/blind_stat/metrics.csv"
+    fi
+done
 "${PYTHON}" scripts/figures/make_fig_ber_region_zoom.py
 "${PYTHON}" scripts/figures/make_fig_sensing_delay.py
 "${PYTHON}" scripts/figures/make_fig_layer_retention.py

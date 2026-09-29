@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-29T09:03:59",
+  "timestamp": "2026-09-29T13:26:15",
   "dest": "results/full",
   "sources": [
     "../paper/test_results/conv1d",
@@ -7,7 +7,9 @@
     "../paper/test_results/mc_dlsk",
     "../paper/test_results/qkv_ber",
     "../paper/test_results/qkv_jam",
-    "../paper/test_results/_common"
+    "../paper/test_results/_common",
+    "../paper/test_results/missing",
+    "../paper/test_results/missing/b_tdl_d"
   ],
   "keep_plots": false,
   "accounts": {
@@ -34,6 +36,14 @@
     "_common": {
       "kept": 4,
       "skipped": 0
+    },
+    "missing": {
+      "kept": 9,
+      "skipped": 2
+    },
+    "b_tdl_d": {
+      "kept": 14,
+      "skipped": 7
     }
   },
   "collisions": [
@@ -64,7 +74,9 @@
     "qkv_jam:jamming/logs/config_used.yaml -> qkv_jam_config_used.yaml",
     "qkv_jam:jamming_interpretability/logs/config_used.yaml -> qkv_jam_config_used.yaml",
     "qkv_jam:logs/runner.log -> qkv_jam_runner.log",
-    "_common:logs/runner.log -> _common_runner.log"
+    "_common:logs/runner.log -> _common_runner.log",
+    "b_tdl_d:ber_vs_snr/logs/config_used.yaml -> b_tdl_d_config_used.yaml",
+    "b_tdl_d:logs/runner.log -> b_tdl_d_runner.log"
   ],
   "files": [
     "ber_vs_snr/iod_peers/conv1d/best_model.keras",
@@ -139,6 +151,18 @@
     "ber_vs_snr/k3_doppler_full/qkv/logs/history.csv",
     "ber_vs_snr/k3_doppler_full/qkv/logs/run_metadata.json",
     "ber_vs_snr/k3_doppler_full/qkv/metrics.csv",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/conv1d/best_model.keras",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/conv1d/logs/best_weights.weights.h5",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/conv1d/logs/config_used.yaml",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/conv1d/logs/history.csv",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/conv1d/logs/run_metadata.json",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/conv1d/metrics.csv",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/qkv/best_model.keras",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/qkv/logs/best_weights.weights.h5",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/qkv/logs/config_used.yaml",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/qkv/logs/history.csv",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/qkv/logs/run_metadata.json",
+    "ber_vs_snr/k3_doppler_full_b_tdl_d/qkv/metrics.csv",
     "ber_vs_snr/k3_doppler_limited/conv1d/best_model.keras",
     "ber_vs_snr/k3_doppler_limited/conv1d/logs/best_weights.weights.h5",
     "ber_vs_snr/k3_doppler_limited/conv1d/logs/config_used.yaml",
@@ -163,6 +187,7 @@
     "ber_vs_snr/k3_doppler_limited/qkv/logs/history.csv",
     "ber_vs_snr/k3_doppler_limited/qkv/logs/run_metadata.json",
     "ber_vs_snr/k3_doppler_limited/qkv/metrics.csv",
+    "ber_vs_snr/logs/b_tdl_d_config_used.yaml",
     "ber_vs_snr/logs/config_used.yaml",
     "ber_vs_snr/logs/lstm_config_used.yaml",
     "ber_vs_snr/logs/mc_dlsk_config_used.yaml",
@@ -302,6 +327,15 @@
     "jamming_interpretability/conv1d/conditions_realizations.csv",
     "jamming_interpretability/conv1d/per_snr.csv",
     "jamming_interpretability/conv1d/run_metadata.json",
+    "jamming_interpretability/jamming_aware_training/qkv/best_model.keras",
+    "jamming_interpretability/jamming_aware_training/qkv/comparison_clean_vs_jamaware.csv",
+    "jamming_interpretability/jamming_aware_training/qkv/conditions.csv",
+    "jamming_interpretability/jamming_aware_training/qkv/conditions_realizations.csv",
+    "jamming_interpretability/jamming_aware_training/qkv/logs/best_weights.weights.h5",
+    "jamming_interpretability/jamming_aware_training/qkv/logs/history.csv",
+    "jamming_interpretability/jamming_aware_training/qkv/logs/run_metadata.json",
+    "jamming_interpretability/jamming_aware_training/qkv/per_snr.csv",
+    "jamming_interpretability/jamming_aware_training/qkv/run_metadata.json",
     "jamming_interpretability/logs/config_used.yaml",
     "jamming_interpretability/logs/lstm_config_used.yaml",
     "jamming_interpretability/logs/mc_dlsk_config_used.yaml",
@@ -319,6 +353,7 @@
     "jamming_interpretability/qkv/per_snr.csv",
     "jamming_interpretability/qkv/run_metadata.json",
     "logs/_common_runner.log",
+    "logs/b_tdl_d_runner.log",
     "logs/lstm_runner.log",
     "logs/mc_dlsk_runner.log",
     "logs/qkv_ber_runner.log",
