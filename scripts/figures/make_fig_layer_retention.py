@@ -2,7 +2,7 @@
 """Layer retention figure under jamming.
 
 The intermediate stages of each receiver are drawn as bars (cosine between the
-clean and the barrage-jammed activation, JSR +10 dB). The positional sensing
+clean and the barrage-jammed activation, JSR +10 dB). The delay-profile sensing
 descriptor is not a feature-extraction stage: it is a deterministic function of
 the estimated delay, so it is drawn as a horizontal reference line spanning the
 panel (with its value on the line) instead of a bar. Removing it from the x
@@ -22,7 +22,7 @@ MIRROR = REPO / 'results' / 'figures' / 'jamming_layer_retention.pdf'
 
 BAR_COLOR = '#4c72b0'
 REF_COLOR = '#55a868'
-REF_COL = 'sensing_position_cos'
+REF_COL = 'sensing_delay_profile_cos'
 PANELS = [
     ('conv1d', 'Ultra-CAN (Conv1D)',
      [('conv1', 'conv1_cos'), ('conv2', 'conv2_cos'),
@@ -62,7 +62,7 @@ for ax, (key, title, bars) in zip(axes, PANELS):
     ax.tick_params(labelsize=9.5)
 axes[0].set_ylabel('cosine', fontsize=11)
 fig.suptitle('Layer-wise activation retention, barrage jamming at JSR +10 dB '
-             '(dashed line: sensing position)', fontsize=12.5)
+             '(dashed line: sensing delay profile)', fontsize=12.5)
 fig.tight_layout(rect=[0, 0, 1, 0.90])
 OUT.parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(OUT)

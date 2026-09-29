@@ -13,6 +13,7 @@ if str(REPO) not in sys.path:
 
 import numpy as np
 import pandas as pd
+import yaml
 
 import matplotlib
 
@@ -27,9 +28,15 @@ from src.data.dataset_generator import (
     apply_channel_batch,
 )
 from src.models.blind_stat import blind_features, fit_lda, blind_decide
+from src.utils.config_loader import DEFAULT_BASE_CONFIG_PATH
 
 SEQLEN = 100
-MU = 4.0    # same value as configs/base_config.yaml (Ulam point)
+# The blind reference must be generated with the same chaotic map as the
+# receivers, so the operating point is read from the config instead of being
+# repeated here: a stale literal silently produces a baseline for another
+# dataset (the same trap the dataset digest was added for in dataset_utils).
+MU = float(yaml.safe_load(
+    Path(DEFAULT_BASE_CONFIG_PATH).read_text(encoding="utf-8"))["data"]["map_param"])
 SNR_GRID = [-5, -3, -1, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21]
 SCENARIOS = {
     "k1_doppler_full": (1, 8e-5),
