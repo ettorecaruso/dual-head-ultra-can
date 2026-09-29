@@ -1,25 +1,24 @@
 #!/usr/bin/env python3
-"""Reaction latency of a tracking jammer: the four receivers collapse on one law.
+"""Reaction latency and hop rate: when frequency hopping stops paying.
 
     python scripts/figures/make_fig_frequency_agility_reaction.py [run_dir]
 
-**One panel, not four.** The sweep contains a single jammer archetype (the
-reactive follower) on the CW in-channel at one dwell, so a panel per receiver
-would repeat the same curve four times. The interesting statement is the opposite
-one: the four receivers are indistinguishable here, because what happens is
-geometry, not signal processing.
+Two panels, both from the same ``frequency_agility`` run, that answer the only
+question the time domain poses: *can the jammer follow the hop?*
 
-The protected fraction of the time is fixed by the reaction latency ``L`` and the
-dwell (in bursts) as ``f = max(0, 1 - L/dwell)``, so the measured BER must follow
-
-    BER(L) = f(L) * BER_jammed + (1 - f(L)) * BER_clean
-
-with ``BER_jammed`` the value at ``L = 0`` (where ``f = 1``) and ``BER_clean``
-the no-jammer floor. The analytic curve is drawn on top of the four measured
-ones and the script **verifies** the agreement, so the collapse cannot silently
-break: hopping is defeated exactly when the jammer re-tunes faster than the slot,
-and the *height* of the penalty is still whatever the jammer achieves while
-aligned.
+* left -- BER against the hop rate (dwell sweep at JSR = +6 dB), one curve per
+  jammer archetype, each the mean over the four receivers with the min-max band
+  over them.  The reactive follower sits on the no-jamming floor while the slot
+  is shorter than its reaction time and climbs back once it can re-tune inside
+  the slot; the blind sweeper is flat, because its hit probability does not
+  depend on how fast the transmitter hops.  The band being invisible *is* the
+  result: the four receivers are indistinguishable here, the outcome is decided
+  by the jammer geometry.
+* right -- BER against the jammer reaction latency at a fixed dwell.  The
+  protected fraction of the time is ``f = max(0, 1 - L/dwell)``, so the measured
+  BER must follow ``f * BER_jammed + (1-f) * BER_clean``: a straight line in
+  ``f``, with no soft regime in between.  The analytic curve is drawn on top of
+  the four measured ones and the agreement is **verified** before drawing.
 
 ``run_dir`` defaults to ``results/full/frequency_agility``.
 """
@@ -49,6 +48,8 @@ ARCH_LABELS = {
     "lstm": "LSTM-OFDM-DCSK",
     "mc_dlsk": "MC-DLCSK",
 }
+JAMMER_LABELS = {"sweep": "Sweeping (blind)", "follower": "Reactive follower"}
+DWELL_JSR = 6.0
 Y_HI = 1.0
 #: The mixing law must reproduce the sweep to this relative tolerance.
 LAW_TOLERANCE = 0.05
@@ -60,6 +61,14 @@ def _load(run_dir: Path, arch: str) -> Optional[pd.DataFrame]:
         return None
     frame = pd.read_csv(path)
     return frame[np.isfinite(frame["ber"])].sort_values("latency_us")
+
+
+def _load_dwell(run_dir: Path, arch: str) -> Optional[pd.DataFrame]:
+    path = Path(run_dir) / arch / "frequency_agility_vs_dwell.csv"
+    if not path.is_file():
+        return None
+    frame = pd.read_csv(path)
+    return frame[np.isfinite(frame["ber"])]
 
 
 def _endpoints(frame: pd.DataFrame) -> tuple:
@@ -80,25 +89,10 @@ def _endpoints(frame: pd.DataFrame) -> tuple:
     return jammed, clean
 
 
-def main(argv: Optional[List[str]] = None) -> None:
-    run_dir = Path(argv[0]).resolve() if argv else DEFAULT_RUN_DIR
-    frames: Dict[str, pd.DataFrame] = {}
-    for arch in ARCHS:
-        frame = _load(run_dir, arch)
-        if frame is not None and not frame.empty:
-            frames[arch] = frame
-    if not frames:
-        raise SystemExit(
-            f"no frequency_agility_vs_reaction.csv under {run_dir}: run the "
-            "frequency agility experiment with frequency_hopping.reaction_sweep set"
-        )
-
-    archs = [arch for arch in ARCHS if arch in frames]
-
-    # The analytic law is cross-checked against every receiver before drawing.
+def _check_mixing_law(frames: Dict[str, pd.DataFrame]) -> float:
+    """The interior points must sit on the mixing line (see the docstring)."""
     worst = 0.0
-    for arch in archs:
-        frame = frames[arch]
+    for frame in frames.values():
         jammed, clean = _endpoints(frame)
         predicted = frame["jammed_fraction"] * jammed + (1 - frame["jammed_fraction"]) * clean
         interior = (frame["jammed_fraction"] > 1e-9) & (frame["jammed_fraction"] < 1.0 - 1e-9)
@@ -115,22 +109,58 @@ def main(argv: Optional[List[str]] = None) -> None:
             "jump in jammed_fraction and the BER jump must come from the same "
             "geometry."
         )
-    print(f"mixing-law check (all receivers, interior points): worst {worst:.4f}")
+    return worst
 
-    fs.apply_style()
-    fig, ax = plt.subplots(figsize=(6.6, 4.6))
-    y_lo = fs.ber_floor([frame["ber"].to_numpy(dtype=float) for frame in frames.values()],
-                        Y_HI)
-    print(f"BER axis: {y_lo:g} .. {Y_HI:g}")
-    fs.log_axis(ax, y_lo, Y_HI)
 
-    for arch in archs:
-        frame = frames[arch]
+def _rate_label(value: float) -> str:
+    return f"{value / 1000:.3g}k" if value >= 1000 else f"{value:.3g}"
+
+
+def _panel_hop_rate(ax, dwell: Dict[str, pd.DataFrame]) -> None:
+    """BER vs hop rate: one curve per archetype, band = spread over receivers."""
+    ticks: List[float] = []
+    for model in ("sweep", "follower"):
+        rates = np.array([], dtype=float)
+        stack = []
+        for arch in ARCHS:
+            frame = dwell.get(arch)
+            if frame is None:
+                continue
+            sub = frame[(frame.jammer_model == model)
+                        & np.isclose(frame.jsr_db, DWELL_JSR)].sort_values("hop_rate_hz")
+            if sub.empty:
+                continue
+            rates = sub["hop_rate_hz"].to_numpy(dtype=float)
+            stack.append(sub["ber"].to_numpy(dtype=float))
+        if not stack:
+            continue
+        matrix = np.vstack(stack)
+        mean, low, high = matrix.mean(axis=0), matrix.min(axis=0), matrix.max(axis=0)
+        kw = fs.series_kwargs(model)
+        ax.fill_between(rates, low, high, color=kw["color"], alpha=0.18, lw=0, zorder=2)
+        ax.plot(rates, mean, label=JAMMER_LABELS[model], zorder=3, **kw)
+        ticks = sorted(set(ticks) | set(float(v) for v in rates))
+
+    ax.set_xscale("log")
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([_rate_label(v) for v in ticks], fontsize=9.5)
+    ax.set_xlim(min(ticks) * 0.75, max(ticks) * 1.35)
+    ax.set_xlabel("Hop rate (hop/s)")
+    ax.set_title("A tracker loses, a blind sweeper does not", fontsize=11, pad=8)
+    ax.annotate("1-2 bursts of dwell:\nshorter than the follower's\n"
+                "reaction, no engagement",
+                (max(ticks), 0.55), ha="right", va="center", fontsize=9,
+                color="#333333")
+
+
+def _panel_latency(ax, frames: Dict[str, pd.DataFrame], y_lo: float) -> None:
+    """BER vs reaction latency, with the mixing law drawn and verified."""
+    for arch, frame in frames.items():
         kw = fs.series_kwargs(arch)
         ax.plot(frame["latency_us"], frame["ber"], label=ARCH_LABELS[arch],
                 zorder=3, **kw)
 
-    reference = frames[archs[0]]
+    reference = next(iter(frames.values()))
     jsr = float(reference["jsr_db"].iloc[0])
     jammed, clean = _endpoints(reference)
     lat = reference["latency_us"].to_numpy(dtype=float)
@@ -147,23 +177,64 @@ def main(argv: Optional[List[str]] = None) -> None:
     ax.set_xlim(float(lat.min()) - 8.0, float(lat.max()) + 8.0)
     ax.set_xlabel(r"Jammer reaction latency $L$ ($\mu$s), dwell = "
                   f"{int(reference['dwell_bursts'].iloc[0])} bursts")
-    ax.set_ylabel("BER")
+    ax.set_title(f"Time-sharing, not a soft regime (JSR = +{jsr:.0f} dB)",
+                 fontsize=11, pad=8)
     half = reference[np.isclose(frac, 0.5)]
     if not half.empty:
-        ax.annotate("half the bursts jammed, half the BER:\n"
-                    r"the mixture is linear in $f$, there is no soft regime",
+        ax.annotate("half the bursts jammed,\nhalf the BER",
                     (float(half["latency_us"].iloc[0]),
-                     float(half["ber"].iloc[0]) * 1.7),
+                     float(half["ber"].iloc[0]) * 1.9),
                     ha="center", va="bottom", fontsize=9, color="#333333")
-    ax.set_title("Hopping wins only while the slot is shorter than the jammer's "
-                 f"reaction (dwell = {int(reference['dwell_bursts'].iloc[0])} "
-                 f"bursts, JSR = +{jsr:.0f} dB)", pad=8, fontsize=11)
-    ax.set_axisbelow(True)
+
+
+def main(argv: Optional[List[str]] = None) -> None:
+    run_dir = Path(argv[0]).resolve() if argv else DEFAULT_RUN_DIR
+    frames: Dict[str, pd.DataFrame] = {}
+    dwell: Dict[str, pd.DataFrame] = {}
+    for arch in ARCHS:
+        frame = _load(run_dir, arch)
+        if frame is not None and not frame.empty:
+            frames[arch] = frame
+        dwell_frame = _load_dwell(run_dir, arch)
+        if dwell_frame is not None and not dwell_frame.empty:
+            dwell[arch] = dwell_frame
+    if not frames:
+        raise SystemExit(
+            f"no frequency_agility_vs_reaction.csv under {run_dir}: run the "
+            "frequency agility experiment with frequency_hopping.reaction_sweep set"
+        )
+    if not dwell:
+        raise SystemExit(
+            f"no frequency_agility_vs_dwell.csv under {run_dir}: the hop-rate panel "
+            "needs the dwell sweep"
+        )
+
+    worst = _check_mixing_law(frames)
+    print(f"mixing-law check (all receivers, interior points): worst {worst:.4f}")
+
+    fs.apply_style()
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.4))
+    y_lo = fs.ber_floor(
+        [frame["ber"].to_numpy(dtype=float) for frame in frames.values()]
+        + [frame["ber"].to_numpy(dtype=float) for frame in dwell.values()],
+        Y_HI,
+    )
+    print(f"BER axis: {y_lo:g} .. {Y_HI:g}")
+    for ax in axes:
+        fs.log_axis(ax, y_lo, Y_HI)
+        ax.set_ylabel("BER")
+        ax.set_axisbelow(True)
+
+    _panel_hop_rate(axes[0], dwell)
+    _panel_latency(axes[1], frames, y_lo)
+
     fig.tight_layout()
-    fs.legend_below(ax, ncol=2, y=-0.20)
+    fs.legend_below_fig(fig, axes, ncol=3)
     fs.save(fig, "frequency_agility_reaction")
     plt.close(fig)
 
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+
