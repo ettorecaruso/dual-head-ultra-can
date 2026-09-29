@@ -22,6 +22,12 @@ Rules:
   ``scripts/make_all.sh``, so the merged tree stays small (``--keep-plots``
   copies them anyway);
 * ``MERGE.json`` in the merged tree records sources, counts and collisions.
+
+Note on ``--also``: it is a snapshot taken at merge time.  The aggregate tables
+that ``scripts/make_all.sh`` writes afterwards (``operating_region_table.csv``,
+``channel_generalization/generalization_table.*``) exist only in ``--dest``, so
+refresh the second copy with a plain ``rsync -a --delete <dest>/full/ <also>/``
+before committing the paper tree.
 """
 from __future__ import annotations
 
