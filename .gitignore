@@ -16,7 +16,7 @@ nohup.out
 
 # Run outputs: experiments write checkpoints and CSV trees here, they are
 # delivered through the Drive run roots and the account zips, not through git.
-results/
+
 results_old/
 
 # IDE / OS

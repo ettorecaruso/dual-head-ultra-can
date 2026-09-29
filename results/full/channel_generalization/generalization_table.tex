@@ -1,0 +1,25 @@
+\begin{table*}[t]
+\centering
+\caption{Cross-channel generalization of the two Ultra-CAN variants (no retraining). Pooled BER over the operating region with its $95\%$ Wilson interval, minimum SNR at the target BER, and the sensing metrics of the dominant echo. Every row is measured with the same protocol. \emph{not reached} means the pooled BER never falls to the target inside the evaluated SNR grid.}
+\label{tab:generalization}
+\begin{tabular}{llcccc}
+\toprule
+Channel variant & Receiver & Pooled BER & min SNR & $\rho_\tau$ & MSE$_\tau$ \\
+\midrule
+B: 3GPP TDL-A (NLOS) & Ultra-CAN (Conv1D) & $1.99\times 10^{-1}$ $[1.99\times 10^{-1}, 2.00\times 10^{-1}]$ & not reached & 0.006 & 104.0 \\
+ & Ultra-CAN-QKV & $2.07\times 10^{-1}$ $[2.06\times 10^{-1}, 2.08\times 10^{-1}]$ & not reached & 0.008 & 104.6 \\
+\midrule
+B: 3GPP TDL-D (LOS) & Ultra-CAN (Conv1D) & $1.51\times 10^{-1}$ $[1.50\times 10^{-1}, 1.52\times 10^{-1}]$ & not reached & 0.001 & 102.4 \\
+ & Ultra-CAN-QKV & $1.57\times 10^{-1}$ $[1.56\times 10^{-1}, 1.58\times 10^{-1}]$ & not reached & 0.004 & 104.1 \\
+\midrule
+B: 3GPP TDL-D, 5\% clutter & Ultra-CAN (Conv1D) & $3.00\times 10^{-2}$ $[2.96\times 10^{-2}, 3.03\times 10^{-2}]$ & not reached & 0.001 & 102.5 \\
+ & Ultra-CAN-QKV & $3.15\times 10^{-2}$ $[3.12\times 10^{-2}, 3.19\times 10^{-2}]$ & not reached & 0.003 & 104.0 \\
+\midrule
+C: two-ray + Jakes & Ultra-CAN (Conv1D) & $5.62\times 10^{-2}$ $[5.58\times 10^{-2}, 5.67\times 10^{-2}]$ & not reached & 0.003 & 102.2 \\
+ & Ultra-CAN-QKV & $5.82\times 10^{-2}$ $[5.77\times 10^{-2}, 5.87\times 10^{-2}]$ & not reached & 0.002 & 103.7 \\
+\midrule
+nominal (aerial multi-echo) & Ultra-CAN (Conv1D) & $2.78\times 10^{-4}$ $[2.54\times 10^{-4}, 3.04\times 10^{-4}]$ & not reached & 0.888 & 19.3 \\
+ & Ultra-CAN-QKV & $2.33\times 10^{-4}$ $[2.12\times 10^{-4}, 2.57\times 10^{-4}]$ & not reached & 0.875 & 21.4 \\
+\bottomrule
+\end{tabular}
+\end{table*}
