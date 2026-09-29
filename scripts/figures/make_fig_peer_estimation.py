@@ -15,6 +15,15 @@ that fail-safe is what keeps an obstacle sharing a peer's range inside the
 obstacle list, and the separated curve is its price.
 
 Written dataset: ``results/full/peer_estimation/<arch>/peer_estimation.csv``.
+
+Axes. The two identification panels are framed on the rates they draw instead of
+a fixed 0-1 axis: the reported-obstacle rate runs from 0 to 0.12 and a 0-1 axis
+turned every curve into a flat line lying on the bottom spine. The fallback panel
+keeps the full 0-1 range, because there the rates do span 0.3-1.0, so the three
+panels no longer share one y scale.  The line styles carry information of their
+own (solid: the obstacle is reported / the co-range fail-safe; dashed: the peer is
+reported / the price paid on separated peers), so they are named in the legend
+next to the two architectures.
 """
 from __future__ import annotations
 
@@ -43,6 +52,17 @@ RATIO_LABELS = {
     "target_gt2": "target\nx2",
 }
 REFERENCE_GUARD = 1.5
+#: Colour of the line-style proxies that name the solid/dashed series of a panel.
+STYLE_PROXY = dict(color="#444444", lw=1.6, marker="")
+
+
+def _scaled_to_data(ax, headroom: float = 1.3) -> None:
+    """Frame a rate panel on the values it draws (see the module docstring)."""
+    values = np.concatenate([np.asarray(line.get_ydata(), dtype=float).ravel()
+                             for line in ax.get_lines()])
+    values = values[np.isfinite(values)]
+    top = float(values.max()) if values.size else 0.1
+    ax.set_ylim(0.0, max(top * headroom, 1e-3))
 
 
 def load() -> pd.DataFrame:
@@ -83,6 +103,10 @@ def _panel_offsets(ax, frame, offsets) -> None:
         kw = fs.series_kwargs(arch)
         ax.plot(offsets, hit, label=ARCH_LABELS[arch], **kw)
         ax.plot(offsets, false, color=kw["color"], ls=(0, (4, 2)), lw=1.2, alpha=0.65)
+    # The two curves of each architecture differ by line style only, so the style
+    # needs its own legend entries: without them the dashed curves are unnamed.
+    ax.plot([], [], ls="-", label="target identification (solid)", **STYLE_PROXY)
+    ax.plot([], [], ls=(0, (4, 2)), label="mirror failure (dashed)", **STYLE_PROXY)
     ax.set_xlabel("obstacle delay - nearest peer (samples)")
     ax.set_ylabel("fraction of samples")
     ax.set_title("Target identification vs peer distance")
@@ -132,6 +156,10 @@ def _panel_fallback(ax, frame) -> None:
                 ms=fs.MARKER_SIZE * 0.7,
             )
     ax.set_xticks(guards)
+    # Same reason as in the offset panel: solid and dashed are two different
+    # quantities (the fail-safe on co-range peers and its price elsewhere).
+    ax.plot([], [], ls="-", label="co-range: fallback trips (solid)", **STYLE_PROXY)
+    ax.plot([], [], ls=(0, (4, 2)), label="separated: fallback price (dashed)", **STYLE_PROXY)
     ax.set_xlabel("guard factor")
     ax.set_title("Fallback: fail-safe vs false alarm")
 
@@ -139,7 +167,7 @@ def _panel_fallback(ax, frame) -> None:
 def main() -> None:
     fs.apply_style()
     frame = load()
-    fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=True)
+    fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.2), sharey=False)
 
     offsets = sorted(
         int(value)
@@ -151,12 +179,18 @@ def main() -> None:
     _panel_ratio(axes[1], frame)
     _panel_fallback(axes[2], frame)
 
+    # The identification panels are framed on the rates they draw; the fallback
+    # panel keeps the full 0-1 range (its rates span 0.3-1.0). Sharing one y axis
+    # across the three would either clip the fallback or flatten the other two.
+    _scaled_to_data(axes[0])
+    _scaled_to_data(axes[1])
+    axes[2].set_ylim(0.0, 1.05)
+
     for ax in axes:
-        ax.set_ylim(0.0, 1.05)
         ax.grid(True, axis="y", color=fs.GRID_COLOR, lw=0.6, alpha=0.7)
 
     fig.tight_layout()
-    fs.legend_below_fig(fig, axes, ncol=2)
+    fs.legend_below_fig(fig, axes, ncol=3)
     fs.save(fig, "peer_estimation")
     plt.close(fig)
     print(

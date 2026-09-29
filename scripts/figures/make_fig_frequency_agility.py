@@ -32,6 +32,11 @@ Figure ``frequency_agility_gain``: two panels at JSR = +10 dB.
 The follower is excluded because at a 1-burst dwell it never engages (its "gain"
 is not a BER gain, it is the absence of jamming).
 
+The BER panels frame the data instead of the transmitter: the frequency-agility
+BER lives between 0.1 and 0.5, so the y-axis floor is derived from the curves the
+panels actually draw (one decade below the lowest of them) instead of being fixed
+at the 3e-5 of the BER-vs-SNR figures, which left three and a half empty decades.
+
 Every curve is the mean over the ``n_realizations`` jammer realizations stored in
 ``frequency_agility_vs_jsr.csv`` and ``frequency_agility_vs_dwell.csv``; the
 per-realization spread is *not* drawn (no +-1 sigma envelope on the curves). The
@@ -70,7 +75,7 @@ MIN_REALIZATIONS = 5
 #: The aggregate fh_off/fh_on difference under barrage must stay inside this
 #: fraction of the confidence half-width. See ``_check_matched_control``.
 MATCHED_CONTROL_FRACTION = 0.05
-Y_LO, Y_HI = 3e-5, 1.0
+Y_HI = 1.0
 DWELL_JSR = 6.0
 GAIN_JSR = 10.0
 GAIN_MODELS = ("barrage", "fixed_partial", "sweep")
@@ -158,13 +163,13 @@ def _kfmt(value: float) -> str:
     return f"{value / 1000:.4g}k" if value >= 1000 else f"{value:.4g}"
 
 
-def _panel_jsr(ax, jsr: pd.DataFrame, modality: str, title: str) -> None:
+def _panel_jsr(ax, jsr: pd.DataFrame, modality: str, title: str, y_lo: float) -> None:
     """One BER-vs-JSR panel: the four jammer models for a given modality.
 
     No no-jammer reference line is drawn: it is flat by definition and it only
     adds another flat entry to the legend.
     """
-    fs.log_axis(ax, Y_LO, Y_HI, x_step=4.0)
+    fs.log_axis(ax, y_lo, Y_HI, x_step=4.0)
     xs = None
     for model, label in MODELS:
         c = _curve(jsr, model, modality)
@@ -182,9 +187,9 @@ def _panel_jsr(ax, jsr: pd.DataFrame, modality: str, title: str) -> None:
         ax.set_xticks(sorted(float(v) for v in xs))
 
 
-def _panel_dwell(ax, dwell: pd.DataFrame, title: str) -> None:
+def _panel_dwell(ax, dwell: pd.DataFrame, title: str, y_lo: float) -> None:
     """BER vs hop rate at a fixed JSR, for the sweeping and the follower jammer."""
-    fs.log_axis(ax, Y_LO, Y_HI)
+    fs.log_axis(ax, y_lo, Y_HI)
     ax.set_xscale("log")
     rates = None
     for model in ("sweep", "follower"):
@@ -308,10 +313,23 @@ def main() -> None:
 
     fs.apply_style()
     fig, axes = plt.subplots(1, 4, figsize=(17.0, 4.2), sharey=True)
-    _panel_jsr(axes[0], jsr, "fh_off", "Fixed carrier, omniscient jammer")
-    _panel_jsr(axes[1], jsr, "fh_off_blind", "Fixed carrier, blind jammer")
-    _panel_jsr(axes[2], jsr, "fh_on", "Frequency hopping (100 k hop/s)")
-    _panel_dwell(axes[3], dwell, f"BER vs hop rate (JSR = +{DWELL_JSR:.0f} dB)")
+    drawn = []
+    for modality in ("fh_off", "fh_off_blind", "fh_on"):
+        for model, _label in MODELS:
+            c = _curve(jsr, model, modality)
+            if not c.empty:
+                drawn.append(c["ber"].to_numpy(dtype=float))
+    for model in ("sweep", "follower"):
+        c = dwell[(dwell.jammer_model == model) & np.isclose(dwell.jsr_db, DWELL_JSR)]
+        if not c.empty:
+            drawn.append(c["ber"].to_numpy(dtype=float))
+    y_lo = fs.ber_floor(drawn, Y_HI)
+    lowest = min(float(np.nanmin(v)) for v in drawn)
+    print(f"BER axis: {y_lo:g} .. {Y_HI:g} (lowest plotted value {lowest:.3f})")
+    _panel_jsr(axes[0], jsr, "fh_off", "Fixed carrier, omniscient jammer", y_lo)
+    _panel_jsr(axes[1], jsr, "fh_off_blind", "Fixed carrier, blind jammer", y_lo)
+    _panel_jsr(axes[2], jsr, "fh_on", "Frequency hopping (100 k hop/s)", y_lo)
+    _panel_dwell(axes[3], dwell, f"BER vs hop rate (JSR = +{DWELL_JSR:.0f} dB)", y_lo)
     axes[0].set_ylabel("BER")
     fig.tight_layout()
     fs.legend_below_fig(fig, axes, ncol=5)

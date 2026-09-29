@@ -116,6 +116,32 @@ def interior_ticks(values):
     return values[1:-1] if len(values) > 2 else values
 
 
+#: Values the derived BER floor may take, largest first: decade steps would jump
+#: from 0.1 to 0.01 as soon as one curve dips to 0.07, wasting half a decade.
+_NICE_FLOORS = (1.0, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001)
+
+
+def ber_floor(series, y_hi: float = 1.0) -> float:
+    """Floor that frames the plotted BER with a modest margin.
+
+    Fixed floors get inherited by figures that live in different BER ranges: the
+    BER-vs-SNR curves do reach 1e-5, while the frequency-agility and reaction
+    sweeps stay between 0.05 and 0.5, so a 1e-5 or 3e-5 floor leaves three and a
+    half empty decades and the panels look blank. The floor is therefore the
+    largest round value below the lowest curve the panels draw, so it never clips
+    a curve and cannot go stale.
+    """
+    values = np.concatenate([np.asarray(s, dtype=float).ravel() for s in series])
+    values = values[np.isfinite(values) & (values > 0.0)]
+    if not values.size:
+        return y_hi / 1e4
+    target = float(values.min()) * 0.85
+    for step in _NICE_FLOORS:
+        if step <= target:
+            return step
+    return y_hi / 1e4
+
+
 def log_axis(ax, y_lo: float, y_hi: float, x_step: float | None = None) -> None:
     """``plotly_white`` log axis: black frame, light grid, dotted sub-decades."""
     ax.set_axisbelow(True)

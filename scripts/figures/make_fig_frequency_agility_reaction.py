@@ -49,7 +49,7 @@ ARCH_LABELS = {
     "lstm": "LSTM-OFDM-DCSK",
     "mc_dlsk": "MC-DLCSK",
 }
-Y_LO, Y_HI = 1e-5, 1.0
+Y_HI = 1.0
 #: The mixing law must reproduce the sweep to this relative tolerance.
 LAW_TOLERANCE = 0.05
 
@@ -119,7 +119,10 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     fs.apply_style()
     fig, ax = plt.subplots(figsize=(6.6, 4.6))
-    fs.log_axis(ax, Y_LO, Y_HI)
+    y_lo = fs.ber_floor([frame["ber"].to_numpy(dtype=float) for frame in frames.values()],
+                        Y_HI)
+    print(f"BER axis: {y_lo:g} .. {Y_HI:g}")
+    fs.log_axis(ax, y_lo, Y_HI)
 
     for arch in archs:
         frame = frames[arch]
@@ -137,7 +140,7 @@ def main(argv: Optional[List[str]] = None) -> None:
             label=r"law $\,f\,$BER$_{jam}+(1-f)\,$BER$_{clean}$")
 
     for x, f in zip(lat, frac):
-        ax.annotate(rf"$f={f:.3f}$", (x, Y_LO * 1.6), ha="center", va="bottom",
+        ax.annotate(rf"$f={f:.3f}$", (x, y_lo * 1.08), ha="center", va="bottom",
                     fontsize=9, color="#444444")
 
     ax.set_xticks(sorted(float(v) for v in lat))
