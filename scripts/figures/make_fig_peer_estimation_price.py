@@ -94,35 +94,49 @@ def _accuracy(samples: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, np.ndarra
     return out
 
 
-def _panel_accuracy(ax, accuracy: Dict[str, Dict[str, np.ndarray]]) -> None:
-    x = np.arange(len(RATIO_ORDER))
-    width = 0.34
-    for index, arch in enumerate(ARCHS):
+def _panel_tolerance(ax, samples: Dict[str, pd.DataFrame]) -> None:
+    """Cumulative share of samples within a delay-error tolerance.
+
+    This is the panel that answers "does it estimate well" without quoting a
+    single threshold: the reader picks the accuracy the application needs and
+    sees the share of samples that meet it.  The vertical line marks the half
+    sample the identification rate of the companion figure uses, which is why
+    that rate is as small as it is.
+    """
+    grid = np.arange(TOLERANCE, 15.0 + 1e-9, 0.5)
+    for arch in ARCHS:
+        err = samples[arch]["abs_err"].to_numpy(dtype=float)
+        share = np.array([float((err <= tol).mean()) for tol in grid])
         kw = fs.series_kwargs(arch)
-        offset = (index - 0.5) * width
-        values = accuracy[arch]["mean"]
-        lower = np.zeros_like(values)
-        upper = np.clip(accuracy[arch]["p90"] - values, 0.0, None)
-        ax.bar(x + offset, values, width=width, color=kw["color"],
-               label=ARCH_LABELS[arch], zorder=3)
-        ax.errorbar(x + offset, values, yerr=np.vstack([lower, upper]), fmt="none",
-                    ecolor="#555555", elinewidth=1.1, capsize=3.5, zorder=4)
-    ax.axhline(TOLERANCE, color="#EF553B", ls="--", lw=1.4, zorder=5)
-    ax.annotate(f"hit tolerance = {TOLERANCE:g} sample", (len(RATIO_ORDER) - 0.5,
-                TOLERANCE), textcoords="offset points", xytext=(-4, 6), ha="right",
-                fontsize=9, color="#EF553B")
-    ax.set_xticks(x)
-    ax.set_xticklabels([RATIO_LABELS[k] for k in RATIO_ORDER], fontsize=9.5)
-    ax.set_xlabel("obstacle / peer echo amplitude")
-    ax.set_ylabel("delay error (samples; bar = mean, whisker = P90)")
-    ax.set_ylim(0.0, max(4.0, float(np.nanmax([accuracy[a]["p90"].max() for a in ARCHS]))) * 1.1)
-    ax.set_title("Off by several samples, while the metric asks for half",
-                 fontsize=11, pad=8)
+        kw["ms"] = 4.0
+        ax.plot(grid, share, label=ARCH_LABELS[arch], zorder=3, **kw)
+
+    ax.axvline(TOLERANCE, color="#444444", ls=":", lw=1.4, zorder=2)
+    at_tolerance = max(float((samples[arch]["abs_err"] <= TOLERANCE).mean())
+                       for arch in ARCHS)
+    ax.annotate("the bar this metric uses:\nhalf a sample",
+                (TOLERANCE, at_tolerance), textcoords="offset points",
+                xytext=(8, 4), ha="left", va="bottom", fontsize=9, color="#333333")
+
+    ax.set_xlim(0.0, 15.0)
+    ax.set_xticks(np.arange(0.0, 15.1, 3.0))
+    ax.set_ylim(0.0, 1.0)
+    ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0", "25%", "50%", "75%", "100%"])
+    ax.set_xlabel("Tolerated delay error (samples)")
+    ax.set_ylabel("Share of samples within the tolerance")
+    ax.set_title("How accurate is the range estimate", fontsize=11, pad=8)
     ax.grid(True, axis="y", color=fs.GRID_COLOR, lw=0.6, alpha=0.7)
     ax.set_axisbelow(True)
 
 
 def _panel_fallback(ax, summary: pd.DataFrame) -> float:
+    """Trip rate of the conservative fallback against the guard factor.
+
+    Solid: peers that share the obstacle's range -- here the fallback tripping is
+    the fail-safe working, because it keeps the obstacle in the list.  Dashed:
+    well separated peers -- here the same trip is a false alarm, i.e. the price.
+    """
     guards = sorted(float(v) for v in
                     summary.loc[summary["summary"] == "co_range", "guard_factor"].unique())
     worst = 0.0
@@ -138,12 +152,19 @@ def _panel_fallback(ax, summary: pd.DataFrame) -> float:
         ax.plot(guards, values, ls=dashes, marker="o", ms=6, lw=1.8,
                 color="#636EFA" if key == "co_range" else "#EF553B", label=label,
                 zorder=3)
+        for guard, value in zip(guards, values):
+            if key == "separated":
+                ax.annotate(f"{100 * value:.0f}%", (guard, value),
+                            textcoords="offset points", xytext=(0, -14),
+                            ha="center", fontsize=8.5, color="#EF553B")
     ax.set_xticks(guards)
-    ax.set_xlabel("guard factor")
-    ax.set_ylabel("fraction of samples with the fallback tripped")
-    ax.set_ylim(0.0, 1.05)
-    ax.set_title("The fail-safe works, and its price is a third to three quarters",
-                 fontsize=11, pad=8)
+    ax.set_xlim(min(guards) - 0.15, max(guards) + 0.15)
+    ax.set_ylim(0.0, 1.1)
+    ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0", "25%", "50%", "75%", "100%"])
+    ax.set_xlabel("Guard factor of the link-budget test")
+    ax.set_ylabel("Share of samples with the fallback tripped")
+    ax.set_title("What the fail-safe costs", fontsize=11, pad=8)
     ax.grid(True, axis="y", color=fs.GRID_COLOR, lw=0.6, alpha=0.7)
     ax.set_axisbelow(True)
     return worst
@@ -163,9 +184,12 @@ def main() -> None:
     for arch in ARCHS:
         print(f"  {ARCH_LABELS[arch]:<18} mean {samples[arch]['abs_err'].mean():.2f} | "
               f"P90 {np.percentile(samples[arch]['abs_err'], 90):.2f}")
+    print("mean delay error per amplitude bin (conv1d / qkv):",
+          {key: (f"{accuracy['conv1d']['mean'][i]:.2f} / {accuracy['qkv']['mean'][i]:.2f}")
+           for i, key in enumerate(RATIO_ORDER)})
 
-    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.4))
-    _panel_accuracy(axes[0], accuracy)
+    fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.6))
+    _panel_tolerance(axes[0], samples)
     worst = _panel_fallback(axes[1], summary)
     print("worst receiver disagreement on the fallback rate: %.2e" % worst)
 

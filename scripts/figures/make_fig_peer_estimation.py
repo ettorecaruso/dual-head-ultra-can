@@ -97,33 +97,34 @@ def _rates(frame: pd.DataFrame, summary: str, keys: List[str],
 
 def _rates_panel(ax, keys: List[str], labels: List[str], rates: Dict[str, np.ndarray],
                  xlabel: str, title: str) -> None:
-    """Grouped bars for the two informative outcomes of one range report.
+    """Grouped bars for the two outcomes a range report can have.
 
-    The third outcome ("neither", i.e. the estimate lands neither on the obstacle
-    nor on a peer) is 80-95% of every bin: stacking it would shrink the two rates
-    the figure is about to slivers, so it is quoted as a number in each bin
-    instead of drawn.
+    Only the two rates the figure is about are drawn: the obstacle is reported,
+    or the peer is.  Everything else is neither, and it is 80-95% of every bin,
+    so it is left out instead of being stacked (a stack of that size would press
+    the two rates this figure exists for into slivers).
     """
     x = np.arange(len(keys))
     width = 0.38
     peak = float(np.nanmax(np.concatenate([rates["obstacle"], rates["peer"]])))
-    top = max(0.05, peak) * 1.45
+    top = max(0.05, peak) * 1.35
     for name, offset in (("obstacle", -width / 2), ("peer", width / 2)):
         color, label = OUTCOME[name]
         values = rates[name]
-        ax.bar(x + offset, values, width=width, color=color, label=label, zorder=3)
-        for xi, value in enumerate(values):
-            ax.annotate(f"{100 * value:.0f}", (xi + offset, value),
+        bars = ax.bar(x + offset, values, width=width, color=color, label=label,
+                      zorder=3)
+        for bar, value in zip(bars, values):
+            ax.annotate(f"{100 * value:.0f}%",
+                        (bar.get_x() + bar.get_width() / 2.0, value),
                         textcoords="offset points", xytext=(0, 3), ha="center",
                         fontsize=8.5, color=color)
-    for xi, (count, elsewhere) in enumerate(zip(rates["n"], rates["elsewhere"])):
-        ax.annotate(f"n={count}\n{100 * elsewhere:.0f}% elsewhere", (xi, top),
-                    ha="center", va="top", fontsize=8.5, color="#777777")
     ax.set_xticks(x)
     ax.set_xticklabels(labels, fontsize=9.5)
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("fraction of samples")
+    ax.set_ylabel("Share of the samples")
     ax.set_ylim(0.0, top)
+    ax.set_yticks([v for v in (0.0, 0.05, 0.10, 0.15) if v <= top])
+    ax.set_yticklabels([f"{100 * v:.0f}%" for v in (0.0, 0.05, 0.10, 0.15) if v <= top])
     ax.set_title(title, fontsize=11, pad=8)
     ax.grid(True, axis="y", color=fs.GRID_COLOR, lw=0.6, alpha=0.7)
     ax.set_axisbelow(True)

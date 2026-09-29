@@ -174,39 +174,41 @@ def _coverage(run_dir: Path) -> Dict[str, Dict[str, float]]:
 
 
 def _panel_coverage(ax, coverage: Dict[str, Dict[str, float]]) -> None:
-    """Left panel: the share of bursts the jammer reaches, per modality."""
-    positions = np.arange(len(MODELS))
-    offsets = {"fh_off": -0.24, "fh_off_blind": 0.0, "fh_on": 0.24}
-    floor = 0.0625
-    for modality, (label, color, marker) in MODALITY_STYLE.items():
-        xs, ys = [], []
-        for index, (model, _mlabel) in enumerate(MODELS):
-            value = coverage[model][modality]
-            xs.append(index + offsets[modality])
-            ys.append(max(value, floor))
-        ax.plot(xs, ys, ls="", marker=marker, ms=9, color=color, label=label, zorder=3)
-        for x, (model, _mlabel) in zip(xs, MODELS):
-            value = coverage[model][modality]
-            if value <= 0.0:
-                ax.plot([x], [floor], ls="", marker="v", ms=8, mfc="none",
-                        color=color, zorder=4)
-                ax.annotate("no engagement", (x, floor), textcoords="offset points",
-                            xytext=(0, -15), ha="center", fontsize=8.5, color=color)
-            elif modality == "fh_on":
-                gain = -10.0 * np.log10(value)
-                ax.annotate(f"{gain:.1f} dB", (x, value), textcoords="offset points",
-                            xytext=(0, 8), ha="center", fontsize=8.5, color=color)
+    """Left panel: the share of bursts the jammer reaches, per modality.
 
-    ax.set_yscale("log")
-    ax.set_ylim(floor * 0.75, 1.7)
-    ax.set_yticks([0.125, 0.25, 0.5, 1.0])
-    ax.set_yticklabels(["1/8", "1/4", "1/2", "1"])
+    Grouped bars instead of scattered markers: the three modalities are then
+    read left to right inside each archetype, with no overlapping sticks and no
+    text inside the plotting area.  The hopping value and the ideal gain it
+    implies (``-10 log10 f``) are written under the archetype name, where they
+    belong to the group as a whole.
+    """
+    positions = np.arange(len(MODELS))
+    width = 0.26
+    for index, (modality, (label, color, _marker)) in enumerate(MODALITY_STYLE.items()):
+        values = [coverage[model][modality] for model, _label in MODELS]
+        bars = ax.bar(positions + (index - 1) * width, values, width=width * 0.92,
+                      color=color, label=label, zorder=3)
+        for bar, value in zip(bars, values):
+            ax.annotate(f"{100 * value:.0f}%",
+                        (bar.get_x() + bar.get_width() / 2.0, value),
+                        textcoords="offset points", xytext=(0, 3), ha="center",
+                        fontsize=8.5, color=color)
+
+    labels = []
+    for model, label in MODELS:
+        f = coverage[model]["fh_on"]
+        if f > 0.0:
+            labels.append(f"{label}\n{f:.3f} exposed, ideal {-10.0 * np.log10(f):.1f} dB")
+        else:
+            labels.append(f"{label}\n0 exposed, nothing to buy")
     ax.set_xticks(positions)
-    ax.set_xticklabels([f"{label}\n(f = {coverage[model]['fh_on']:.3f})"
-                        for model, label in MODELS], fontsize=9.5)
+    ax.set_xticklabels(labels, fontsize=9)
     ax.set_xlim(-0.6, len(MODELS) - 0.4)
-    ax.set_ylabel("Jammed fraction of bursts")
-    ax.set_title("Hopping changes the coverage, nothing else", fontsize=11, pad=8)
+    ax.set_ylim(0.0, 1.12)
+    ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0", "25%", "50%", "75%", "100%"])
+    ax.set_ylabel("Fraction of bursts the jammer reaches")
+    ax.set_title("Hopping moves the jammer off most bursts", fontsize=11, pad=8)
     ax.grid(True, axis="y", color=fs.GRID_COLOR, lw=1.0)
     ax.set_axisbelow(True)
 

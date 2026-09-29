@@ -117,7 +117,12 @@ def _rate_label(value: float) -> str:
 
 
 def _panel_hop_rate(ax, dwell: Dict[str, pd.DataFrame]) -> None:
-    """BER vs hop rate: one curve per archetype, band = spread over receivers."""
+    """BER vs hop rate: one curve per archetype, averaged over the receivers.
+
+    The four receivers are drawn as a single line per archetype because they
+    coincide: the spreading band is not drawn, since an invisible band is the
+    result the panel is about and a visible one would only add ink.
+    """
     ticks: List[float] = []
     for model in ("sweep", "follower"):
         rates = np.array([], dtype=float)
@@ -134,10 +139,10 @@ def _panel_hop_rate(ax, dwell: Dict[str, pd.DataFrame]) -> None:
             stack.append(sub["ber"].to_numpy(dtype=float))
         if not stack:
             continue
-        matrix = np.vstack(stack)
-        mean, low, high = matrix.mean(axis=0), matrix.min(axis=0), matrix.max(axis=0)
+        mean = np.vstack(stack).mean(axis=0)
+        spread = float(np.max(np.abs(np.vstack(stack) - mean)))
+        print(f"  {model}: max deviation of any receiver from the mean curve {spread:.4f}")
         kw = fs.series_kwargs(model)
-        ax.fill_between(rates, low, high, color=kw["color"], alpha=0.18, lw=0, zorder=2)
         ax.plot(rates, mean, label=JAMMER_LABELS[model], zorder=3, **kw)
         ticks = sorted(set(ticks) | set(float(v) for v in rates))
 
@@ -145,11 +150,11 @@ def _panel_hop_rate(ax, dwell: Dict[str, pd.DataFrame]) -> None:
     ax.set_xticks(ticks)
     ax.set_xticklabels([_rate_label(v) for v in ticks], fontsize=9.5)
     ax.set_xlim(min(ticks) * 0.75, max(ticks) * 1.35)
-    ax.set_xlabel("Hop rate (hop/s)")
-    ax.set_title("A tracker loses, a blind sweeper does not", fontsize=11, pad=8)
-    ax.annotate("1-2 bursts of dwell:\nshorter than the follower's\n"
-                "reaction, no engagement",
-                (max(ticks), 0.55), ha="right", va="center", fontsize=9,
+    ax.set_xlabel("Hop rate (hops per second)")
+    ax.set_title("A tracker is defeated, a blind sweeper is not", fontsize=11, pad=8)
+    ax.annotate("dwell of 1-2 bursts:\nshorter than the follower reaction,\n"
+                "so it never jams",
+                (max(ticks) * 1.2, 0.35), ha="right", va="center", fontsize=9,
                 color="#333333")
 
 
