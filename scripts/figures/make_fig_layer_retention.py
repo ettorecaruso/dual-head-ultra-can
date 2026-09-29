@@ -2,11 +2,21 @@
 """Layer retention figure under jamming.
 
 The intermediate stages of each receiver are drawn as bars (cosine between the
-clean and the barrage-jammed activation, JSR +10 dB). The delay-profile sensing
-descriptor is not a feature-extraction stage: it is a deterministic function of
-the estimated delay, so it is drawn as a horizontal reference line spanning the
-panel (with its value on the line) instead of a bar. Removing it from the x
-categories also keeps the stage labels on the axis from overlapping.
+clean and the barrage-jammed activation, JSR +10 dB); the machine-readable table
+behind them is ``jamming_interpretability/<arch>/conditions.csv``.
+
+The figure used to carry one extra horizontal reference line, the sensing
+descriptor, because a deterministic descriptor is not a feature-extraction stage
+and deserved its own reading.  That line is gone, and here is why: it was drawn
+from ``sensing_position_cos``, which measured 0.9964 at JSR +10 dB in the
+September campaign, but the sensing head changed afterwards
+(``use_position_feature: false``, ``use_max_pool_feature: true``) and the
+positional statistic is now the max-pool stage ``sensing_max_pool``.  The probe
+still asks for the retired name, so the current CSVs carry no positional column
+at all and the line could not be drawn for the current receivers; drawing the
+delay-profile value there instead (0.46) would have been a different quantity
+with the same label.  Until the probe captures ``sensing_max_pool``, the panel
+shows only the feature-extraction stages.
 """
 from pathlib import Path
 
@@ -21,8 +31,6 @@ OUT = REPO / 'figures' / 'jamming_layer_retention.pdf'
 MIRROR = REPO / 'results' / 'figures' / 'jamming_layer_retention.pdf'
 
 BAR_COLOR = '#4c72b0'
-REF_COLOR = '#55a868'
-REF_COL = 'sensing_delay_profile_cos'
 PANELS = [
     ('conv1d', 'Ultra-CAN (Conv1D)',
      [('conv1', 'conv1_cos'), ('conv2', 'conv2_cos'),
@@ -43,15 +51,11 @@ for ax, (key, title, bars) in zip(axes, PANELS):
     row = df[(df.jammer == 'barrage') & (df.jsr_db == 10.0)].iloc[0]
     names = [b[0] for b in bars]
     vals = [float(row[b[1]]) for b in bars]
-    ref = float(row[REF_COL])
     ax.bar(range(len(vals)), vals, color=BAR_COLOR, width=0.62)
     for i, v in enumerate(vals):
         ax.text(i, v + 0.02, f'{v:.2f}', ha='center', va='bottom', fontsize=9,
                 zorder=4, bbox=dict(boxstyle='square,pad=0.10', fc='white',
                                     ec='none', alpha=0.85))
-    ax.axhline(ref, color=REF_COLOR, linestyle='--', linewidth=1.6, zorder=3)
-    ax.text(len(vals) - 0.45, ref + 0.012, f'{ref:.2f}',
-            ha='right', va='bottom', fontsize=9, color='#2f6f45', zorder=4)
     ax.set_xticks(range(len(vals)))
     ax.set_xticklabels(names, fontsize=9.5)
     ax.set_xlim(-0.6, len(vals) - 0.4)
@@ -61,8 +65,8 @@ for ax, (key, title, bars) in zip(axes, PANELS):
     ax.set_title(title, fontsize=11)
     ax.tick_params(labelsize=9.5)
 axes[0].set_ylabel('cosine', fontsize=11)
-fig.suptitle('Layer-wise activation retention, barrage jamming at JSR +10 dB '
-             '(dashed line: sensing delay profile)', fontsize=12.5)
+fig.suptitle('Layer-wise activation retention, barrage jamming at JSR +10 dB',
+             fontsize=12.5)
 fig.tight_layout(rect=[0, 0, 1, 0.90])
 OUT.parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(OUT)
@@ -71,3 +75,4 @@ if MIRROR.parent.exists():
     fig.savefig(MIRROR)
     print('saved', MIRROR)
 plt.close(fig)
+
